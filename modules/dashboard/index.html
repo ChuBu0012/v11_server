@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pocket Sentinel — vivo V11</title>
+  <style>
+    :root {
+      --primary: #0066cc;
+      --primary-focus: #0071e3;
+      --primary-on-dark: #2997ff;
+      --ink: #1d1d1f;
+      --body: #1d1d1f;
+      --body-on-dark: #ffffff;
+      --body-muted: #86868b;
+      --ink-muted-80: #333333;
+      --canvas: #ffffff;
+      --canvas-parchment: #f5f5f7;
+      --surface-pearl: #fafafc;
+      --surface-tile-1: #272729;
+      --surface-tile-2: #2a2a2c;
+      --surface-black: #000000;
+      --hairline: #e0e0e0;
+      --hairline-dark: #3a3a3c;
+      --status-ok: #34c759;
+      --status-warning: #ff9f0a;
+      --status-critical: #ff453a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+      font-size: 17px;
+      line-height: 1.47;
+      letter-spacing: -0.374px;
+      color: var(--body);
+      background-color: var(--canvas-parchment);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Global Nav */
+    .global-nav {
+      background-color: var(--surface-black);
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .global-nav .brand {
+      color: var(--body-on-dark);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--status-ok);
+      display: inline-block;
+      transition: background-color 0.3s;
+    }
+    .global-nav .meta {
+      color: var(--body-muted);
+      font-size: 12px;
+    }
+
+    /* Layout Sections */
+    section {
+      padding: 48px 24px;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Hero Status Tile */
+    .hero-tile {
+      background-color: var(--canvas);
+      text-align: center;
+      padding: 56px 24px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .hero-kicker {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .hero-title {
+      font-size: 40px;
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      color: var(--ink);
+      margin-bottom: 12px;
+    }
+    .hero-tagline {
+      font-size: 21px;
+      font-weight: 400;
+      line-height: 1.3;
+      color: var(--body-muted);
+      max-width: 640px;
+      margin: 0 auto 24px;
+    }
+    .refresh-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--primary);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 400;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.15s, background-color 0.15s;
+    }
+    .refresh-pill:active {
+      transform: scale(0.95);
+    }
+    .refresh-pill:hover {
+      background-color: var(--primary-focus);
+    }
+
+    /* Cards Grid */
+    .section-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      margin-bottom: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .card {
+      background-color: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .card-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--body-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .card-val {
+      font-size: 32px;
+      font-weight: 600;
+      line-height: 1.1;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .card-sub {
+      font-size: 14px;
+      color: var(--body-muted);
+    }
+    .progress-bar-bg {
+      background-color: var(--canvas-parchment);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-bar-fill {
+      background-color: var(--primary);
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* Dark Tile: Alert Conditions */
+    .dark-section {
+      background-color: var(--surface-tile-1);
+      color: var(--body-on-dark);
+    }
+    .dark-section .section-title {
+      color: var(--body-on-dark);
+    }
+    .dark-card {
+      background-color: var(--surface-tile-2);
+      border: 1px solid var(--hairline-dark);
+      border-radius: 18px;
+      padding: 20px;
+    }
+    .alert-badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge-ok {
+      background-color: rgba(52, 199, 89, 0.2);
+      color: var(--status-ok);
+    }
+    .badge-warning {
+      background-color: rgba(255, 159, 10, 0.2);
+      color: var(--status-warning);
+    }
+
+    /* Telemetry Table */
+    .table-card {
+      background-color: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background-color: var(--canvas-parchment);
+      color: var(--body-muted);
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--hairline);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--hairline);
+      color: var(--ink);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Event Logs */
+    .log-item {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--hairline);
+      font-size: 14px;
+    }
+    .log-time {
+      color: var(--body-muted);
+      font-size: 12px;
+      min-width: 80px;
+    }
+    .log-level {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      min-width: 60px;
+    }
+    .log-level.info { color: var(--primary); }
+    .log-level.warning { color: var(--status-warning); }
+    .log-level.error { color: var(--status-critical); }
+    .log-msg {
+      flex: 1;
+      color: var(--ink);
+    }
+
+    /* Footer */
+    footer {
+      background-color: var(--canvas-parchment);
+      padding: 48px 24px;
+      border-top: 1px solid var(--hairline);
+      text-align: center;
+      color: var(--body-muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Global Nav -->
+  <header class="global-nav">
+    <div class="brand">
+      <span class="status-dot" id="nav-status-dot"></span>
+      Pocket Sentinel
+    </div>
+    <div class="meta" id="nav-meta">Connecting...</div>
+  </header>
+
+  <!-- Hero Status Tile -->
+  <div class="hero-tile">
+    <div class="hero-kicker">vivo V11 Pocket Server</div>
+    <h1 class="hero-title" id="hero-status">All Systems Operational</h1>
+    <p class="hero-tagline" id="hero-tagline">Telemetry is sampled every 60 seconds and retained locally in SQLite.</p>
+    <button class="refresh-pill" onclick="refreshData()">
+      <span>↻</span> Refresh Telemetry
+    </button>
+  </div>
+
+  <!-- System Metrics Grid -->
+  <section>
+    <div class="container">
+      <h2 class="section-title">Hardware & Runtime Metrics</h2>
+      <div class="grid">
+        
+        <!-- Memory -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-label">Go Runtime Memory</span>
+          </div>
+          <div class="card-val" id="mem-alloc">-- MB</div>
+          <div class="card-sub" id="mem-sys">Sys: -- MB | Heap: -- MB</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="mem-bar" style="width: 10%;"></div>
+          </div>
+        </div>
+
+        <!-- Disk -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-label">Internal Storage (/data)</span>
+          </div>
+          <div class="card-val" id="disk-free">-- GB</div>
+          <div class="card-sub" id="disk-total">Total: -- GB free</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="disk-bar" style="width: 50%;"></div>
+          </div>
+        </div>
+
+        <!-- Battery -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-label">Device Battery</span>
+          </div>
+          <div class="card-val" id="bat-level">--%</div>
+          <div class="card-sub" id="bat-status">Status: Checking...</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="bat-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Dark Tile: Active Alert Conditions -->
+  <section class="dark-section">
+    <div class="container">
+      <h2 class="section-title">Sentinel Alert Conditions</h2>
+      <div class="grid" id="conditions-grid">
+        <div class="dark-card">Loading alert rules...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent History Table -->
+  <section>
+    <div class="container">
+      <h2 class="section-title">Recent Telemetry Samples (Time Series)</h2>
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Uptime</th>
+              <th>RAM Alloc</th>
+              <th>Disk Free</th>
+              <th>Battery</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr><td colspan="5" style="text-align:center;">Loading telemetry history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Event Logs -->
+  <section>
+    <div class="container">
+      <h2 class="section-title">System & Alert Event Logs</h2>
+      <div class="card" id="logs-container">
+        Loading event logs...
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      Pocket Sentinel &bull; vivo 1804 (Snapdragon 660, Android 10, Termux arm64) &bull; Pure-Go Modular Monolith
+    </div>
+  </footer>
+
+  <script>
+    async function refreshData() {
+      try {
+        // 1. Fetch Current Telemetry
+        const curRes = await fetch('/api/telemetry/current');
+        if (curRes.ok) {
+          const cur = await curRes.json();
+          renderCurrent(cur);
+        }
+
+        // 2. Fetch History
+        const histRes = await fetch('/api/telemetry/history?limit=15');
+        if (histRes.ok) {
+          const hist = await histRes.json();
+          renderHistory(hist);
+        }
+
+        // 3. Fetch Event Logs
+        const logsRes = await fetch('/api/logs');
+        if (logsRes.ok) {
+          const logs = await logsRes.json();
+          renderLogs(logs);
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+      }
+    }
+
+    function renderCurrent(data) {
+      const s = data.latest_sample;
+      if (s) {
+        document.getElementById('mem-alloc').innerText = s.memory_alloc_mb.toFixed(2) + ' MB';
+        document.getElementById('mem-sys').innerText = 'Sys: ' + s.memory_sys_mb.toFixed(2) + ' MB';
+        const memPercent = Math.min(100, Math.round((s.memory_alloc_mb / 250) * 100));
+        document.getElementById('mem-bar').style.width = memPercent + '%';
+
+        document.getElementById('disk-free').innerText = s.disk_free_gb.toFixed(2) + ' GB';
+        document.getElementById('disk-total').innerText = 'Total: ' + s.disk_total_gb.toFixed(2) + ' GB';
+        const diskUsedPct = Math.round(((s.disk_total_gb - s.disk_free_gb) / s.disk_total_gb) * 100);
+        document.getElementById('disk-bar').style.width = diskUsedPct + '%';
+
+        if (s.battery_level !== undefined && s.battery_level !== null) {
+          document.getElementById('bat-level').innerText = Math.round(s.battery_level) + '%';
+          document.getElementById('bat-status').innerText = 'Status: ' + (s.battery_status || 'Normal');
+          document.getElementById('bat-bar').style.width = s.battery_level + '%';
+        } else {
+          document.getElementById('bat-level').innerText = 'N/A';
+          document.getElementById('bat-status').innerText = 'Termux:API unavailable';
+          document.getElementById('bat-bar').style.width = '0%';
+        }
+
+        const date = new Date(s.timestamp);
+        document.getElementById('nav-meta').innerText = 'Sampled ' + date.toLocaleTimeString();
+        document.getElementById('nav-status-dot').style.backgroundColor = 'var(--status-ok)';
+      }
+
+      // Render Alert Conditions
+      const grid = document.getElementById('conditions-grid');
+      grid.innerHTML = '';
+      if (data.conditions && data.conditions.length > 0) {
+        data.conditions.forEach(c => {
+          const card = document.createElement('div');
+          card.className = 'dark-card';
+          const badgeClass = c.active ? 'badge-warning' : 'badge-ok';
+          const badgeText = c.active ? 'TRIGGERED' : 'OK';
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-weight:600; text-transform:uppercase; font-size:13px; color:var(--body-muted);">${c.type}</span>
+              <span class="alert-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div style="font-size:16px;">${c.message}</div>
+          `;
+          grid.appendChild(card);
+        });
+      } else {
+        grid.innerHTML = '<div class="dark-card">No alert conditions configured.</div>';
+      }
+    }
+
+    function renderHistory(samples) {
+      const tbody = document.getElementById('history-tbody');
+      if (!samples || samples.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No history records yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      samples.forEach(s => {
+        const d = new Date(s.timestamp);
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const bat = (s.battery_level !== undefined && s.battery_level !== null) ? Math.round(s.battery_level) + '%' : 'N/A';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${timeStr}</td>
+          <td>${s.uptime_seconds}s</td>
+          <td>${s.memory_alloc_mb.toFixed(2)} MB</td>
+          <td>${s.disk_free_gb.toFixed(2)} GB</td>
+          <td>${bat}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderLogs(logs) {
+      const c = document.getElementById('logs-container');
+      if (!logs || logs.length === 0) {
+        c.innerHTML = '<div style="color:var(--body-muted);">No logs recorded.</div>';
+        return;
+      }
+      c.innerHTML = '';
+      logs.slice(0, 15).forEach(l => {
+        const d = new Date(l.created_at);
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `
+          <div class="log-time">${d.toLocaleTimeString()}</div>
+          <div class="log-level ${l.level}">${l.level}</div>
+          <div class="log-msg">
+            ${l.message}
+            ${l.metadata ? `<span style="color:var(--body-muted); font-size:12px; margin-left:8px;">(${l.metadata})</span>` : ''}
+          </div>
+        `;
+        c.appendChild(item);
+      });
+    }
+
+    // Initial fetch and 30s auto-refresh
+    refreshData();
+    setInterval(refreshData, 30000);
+  </script>
+</body>
+</html>

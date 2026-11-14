@@ -1,8 +1,15 @@
 server
+server.new
 *.exe
 *.dll
 *.so
 *.dylib
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Environment & local secrets
 .env

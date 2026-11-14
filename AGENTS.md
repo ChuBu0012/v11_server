@@ -4,7 +4,7 @@
 - **Memory & Swap:** `5.6Gi` Physical RAM (`~2.8Gi` available) + `3.0Gi` zRAM Swap (`~1.5Gi` free).
   - *Constraint:* Keep active Go services lightweight (`< 300MB` RAM per process) to prevent Android 10 Low Memory Killer (LMK) eviction.
 - **Storage / Disk:** `/dev/block/dm-1` (`107G` total, `74G` available at `/data`).
-- **Primary Stack:** Go (compiled standalone binary) managed by `PM2` and exposed externally via `cloudflared` Quick Tunnel.
+- **Primary Stack:** Go (compiled standalone binary) managed by `PM2` and exposed externally via `ngrok` tunnel.
 - **Remote Project Path:** `~/go-app` (`/data/data/com.termux/files/home/go-app`).
 - **Default Service Port:** `8080` (`http://localhost:8080`).
 
@@ -18,7 +18,7 @@
 - **Android Hardware Integration:** Invoke `termux-*` CLI tools (e.g., `termux-battery-status`, `termux-notification`, `termux-torch`) from Go via `os/exec`.
 
 ## 3. Process Management (`PM2`)
-- **Active Config:** `ecosystem.config.js` (defines `go-server` and `quick-tunnel`).
+- **Active Config:** `ecosystem.config.js` (defines `go-server` and `ngrok-tunnel`).
 - **Persistence:** Always run `pm2 save` after modifying PM2 processes so `~/.bashrc` auto-restores them via `pm2 resurrect`.
 - **Log Inspection Rule:** When inspecting PM2 logs remotely, **ALWAYS pass `--nostream`** so the SSH session does not hang:
   ```bash
