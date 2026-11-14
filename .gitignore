@@ -1,0 +1,14 @@
+server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment & local secrets
+.env
+.env.*
+
+# macOS & IDE artifacts
+.DS_Store
+.vscode/
+.idea/
