@@ -36,15 +36,18 @@ Implement in small vertical slices. First restore a reliable baseline around the
 
 ### 3. Dashboard
 
-- Add a responsive page that reads the APIs and renders current status, history, and alert states.
+- Add a responsive page that reads the APIs and renders current status, history, and alert states using metric cards and Chart.js `4.6.1` from jsDelivr CDN.
+- Offer 1h/6h/24h ranges; return no more than 500 evenly spaced history samples while preserving the API's newest-first order.
 - Serve assets from the Go binary/repository with no Node process required on the phone.
 - Provide unavailable/empty states for optional hardware and notification integrations.
+- Refresh every 60 seconds, show collector data as stale after two sample intervals, and keep five recent events at the bottom.
 
 **Exit:** dashboard can be served locally, renders API data, and does not expose secrets or mutation controls.
 
 ### 4. Deployment and release verification
 
 - Update operational configuration/documentation and deployment as needed.
+- Purge event logs older than seven days every Monday at 03:00 Asia/Bangkok; preserve telemetry retention settings.
 - Build for the target Android ARM64 environment and verify the service health and dashboard endpoints.
 - Record deployment/runtime evidence and known limitations.
 

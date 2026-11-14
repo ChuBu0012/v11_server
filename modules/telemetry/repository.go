@@ -64,13 +64,14 @@ func (r *Repository) InsertSample(ctx context.Context, s HealthSample) (int64, e
 }
 
 // GetRecentSamples retrieves bounded samples ordered descending or ascending by timestamp.
-// default limit: 60, max limit: 500.
+// default limit: 60, max limit: 5000. The HTTP handler applies a smaller
+// response bound after it has read enough samples to cover the requested window.
 func (r *Repository) GetRecentSamples(ctx context.Context, limit int, maxAge time.Duration) ([]HealthSample, error) {
 	if limit <= 0 {
 		limit = 60
 	}
-	if limit > 500 {
-		limit = 500
+	if limit > 5000 {
+		limit = 5000
 	}
 
 	var query string

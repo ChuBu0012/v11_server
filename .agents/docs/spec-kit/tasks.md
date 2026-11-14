@@ -183,26 +183,20 @@
 
 ### T012 — Build responsive status dashboard
 
-- **Status:** DONE
-- **Work:** Create a single-page responsive dashboard adhering strictly to `DESIGN.md` Apple tokens: Action Blue (`#0066cc`), typography scale (SF Pro Display / Text), negative tracking, alternating light/dark canvases, pill CTAs with scale micro-interactions, hardware metrics, active conditions, telemetry time series table, and event logs.
+- **Status:** IN PROGRESS
+- **Work:** Create a single-page responsive dashboard adhering to `DESIGN.md`: Action Blue (`#0066cc`), SF system typography, alternating light/dark canvases, metric cards, time-series charts, and recent event logs.
 - **Acceptance:** Dashboard uses same-origin read APIs, adapts to narrow screens, and requires no Node runtime on the phone.
-- **Verification:** Local and remote curl inspection:
-  `curl -i https://spindle-said-hemstitch.ngrok-free.dev/` -> `HTTP 200` (16.2KB HTML).
-- **Evidence:** Verified responsive HTML served with 30s auto-refresh polling `/api/telemetry/current`, `/api/telemetry/history?limit=15`, and `/api/logs`.
+- **Verification:** Not run for this dashboard revision.
+- **Evidence:** Implementation artifact: `modules/dashboard/index.html` now contains four live metric cards, three Chart.js trend charts, 1h/6h/24h controls, stale-data messaging, accessible sample table, five recent logs, and 60s refresh. The Chart.js `4.6.1` CDN include is pinned. Browser rendering and endpoint behavior remain to be verified.
 - **Files/artifacts:** `modules/dashboard/index.html`, `dashboard/index.html`.
 
 ### T013 — Serve dashboard safely from the Go service
 
-- **Status:** DONE
+- **Status:** IN PROGRESS
 - **Work:** Serve static or embedded assets from `GET /`; set appropriate content types and avoid exposing configuration or credentials to the client.
 - **Acceptance:** HTTP tests verify page/assets return successfully and a source/content scan finds no secret values or environment dump.
-- **Verification:** `go test ./modules/dashboard`
-- **Evidence:**
-  ```text
-  === RUN   TestDashboardEndpoint
-  --- PASS: TestDashboardEndpoint (0.00s)
-  ```
-  Verified no secrets in rendered HTML or client-side assets.
+- **Verification:** Not run for this dashboard revision.
+- **Evidence:** `modules/dashboard/dashboard.go` still serves embedded `index.html` at `GET /`; the revised HTML contains no environment reads or credential placeholders by static inspection. HTTP and secret-scan checks remain to be run.
 - **Files/artifacts:** `modules/dashboard/dashboard.go`, `modules/dashboard/dashboard_test.go`.
 
 ## Phase 4 — Deployment and release verification
@@ -259,3 +253,12 @@
   3. Persistent Degraded (Low battery repeated): 0 duplicate alerts sent (suppressed).
   4. Recovery (Battery normal): 1 recovery message sent.
 - **Files/artifacts:** `modules/alerts/dispatcher_test.go`, `modules/alerts/evaluator_test.go`.
+
+### T017 — Purge event logs older than seven days weekly
+
+- **Status:** IN PROGRESS
+- **Work:** Delete only `event_logs` older than seven days every Monday at 03:00 Asia/Bangkok; stop the scheduler cleanly with the server context and leave telemetry retention unchanged.
+- **Acceptance:** A scheduler/database test confirms the next Monday 03:00 run, deletion boundary, and cancellation behavior.
+- **Verification:** Not run for this revision.
+- **Evidence:** Implementation artifacts: `modules/logs/logs.go` adds `PurgeOlderThan`; `main.go` schedules the cleanup in `Asia/Bangkok` with a 30-second context timeout and logs the number of deleted rows. Runtime deletion and schedule tests remain to be verified.
+- **Files/artifacts:** `main.go`, `modules/logs/logs.go`.

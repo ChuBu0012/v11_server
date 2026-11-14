@@ -41,6 +41,8 @@ The primary user is the owner of the V11. They open the private dashboard to che
 - Dashboard shows last successful collection time, service uptime, Go runtime memory, disk free/total, battery state when Termux API is available, and current alert conditions.
 - Dashboard shows recent health history and recent event logs, with clear empty, loading, and unavailable states.
 - Dashboard fetches data from the service API; it does not require a frontend build system or a database connection from the browser.
+- Time-series charts use the pinned Chart.js CDN build `4.6.1`; summary cards remain useful if the CDN cannot load, and charts show a clear load failure state.
+- Offer 1h, 6h, and 24h chart ranges. The history API returns at most 500 evenly spaced samples across the requested window, in its established newest-first order.
 
 ### Collection and history
 
@@ -48,6 +50,7 @@ The primary user is the owner of the V11. They open the private dashboard to che
 - Each sample stores a UTC timestamp and the supported measurements in SQLite.
 - Battery collection failure is represented as unavailable and does not stop other measurements.
 - Retention is bounded by configurable age and/or row count, with safe defaults suitable for a small SQLite file.
+- Event logs older than seven days are purged every Monday at 03:00 in `Asia/Bangkok`. Telemetry retention continues to use its existing age/row configuration.
 - Collection starts and stops with the Go process and shuts down cleanly.
 
 ### Alerts
@@ -78,7 +81,7 @@ The primary user is the owner of the V11. They open the private dashboard to che
 
 ## Acceptance criteria
 
-1. A deployed-compatible build serves the dashboard and existing endpoints.
+1. A deployed-compatible build serves the dashboard and existing endpoints; charts load from the pinned Chart.js CDN when the browser has network access.
 2. At least two collector samples can be queried in chronological order, and retention removes expired/excess samples.
 3. Threshold transitions produce one Telegram alert and one recovery alert, with repeated samples during the same state producing no duplicate alert.
 4. Missing Termux battery support or Telegram configuration does not crash the service or prevent other features.
@@ -90,6 +93,8 @@ The primary user is the owner of the V11. They open the private dashboard to che
 - Initial notifier: Telegram Bot API.
 - Initial dashboard: server-rendered/static assets shipped with the Go binary or embedded in the repository build; avoid runtime Node dependencies.
 - Default collection interval: 60 seconds; make configurable.
+- Chart library: Chart.js `4.6.1` loaded from jsDelivr CDN, as requested. This requires browser network access for charts.
+- Event log cleanup: delete rows older than 7×24 hours at the Monday 03:00 Asia/Bangkok scheduled run.
 - Dashboard access policy and whether an auth token is needed for read access remain a deployment decision. Write routes must be protected before public exposure.
 - AI summaries, LINE, and Discord are follow-on capabilities after the monitoring MVP is stable.
 

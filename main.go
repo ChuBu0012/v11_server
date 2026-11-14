@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,6 +27,39 @@ import (
 )
 
 var startTime = time.Now()
+
+func init() {
+	setupAndroidDNS()
+}
+
+func setupAndroidDNS() {
+	// If /etc/resolv.conf does not exist (standard on non-rooted Android/Termux),
+	// pure-Go netgo defaults to 127.0.0.1:53 / [::1]:53 which is rejected.
+	// We read Termux's resolv.conf or fall back to public DNS (8.8.8.8:53).
+	dnsServer := "8.8.8.8:53"
+	if data, err := os.ReadFile("/data/data/com.termux/files/usr/etc/resolv.conf"); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "nameserver ") {
+				ip := strings.TrimSpace(strings.TrimPrefix(line, "nameserver "))
+				if ip != "" {
+					dnsServer = ip + ":53"
+					break
+				}
+			}
+		}
+	}
+
+	net.DefaultResolver = &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: 5 * time.Second,
+			}
+			return d.DialContext(ctx, "udp", dnsServer)
+		},
+	}
+}
 
 type App struct {
 	cfg       *config.Config
@@ -73,7 +109,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		telemetry.WithRetention(cfg.RetentionMaxAge, cfg.RetentionMaxRows),
 	)
 
-	telemetryMod := telemetry.NewModule(dbConn, collector, alertStore, thresholds)
+	telemetryMod := telemetry.NewModule(dbConn, collector, alertStore, thresholds, cfg.SampleInterval)
 
 	// Background telemetry sampling worker
 	bgWorker := worker.New("telemetry-collector", cfg.SampleInterval, func(ctx context.Context) error {
@@ -147,6 +183,7 @@ func main() {
 	// Start background worker with cancellable context
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
+	startWeeklyEventLogPurge(workerCtx, app.logs)
 
 	router := setupRouter(app)
 
@@ -185,4 +222,52 @@ func main() {
 	} else {
 		log.Printf("Server shutdown completed successfully.")
 	}
+}
+
+func startWeeklyEventLogPurge(ctx context.Context, eventLogs *logs.Module) {
+	go func() {
+		location, err := time.LoadLocation("Asia/Bangkok")
+		if err != nil {
+			location = time.FixedZone("Asia/Bangkok", 7*60*60)
+		}
+
+		for {
+			nextRun := nextMondayAtThree(time.Now(), location)
+			wait := time.Until(nextRun)
+			if wait < 0 {
+				wait = 0
+			}
+			timer := time.NewTimer(wait)
+			select {
+			case <-ctx.Done():
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				return
+			case <-timer.C:
+			}
+
+			purgeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			deleted, purgeErr := eventLogs.PurgeOlderThan(purgeCtx, time.Now().UTC().Add(-7*24*time.Hour))
+			cancel()
+			if purgeErr != nil {
+				log.Printf("[retention:event-logs] purge failed: %v", purgeErr)
+			} else {
+				log.Printf("[retention:event-logs] purged %d entries older than 7 days", deleted)
+			}
+		}
+	}()
+}
+
+func nextMondayAtThree(now time.Time, location *time.Location) time.Time {
+	localNow := now.In(location)
+	daysUntilMonday := (int(time.Monday) - int(localNow.Weekday()) + 7) % 7
+	next := time.Date(localNow.Year(), localNow.Month(), localNow.Day()+daysUntilMonday, 3, 0, 0, 0, location)
+	if !next.After(localNow) {
+		next = next.AddDate(0, 0, 7)
+	}
+	return next
 }

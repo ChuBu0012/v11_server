@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -42,6 +43,22 @@ func (m *Module) RecordLog(level, message, metadata string) error {
 		level, message, metadata, time.Now().UTC(),
 	)
 	return err
+}
+
+// PurgeOlderThan removes event logs whose creation time is earlier than cutoff.
+func (m *Module) PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := m.db.ExecContext(ctx,
+		"DELETE FROM event_logs WHERE julianday(created_at) < julianday(?)",
+		cutoff.UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("purge old event logs: %w", err)
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("count purged event logs: %w", err)
+	}
+	return deleted, nil
 }
 
 func (m *Module) HandleGetLogs(c *gin.Context) {
