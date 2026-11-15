@@ -25,6 +25,9 @@ type Config struct {
 	TelegramBotToken string        // ENV: TELEGRAM_BOT_TOKEN
 	TelegramChatID   string        // ENV: TELEGRAM_CHAT_ID
 	TelegramTimeout  time.Duration // ENV: TELEGRAM_TIMEOUT (default: 10s)
+
+	// Gemini AI
+	GeminiAPIKey string // ENV: GEMINI_API_KEY
 }
 
 // Load reads configuration from environment variables, applying defaults
@@ -109,6 +112,7 @@ func Load() (*Config, error) {
 
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
+	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
 
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("config validation failed:\n  %s", strings.Join(errs, "\n  "))
@@ -138,12 +142,21 @@ func (c *Config) String() string {
 		chatID = "****"
 	}
 
+	geminiKey := "(not set)"
+	if c.GeminiAPIKey != "" {
+		if len(c.GeminiAPIKey) > 8 {
+			geminiKey = c.GeminiAPIKey[:4] + "****" + c.GeminiAPIKey[len(c.GeminiAPIKey)-4:]
+		} else {
+			geminiKey = "****"
+		}
+	}
+
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
-		token, chatID, c.TelegramTimeout,
+		token, chatID, c.TelegramTimeout, geminiKey,
 	)
 }

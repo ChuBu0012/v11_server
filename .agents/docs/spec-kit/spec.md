@@ -1,103 +1,88 @@
 # Pocket Sentinel — Product Specification
 
-**Status:** Draft for implementation  
-**Version:** 1.0  
-**Target:** vivo V11 / Android 10 / Termux
+**Status:** Ready for Implementation  
+**Version:** 2.0 (Interactive Telegram Sentinel)  
+**Target:** vivo V11 / Android 10 / Termux (Qualcomm Snapdragon 660, 6GB RAM)
 
 ## Summary
 
-Turn the existing pocket server into a lightweight personal monitoring service. It collects device and service health, stores a history locally, presents that history in a small web dashboard, and sends Telegram alerts when configured thresholds are crossed. The phone acts as the always-on collector and relay; optional AI-assisted summaries are a later extension and are not required for the first release.
+Pocket Sentinel transforms an old Android phone (vivo V11) into an always-on, low-power personal server and monitoring sentinel. Version 1.0 established local SQLite telemetry sampling, a Chart.js web dashboard, and outbound Telegram alerts. Version 2.0 extends this into a **Two-way Interactive Telegram Sentinel**: allowing the owner to monitor, diagnose, and control hardware remotely from anywhere via Telegram using secure Long Polling, interactive inline buttons, and safe Termux hardware integration.
 
 ## Problem
 
-The server already exposes current health, runtime, disk, battery, and event-log endpoints, but it does not retain time-series health readings, make them easy to inspect, or notify the owner when a problem occurs. The owner needs a low-maintenance way to see whether the phone-hosted service is healthy and get timely alerts without running a heavy stack on Android.
+While Version 1.0 alerts the owner when metrics breach thresholds, the owner cannot query the server on demand without opening the web dashboard (which relies on ngrok tunnels that may cycle or reconnect). Furthermore, the owner cannot trigger quick hardware actions (e.g. turning on the flashlight during a power outage or checking live server vitals) or execute basic health diagnostics remotely via mobile chat.
 
 ## Goals
 
-- Provide a compact dashboard showing current server/device status and recent history.
-- Collect health snapshots on a configurable interval and retain a bounded history in SQLite.
-- Send Telegram alerts for actionable conditions: service health failure, low battery, and low free disk space.
-- Avoid repeated alerts for the same ongoing condition; send a recovery notification when it clears.
-- Keep the Go service suitable for Termux and below the existing 300 MB per-process memory limit.
-- Make setup possible through environment configuration without committing secrets.
+- **Interactive Two-way Telegram Bot:** Support on-demand commands (`/status`, `/ping`, `/torch`, `/reboot`, `/exec`) and interactive Inline Keyboard buttons.
+- **Tunnel-Independent Long Polling:** Use outbound Telegram `getUpdates` Long Polling so bot commands function 100% reliably even if the ngrok tunnel drops or changes domain.
+- **Strict Single-User Security:** Whitelist execution strictly to the configured `TELEGRAM_CHAT_ID`; drop or reject any incoming messages from unauthorized users.
+- **Hardware Control & Safety:** Support flashlight control (`termux-torch`) with an automated 3-minute auto-off safety timer to prevent battery drain and thermal buildup.
+- **Safe Command Execution:** Allow diagnostic checks (`/exec`) restricted to an immutable whitelist (`ps`, `df`, `free`, `uptime`, `pm2`) with strict 5-second execution timeouts.
+- **Lightweight Footprint:** Maintain Go process memory under 25MB (far below the Android 10 LMK 300MB ceiling).
 
-## Non-goals for the first release
+## Non-goals for Version 2.0
 
-- Running an AI model on the phone or making an external AI provider mandatory.
-- General purpose home automation or disruptive hardware control.
-- Multi-user accounts, a public SaaS, or a full observability stack.
-- Replacing PM2, SQLite, or the existing Cloudflare Quick Tunnel deployment.
-- Sending notifications through LINE or Discord in the first iteration. Telegram is the initial channel behind a notifier interface so more channels can be added later.
+- Arbitrary unconstrained shell execution (strict security risk on non-rooted Android).
+- Public multi-user bot access or group chat administration.
+- Replacing the existing web dashboard or outbound alert manager.
+- On-device LLM inference or heavy background video streaming.
 
 ## Users and primary flow
 
-The primary user is the owner of the V11. They open the private dashboard to check the server, battery, disk, and recent alerts. The collector checks configured thresholds in the background; on a state transition it records an event and sends a Telegram message. After recovery, it records and sends a recovery message.
+The primary user is the device owner. Through Telegram:
+1. Owner types `/status` or taps `[🔄 Refresh]` → Bot returns real-time Battery, RAM, Disk, Uptime, and Ngrok URL with inline buttons.
+2. Owner types `/torch on` or taps `[🔦 Toggle Torch]` → Bot activates phone LED flash, starts a 3-minute auto-off countdown, and reports status.
+3. Owner types `/ping` or taps `[🩺 Ping]` → Bot returns pong latency and heartbeat.
+4. Owner types `/exec df -h` or `/exec ps` → Bot executes the whitelisted command with a 5s timeout and returns formatted monospace output.
+5. Owner types `/reboot` → Bot acknowledges and cleanly exits, allowing PM2 to instantly resurrect the process.
 
 ## Functional requirements
 
-### Dashboard
+### Outbound Telemetry & Dashboard (Inherited from v1.0)
+- `GET /` serves static dashboard with 1h/6h/24h Chart.js graphs and live metrics.
+- Background collector samples battery, disk, memory, and load every 60s, retained in SQLite.
+- Edge-triggered alerts for low battery (<20%) and low disk (<5GB).
 
-- `GET /` serves a responsive, static dashboard suitable for phone and desktop browsers.
-- Dashboard shows last successful collection time, service uptime, Go runtime memory, disk free/total, battery state when Termux API is available, and current alert conditions.
-- Dashboard shows recent health history and recent event logs, with clear empty, loading, and unavailable states.
-- Dashboard fetches data from the service API; it does not require a frontend build system or a database connection from the browser.
-- Time-series charts use the pinned Chart.js CDN build `4.6.1`; summary cards remain useful if the CDN cannot load, and charts show a clear load failure state.
-- Offer 1h, 6h, and 24h chart ranges. The history API returns at most 500 evenly spaced samples across the requested window, in its established newest-first order.
+### Interactive Telegram Bot (v2.0)
 
-### Collection and history
+#### 1. Long Polling Engine (`modules/bot`)
+- Runs in a dedicated background worker goroutine with a cancellable context.
+- Calls Telegram Bot API `getUpdates` using long-polling (`timeout=30s`, `limit=20`).
+- Outbound HTTPS avoids all NAT, firewall, or ngrok tunnel dependency.
+- Correctly integrates with `setupAndroidDNS()` to resolve `api.telegram.org` on Android Bionic.
 
-- A background collector samples local system/device status at a configurable interval (default: 60 seconds).
-- Each sample stores a UTC timestamp and the supported measurements in SQLite.
-- Battery collection failure is represented as unavailable and does not stop other measurements.
-- Retention is bounded by configurable age and/or row count, with safe defaults suitable for a small SQLite file.
-- Event logs older than seven days are purged every Monday at 03:00 in `Asia/Bangkok`. Telemetry retention continues to use its existing age/row configuration.
-- Collection starts and stops with the Go process and shuts down cleanly.
+#### 2. Authentication & Whitelisting (`auth.go`)
+- Compares incoming `update.Message.Chat.ID` and `update.CallbackQuery.Message.Chat.ID` against `cfg.TelegramChatID`.
+- Non-matching sender messages are discarded immediately with a warning recorded in local logs (`modules/logs`).
 
-### Alerts
+#### 3. Command Routing & Handlers (`router.go`)
+- `/start` & `/help`: Displays available commands, usage instructions, and quick action inline keyboard.
+- `/status`: Queries current memory (`runtime.ReadMemStats`), disk (`syscall.Statfs`), battery (`termux-battery-status`), and ngrok tunnel API (`localhost:4040/api/tunnels`). Renders an HTML card with inline keyboard.
+- `/ping`: Responds with `🏓 Pong! (Uptime: Xh Ym, Server: OK)`.
+- `/torch <on|off|status>`: Controls `termux-torch`. Automatically arms a 3-minute safety timer on `on`; cancels timer on `off`.
+- `/reboot`: Responds with `♻️ Restarting Pocket Sentinel via PM2...` and triggers `os.Exit(0)` after 500ms.
+- `/exec <cmd>`: Validates `<cmd>` against `[ps, df, free, uptime, pm2]`. Runs via `exec.CommandContext` with 5s timeout and returns `<pre>` formatted stdout/stderr.
 
-- Telegram integration is enabled only when bot token and chat ID are configured.
-- Configurable thresholds include low battery percentage and low disk free space.
-- Health-check failure is detected by the collector itself; it must not recursively depend on calling the public tunnel.
-- Alert state is edge-triggered: send once when entering a problem state, suppress repeats while it persists, and send one recovery message when it clears.
-- Alert attempts and outcomes are written to event logs without recording bot tokens or other secrets.
-- Telegram API timeouts and errors do not block sampling or HTTP request handling; failed delivery is logged and retried on a later collection only when policy permits.
-
-### API and configuration
-
-- Keep existing routes compatible: `/health`, `/api/system`, `/api/device/battery`, `/api/logs`.
-- Add a read-only health-history API with bounded query parameters and a bounded response size.
-- Add a current alert-state API for the dashboard.
-- Configuration comes from environment variables with documented defaults. Invalid values fail clearly at startup or fall back only where safe and explicitly documented.
-- Secrets are supplied at runtime and excluded from source control, API responses, logs, and dashboard assets.
+#### 4. Inline Keyboards & Callback Queries (`keyboards.go`)
+- Attaches an interactive inline keyboard to `/status`:
+  - Row 1: `[🔄 Refresh Status]` (callback: `status_refresh`)
+  - Row 2: `[🔦 Toggle Torch]` (callback: `torch_toggle`) | `[🩺 Ping]` (callback: `ping_check`)
+- Handles `CallbackQuery`: acknowledges via `answerCallbackQuery` and edits the existing message in-place to avoid chat clutter.
 
 ## Quality attributes and constraints
 
-- Runtime remains a standalone pure-Go binary compatible with the repository's Android ARM64 deployment flow.
-- Keep idle resource use low; no external database, container, or heavyweight frontend runtime.
-- SQLite writes must tolerate concurrent API and collector access using the existing database setup and bounded connection pool.
-- Use request and outbound-call timeouts, bounded history queries, and graceful shutdown.
-- Public tunnel exposure is a security boundary: dashboard/history are read-only; log creation and other state-changing routes must not be exposed without a configured access control mechanism. Decide and document the access policy before enabling public write routes.
-- Never include Telegram credentials in logs or client-visible data.
+- **Memory Limit:** Total Go service memory consumption must stay `< 30MB` (Android LMK limit: 300MB).
+- **Graceful Shutdown:** Long Polling HTTP requests and workers must terminate promptly on `SIGINT` / `SIGTERM` within 3 seconds.
+- **Fail-Safe Hardware Calls:** If `termux-torch` fails (e.g. camera permission revoked), return an informative error to Telegram without crashing the daemon.
+- **Credential Hygiene:** Never echo `TELEGRAM_BOT_TOKEN` in responses, logs, or error outputs.
 
 ## Acceptance criteria
 
-1. A deployed-compatible build serves the dashboard and existing endpoints; charts load from the pinned Chart.js CDN when the browser has network access.
-2. At least two collector samples can be queried in chronological order, and retention removes expired/excess samples.
-3. Threshold transitions produce one Telegram alert and one recovery alert, with repeated samples during the same state producing no duplicate alert.
-4. Missing Termux battery support or Telegram configuration does not crash the service or prevent other features.
-5. Automated tests cover storage, threshold state transitions, API bounds, and dashboard/API integration.
-6. Implementation evidence is recorded for every task in `tasks.md`; final verification includes the actual command and result, not a planned command.
-
-## Decisions and open items
-
-- Initial notifier: Telegram Bot API.
-- Initial dashboard: server-rendered/static assets shipped with the Go binary or embedded in the repository build; avoid runtime Node dependencies.
-- Default collection interval: 60 seconds; make configurable.
-- Chart library: Chart.js `4.6.1` loaded from jsDelivr CDN, as requested. This requires browser network access for charts.
-- Event log cleanup: delete rows older than 7×24 hours at the Monday 03:00 Asia/Bangkok scheduled run.
-- Dashboard access policy and whether an auth token is needed for read access remain a deployment decision. Write routes must be protected before public exposure.
-- AI summaries, LINE, and Discord are follow-on capabilities after the monitoring MVP is stable.
-
-## Current project context
-
-The service currently uses Gin and `modernc.org/sqlite`; routes live under `modules/system` and `modules/logs`, database initialization is in `shared/db`, and PM2 deploy configuration targets port 8080 and `data.db`. Reconcile the existing `main_test.go` with the current modular code as part of implementation planning; it appears to reference legacy type/function names.
+1. **Long Polling Verification:** Bot receives updates and responds to `/ping` and `/status` in < 2 seconds without requiring ngrok tunnel.
+2. **Whitelist Enforcement:** Simulated or actual requests from an unconfigured Chat ID are dropped silently and logged.
+3. **Hardware Torch & Auto-off:** `/torch on` lights the phone LED; `/torch off` turns it off; if left on, it automatically extinguishes after 3 minutes.
+4. **Interactive Inline Keyboard:** Tapping `[🔄 Refresh Status]` updates the existing status message with current metrics and timestamp.
+5. **Safe Whitelisted Exec:** `/exec df -h` returns disk usage; `/exec rm -rf /` or unknown commands are rejected with a clear permission error.
+6. **Graceful Reboot:** `/reboot` replies to Telegram, terminates the Go process cleanly, and PM2 restarts it within 3 seconds.
+7. **Automated Unit & Integration Tests:** 100% passing tests for command router, whitelist authentication, safe executor, and keyboard callbacks.

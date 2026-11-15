@@ -17,7 +17,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"v11-server/modules/alerts"
+	"v11-server/modules/bot"
 	"v11-server/modules/dashboard"
+	"v11-server/modules/digest"
 	"v11-server/modules/logs"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
@@ -33,6 +35,13 @@ func init() {
 }
 
 func setupAndroidDNS() {
+	// If /etc/resolv.conf exists (standard on macOS, Linux desktops/servers),
+	// netgo can resolve DNS normally using system resolver settings.
+	// We only override for Android/Termux where /etc/resolv.conf is absent.
+	if _, err := os.Stat("/etc/resolv.conf"); err == nil {
+		return
+	}
+
 	// If /etc/resolv.conf does not exist (standard on non-rooted Android/Termux),
 	// pure-Go netgo defaults to 127.0.0.1:53 / [::1]:53 which is rejected.
 	// We read Termux's resolv.conf or fall back to public DNS (8.8.8.8:53).
@@ -56,7 +65,7 @@ func setupAndroidDNS() {
 			d := net.Dialer{
 				Timeout: 5 * time.Second,
 			}
-			return d.DialContext(ctx, "udp", dnsServer)
+			return d.DialContext(ctx, "udp4", dnsServer)
 		},
 	}
 }
@@ -71,6 +80,8 @@ type App struct {
 	dashboard *dashboard.Module
 	collector *telemetry.Collector
 	worker    *worker.Worker
+	botPoller *bot.Poller
+	digest    *digest.Module
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -111,11 +122,61 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 
 	telemetryMod := telemetry.NewModule(dbConn, collector, alertStore, thresholds, cfg.SampleInterval)
 
+	// Digest module initialization
+	digestStore, err := digest.NewStore(dbConn)
+	if err != nil {
+		log.Printf("Warning: failed to initialize digest store: %v", err)
+	}
+	var digestSvc *digest.Service
+	if digestStore != nil {
+		geminiClient := digest.NewGeminiClient(cfg.GeminiAPIKey)
+		digestSvc = digest.NewService(digestStore, geminiClient, notifier)
+	}
+	digestMod := digest.New(digestSvc)
+
 	// Background telemetry sampling worker
 	bgWorker := worker.New("telemetry-collector", cfg.SampleInterval, func(ctx context.Context) error {
 		_, err := collector.CollectOnce(ctx)
 		return err
 	})
+
+	var botPoller *bot.Poller
+	if cfg.TelegramEnabled() {
+		var clientOpts []bot.ClientOption
+		if apiURL := os.Getenv("TELEGRAM_API_URL"); apiURL != "" {
+			clientOpts = append(clientOpts, bot.WithBaseURL(apiURL))
+		}
+		botClient := bot.NewClient(cfg.TelegramBotToken, clientOpts...)
+		botAuth := bot.NewAuthorizer(cfg.TelegramChatID, logsMod)
+		torchCtrl := bot.NewTorchController()
+		execRunner := bot.NewSafeExecutor()
+		statusProv := bot.NewDefaultStatusProvider(startTime)
+		rebootHandler := func() {
+			log.Printf("[bot] /reboot: triggering graceful shutdown for PM2 resurrection...")
+			p, err := os.FindProcess(os.Getpid())
+			if err == nil {
+				_ = p.Signal(syscall.SIGTERM)
+			}
+		}
+
+		var routerOpts []bot.RouterOption
+		routerOpts = append(routerOpts, bot.WithRebootFunc(rebootHandler))
+		if digestSvc != nil {
+			routerOpts = append(routerOpts, bot.WithDigestFunc(func(ctx context.Context) (string, error) {
+				rec, err := digestSvc.GenerateDigest(ctx, true)
+				if err != nil {
+					return "", err
+				}
+				if rec == nil {
+					return "Digest was skipped (paused in settings).", nil
+				}
+				return rec.SummaryMD, nil
+			}))
+		}
+
+		botRouter := bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
+		botPoller = bot.NewPoller(botClient, botRouter)
+	}
 
 	return &App{
 		cfg:       cfg,
@@ -127,6 +188,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		dashboard: dashMod,
 		collector: collector,
 		worker:    bgWorker,
+		botPoller: botPoller,
+		digest:    digestMod,
 	}
 }
 
@@ -144,6 +207,7 @@ func setupRouter(app *App) *gin.Engine {
 	app.system.RegisterRoutes(r)
 	app.telemetry.RegisterRoutes(r.Group("/api/telemetry"))
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
+	app.digest.RegisterRoutes(r.Group("/api/digest"))
 
 	return r
 }
@@ -184,6 +248,13 @@ func main() {
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
 	startWeeklyEventLogPurge(workerCtx, app.logs)
+
+	if app.botPoller != nil {
+		log.Printf("[main] 🤖 Starting Telegram Sentinel Bot (Long Polling)...")
+		go app.botPoller.Start(workerCtx)
+	} else {
+		log.Printf("[main] ℹ️ Telegram Sentinel Bot is disabled (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured)")
+	}
 
 	router := setupRouter(app)
 

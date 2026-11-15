@@ -38,6 +38,8 @@ if [[ "${MODE}" == "full" ]]; then
   echo "🔨 [1/4] Cross-compiling ARM64 Go binary for Android..."
   CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o server .
   cp -f server server.new
+  CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o digest ./cmd/digest
+  cp -f digest digest.new
 else
   echo "⚡ [1/4] Skipping Go build (--config-only mode)..."
 fi
@@ -51,6 +53,9 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "mkdir -p ${REMOTE_DIR}"
 TRANSFER_FILES=()
 if [[ "${MODE}" == "full" ]]; then
   TRANSFER_FILES+=(server.new)
+  if [[ -f digest.new ]]; then
+    TRANSFER_FILES+=(digest.new)
+  fi
 fi
 if [[ -f ecosystem.config.js ]]; then
   TRANSFER_FILES+=(ecosystem.config.js)
@@ -66,11 +71,11 @@ echo "📦 Uploading ${#TRANSFER_FILES[@]} file(s) in a single batch transfer...
 scp "${SSH_OPTS[@]}" "${TRANSFER_FILES[@]}" "${REMOTE_HOST}:${REMOTE_DIR}/"
 
 # Clean up local staging file
-rm -f server.new
+rm -f server.new digest.new
 
 # Atomic swap & permissions on remote
 if [[ "${MODE}" == "full" ]]; then
-  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && mv -f server.new server && chmod +x server run-ngrok.sh 2>/dev/null || true"
+  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && mv -f server.new server 2>/dev/null || true; mv -f digest.new digest 2>/dev/null || true; chmod +x server digest run-ngrok.sh 2>/dev/null || true"
 else
   ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && chmod +x run-ngrok.sh 2>/dev/null || true"
 fi

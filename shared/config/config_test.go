@@ -34,6 +34,7 @@ func clearConfigEnv(t *testing.T) {
 		"SAMPLE_INTERVAL", "RETENTION_MAX_AGE", "RETENTION_MAX_ROWS",
 		"BATTERY_THRESHOLD", "DISK_THRESHOLD_GB",
 		"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_TIMEOUT",
+		"GEMINI_API_KEY",
 	}
 	saved := make(map[string]string)
 	for _, k := range keys {

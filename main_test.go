@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -237,5 +238,57 @@ func TestLogsEndpoint(t *testing.T) {
 	}
 	if logsList[0].Level != "warn" {
 		t.Errorf("Expected level 'warn', got '%s'", logsList[0].Level)
+	}
+}
+
+func TestTelegramBotWiring(t *testing.T) {
+	app, _, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Default test config has empty token, so botPoller should be nil
+	if app.botPoller != nil {
+		t.Errorf("Expected botPoller to be nil when Telegram is unconfigured")
+	}
+
+	// Mock Telegram API server for wiring lifecycle test
+	mockTelegramServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true,"result":[]}`))
+	}))
+	defer mockTelegramServer.Close()
+	t.Setenv("TELEGRAM_API_URL", mockTelegramServer.URL)
+
+	// Now configure Telegram and verify botPoller is created
+	cfgWithTelegram := &config.Config{
+		SampleInterval:   5 * time.Second,
+		RetentionMaxAge:  24 * time.Hour,
+		RetentionMaxRows: 100,
+		BatteryThreshold: 20,
+		DiskThresholdGB:  5.0,
+		TelegramBotToken: "TEST_TOKEN_123",
+		TelegramChatID:   "999888777",
+		TelegramTimeout:  2 * time.Second,
+	}
+
+	appWithTelegram := setupApp(app.db, "8080", cfgWithTelegram)
+	if appWithTelegram.botPoller == nil {
+		t.Fatal("Expected botPoller to be initialized when Telegram is configured")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stopped := make(chan struct{})
+	go func() {
+		appWithTelegram.botPoller.Start(ctx)
+		close(stopped)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case <-stopped:
+		// Clean stop
+	case <-time.After(2 * time.Second):
+		t.Fatal("botPoller did not stop on context cancellation")
 	}
 }

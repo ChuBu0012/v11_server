@@ -6,6 +6,8 @@
   <meta name="color-scheme" content="light">
   <title>Pocket Sentinel — vivo V11</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
   <style>
     :root {
       --blue: #0066cc;
@@ -56,14 +58,56 @@
     .top-meta { color: #a1a1a6; font-size: 12px; text-align: right; }
     .hero {
       background: var(--canvas);
-      padding: 44px 24px 40px;
+      padding: 40px 24px 36px;
       border-bottom: 1px solid #eee;
     }
     .wrap { width: min(1120px, 100%); margin: 0 auto; }
-    .hero-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+    .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+    .hero-left { flex: 1; min-width: 0; }
+    .hero-visual {
+      position: relative;
+      flex: 0 0 270px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    #core-canvas-container {
+      width: 260px;
+      height: 220px;
+      position: relative;
+      touch-action: pan-y;
+      cursor: grab;
+      outline: none;
+    }
+    #core-canvas-container:active { cursor: grabbing; }
+    .core-status-pill {
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 12px;
+      background: var(--parchment);
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .02em;
+    }
+    .core-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 8px var(--blue);
+      transition: background .4s, box-shadow .4s;
+    }
     .eyebrow { margin: 0 0 6px; color: var(--blue); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
     h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.08; letter-spacing: -1.3px; font-weight: 600; }
     .hero-copy { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
+    .hero-actions { margin-top: 22px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .refresh {
       min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
@@ -133,10 +177,103 @@
     .loading { color: var(--muted); }
     footer { padding: 26px 24px; color: var(--muted); text-align: center; font-size: 11px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .digest-btn {
+      min-height: 38px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 999px;
+      color: var(--ink); background: var(--canvas); cursor: pointer; font-size: 13px; font-weight: 500;
+      transition: transform .15s, background .15s;
+    }
+    .digest-btn.primary {
+      color: #fff; background: var(--blue); border-color: var(--blue);
+    }
+    .digest-btn:active { transform: scale(.96); }
+    .digest-btn:disabled { opacity: .6; cursor: wait; }
+    .digest-card { padding: 22px; }
+    .digest-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .digest-meta { color: var(--muted); font-size: 13px; font-weight: 500; }
+    .digest-content {
+      line-height: 1.7;
+      font-size: 14.5px;
+      color: var(--ink);
+      word-break: break-word;
+    }
+    .digest-content h1, .digest-content h2, .digest-content h3 {
+      color: var(--ink);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+    }
+    .digest-content h3 {
+      font-size: 16px;
+      margin: 20px 0 8px;
+    }
+    .digest-content p {
+      margin: 8px 0;
+      line-height: 1.65;
+    }
+    .digest-content hr {
+      border: none;
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 18px 0;
+    }
+    .digest-content ul {
+      margin: 8px 0 12px 20px;
+      padding: 0;
+    }
+    .digest-content li {
+      margin-bottom: 8px;
+      line-height: 1.65;
+    }
+    .digest-content strong {
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .digest-content em {
+      font-style: italic;
+      color: var(--muted);
+    }
+    .digest-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      background: var(--bg-hover);
+      border-radius: 980px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .digest-tabs::-webkit-scrollbar { display: none; }
+    .digest-tab {
+      flex: 1;
+      min-width: max-content;
+      text-align: center;
+      padding: 8px 16px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--muted);
+      border: none;
+      background: transparent;
+      border-radius: 980px;
+      cursor: pointer;
+      transition: all .2s ease;
+      white-space: nowrap;
+    }
+    .digest-tab:hover {
+      color: var(--ink);
+    }
+    .digest-tab.active {
+      background: var(--card);
+      color: var(--ink);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
     @media (max-width: 760px) {
       .topbar { padding: 0 16px; }
-      .hero { padding: 34px 18px; }
-      .hero-row { align-items: start; flex-direction: column; }
+      .hero { padding: 30px 18px 24px; }
+      .hero-row { align-items: center; flex-direction: column-reverse; gap: 16px; text-align: center; }
+      .hero-left { width: 100%; display: flex; flex-direction: column; align-items: center; }
+      .hero-actions { width: 100%; justify-content: center; margin-top: 16px; }
+      .hero-visual { width: 100%; flex: 0 0 auto; }
+      #core-canvas-container { width: 220px; height: 180px; }
       .actions { width: 100%; justify-content: space-between; }
       .section, .dark-band { padding: 26px 18px; }
       .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -166,14 +303,21 @@
   <main>
     <section class="hero">
       <div class="wrap hero-row">
-        <div>
+        <div class="hero-left">
           <p class="eyebrow">vivo V11 · Pocket Server</p>
           <h1 id="hero-title">Checking your server</h1>
           <p class="hero-copy" id="hero-copy">Loading the latest device and service status.</p>
+          <div class="hero-actions">
+            <span class="top-meta" id="sample-time">Waiting for first sample</span>
+            <button class="refresh" id="refresh-button" type="button">↻&nbsp; Refresh</button>
+          </div>
         </div>
-        <div class="actions">
-          <span class="top-meta" id="sample-time">Waiting for first sample</span>
-          <button class="refresh" id="refresh-button" type="button">↻&nbsp; Refresh</button>
+        <div class="hero-visual" id="hero-visual" aria-hidden="true">
+          <div id="core-canvas-container" title="3D Sentinel Energy Core · Drag to rotate"></div>
+          <div class="core-status-pill">
+            <span class="core-dot" id="core-dot"></span>
+            <span id="core-status-text">Core Standby</span>
+          </div>
         </div>
       </div>
     </section>
@@ -181,7 +325,7 @@
     <div class="wrap">
       <section class="section" aria-labelledby="metrics-title">
         <div class="section-heading">
-          <div><h2 id="metrics-title">At a glance</h2><p class="section-note">Current device and Go server health</p></div>
+          <div><h2 id="metrics-title">At a glance</h2><p class="section-note">Current device and Go server health — Hardware &amp; Runtime Metrics</p></div>
         </div>
         <div class="metric-grid">
           <article class="card">
@@ -246,6 +390,35 @@
             <table><thead><tr><th>Time</th><th>Memory</th><th>Disk free</th><th>Battery</th><th>Uptime</th></tr></thead><tbody id="samples-body"><tr><td colspan="5" class="loading">Loading samples…</td></tr></tbody></table>
           </div>
         </details>
+      </section>
+
+      <!-- AI Daily Digest Section -->
+      <section class="section" aria-labelledby="digest-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="digest-title">AI News &amp; Daily Digest</h2>
+            <p class="section-note" id="digest-note">Curated AI updates, politics &amp; trivia · Scheduled daily at 13:00</p>
+          </div>
+          <div class="actions">
+            <button class="digest-btn" id="digest-toggle-btn" type="button">⏸️ Pause</button>
+            <button class="digest-btn primary" id="digest-run-btn" type="button">▶&nbsp; Run Now</button>
+          </div>
+        </div>
+        <div class="card digest-card" id="digest-container">
+          <div class="digest-header">
+            <span class="badge ok" id="digest-badge">🟢 Enabled (Daily 13:00)</span>
+            <span class="digest-meta" id="digest-meta">Waiting for first digest run</span>
+          </div>
+          <div class="digest-tabs" role="tablist" aria-label="Digest categories">
+            <button class="digest-tab active" type="button" role="tab" id="tab-btn-ai" data-tab="ai" aria-selected="true">🤖 AI &amp; Tech</button>
+            <button class="digest-tab" type="button" role="tab" id="tab-btn-politics" data-tab="politics" aria-selected="false">🏛️ การเมือง</button>
+            <button class="digest-tab" type="button" role="tab" id="tab-btn-trivia" data-tab="trivia" aria-selected="false">💡 สาระน่ารู้</button>
+            <button class="digest-tab" type="button" role="tab" id="tab-btn-all" data-tab="all" aria-selected="false">📋 รวมทั้งหมด</button>
+          </div>
+          <div class="digest-content" id="digest-body">
+            <div class="loading">Loading latest AI digest…</div>
+          </div>
+        </div>
       </section>
 
       <section class="section" aria-labelledby="logs-title">
@@ -339,6 +512,7 @@
         }
       }
       renderConditions(data.conditions || []);
+      updateSentinelCore(data);
     }
 
     function renderConditions(conditions) {
@@ -537,10 +711,503 @@
       });
     });
 
+    // =========================================================================
+    // Three.js 3D Sentinel Energy Core Engine
+    // =========================================================================
+    const threeCore = {
+      initialized: false,
+      scene: null,
+      camera: null,
+      renderer: null,
+      controls: null,
+      outerMesh: null,
+      innerMesh: null,
+      ringMesh: null,
+      particles: null,
+      coreLight: null,
+      targetColor: null,
+      currentColor: null,
+      targetEmissive: null,
+      currentEmissive: null,
+      baseRotationSpeed: 0.007,
+      isPulsing: false,
+      pulseTime: 0,
+      animId: null,
+      isPaused: false
+    };
+
+    function initThreeCore() {
+      if (threeCore.initialized) return;
+      if (typeof THREE === 'undefined') {
+        // Fallback: If Three.js CDN hasn't loaded yet, try again on window load
+        window.addEventListener('load', () => {
+          if (typeof THREE !== 'undefined' && !threeCore.initialized) initThreeCore();
+          else if (typeof THREE === 'undefined') {
+            const visual = $('hero-visual');
+            if (visual) visual.style.display = 'none';
+          }
+        }, { once: true });
+        return;
+      }
+
+      const container = $('core-canvas-container');
+      if (!container) return;
+
+      const width = container.clientWidth || 260;
+      const height = container.clientHeight || 220;
+
+      // 1. Scene & Perspective Camera
+      threeCore.scene = new THREE.Scene();
+      threeCore.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      threeCore.camera.position.set(0, 0, 5.0);
+
+      // 2. High-performance, Low-power WebGL Renderer
+      threeCore.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+      threeCore.renderer.setSize(width, height);
+      threeCore.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      threeCore.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      threeCore.renderer.toneMappingExposure = 1.15;
+      container.appendChild(threeCore.renderer.domElement);
+
+      // 3. Dynamic Color Trackers
+      threeCore.targetColor = new THREE.Color(0x0071e3);
+      threeCore.currentColor = new THREE.Color(0x0071e3);
+      threeCore.targetEmissive = new THREE.Color(0x002d62);
+      threeCore.currentEmissive = new THREE.Color(0x002d62);
+
+      // 4. Outer Geometric Wireframe (Icosahedron)
+      const outerGeo = new THREE.IcosahedronGeometry(1.38, 2);
+      const outerMat = new THREE.MeshStandardMaterial({
+        color: threeCore.currentColor,
+        wireframe: true,
+        roughness: 0.25,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.88
+      });
+      threeCore.outerMesh = new THREE.Mesh(outerGeo, outerMat);
+      threeCore.scene.add(threeCore.outerMesh);
+
+      // 5. Inner Glowing Core (Sphere)
+      const innerGeo = new THREE.SphereGeometry(0.70, 32, 32);
+      const innerMat = new THREE.MeshStandardMaterial({
+        color: threeCore.currentColor,
+        emissive: threeCore.currentEmissive,
+        emissiveIntensity: 0.95,
+        roughness: 0.1,
+        metalness: 0.4,
+        transparent: true,
+        opacity: 0.94
+      });
+      threeCore.innerMesh = new THREE.Mesh(innerGeo, innerMat);
+      threeCore.scene.add(threeCore.innerMesh);
+
+      // 6. Orbital Halo Ring
+      const ringGeo = new THREE.TorusGeometry(1.82, 0.015, 16, 100);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x00aaff,
+        transparent: true,
+        opacity: 0.45
+      });
+      threeCore.ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      threeCore.ringMesh.rotation.x = Math.PI / 3;
+      threeCore.scene.add(threeCore.ringMesh);
+
+      // 7. Orbital Particle Halo (120 particles)
+      const particleCount = 120;
+      const particleGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 1.45 + Math.random() * 0.85;
+        const ySpread = (Math.random() - 0.5) * 0.45;
+        positions[i * 3] = Math.cos(angle) * radius;
+        positions[i * 3 + 1] = ySpread;
+        positions[i * 3 + 2] = Math.sin(angle) * radius;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const particleMat = new THREE.PointsMaterial({
+        size: 0.035,
+        color: 0x8cd3ff,
+        transparent: true,
+        opacity: 0.75
+      });
+      threeCore.particles = new THREE.Points(particleGeo, particleMat);
+      threeCore.scene.add(threeCore.particles);
+
+      // 8. Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      threeCore.scene.add(ambientLight);
+
+      threeCore.coreLight = new THREE.PointLight(0x0071e3, 3.2, 10);
+      threeCore.scene.add(threeCore.coreLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      dirLight.position.set(3, 4, 5);
+      threeCore.scene.add(dirLight);
+
+      // 9. Interactive OrbitControls (Drag to rotate)
+      if (typeof THREE.OrbitControls !== 'undefined') {
+        threeCore.controls = new THREE.OrbitControls(threeCore.camera, threeCore.renderer.domElement);
+        threeCore.controls.enableZoom = false;
+        threeCore.controls.enablePan = false;
+        threeCore.controls.enableDamping = true;
+        threeCore.controls.dampingFactor = 0.08;
+        threeCore.controls.autoRotate = true;
+        threeCore.controls.autoRotateSpeed = 1.1;
+      }
+
+      // 10. Animation Loop
+      function animate() {
+        if (threeCore.isPaused) return;
+        threeCore.animId = requestAnimationFrame(animate);
+
+        // Smooth color & emissive interpolation
+        threeCore.currentColor.lerp(threeCore.targetColor, 0.05);
+        threeCore.currentEmissive.lerp(threeCore.targetEmissive, 0.05);
+
+        threeCore.outerMesh.material.color.copy(threeCore.currentColor);
+        threeCore.innerMesh.material.color.copy(threeCore.currentColor);
+        threeCore.innerMesh.material.emissive.copy(threeCore.currentEmissive);
+        threeCore.coreLight.color.copy(threeCore.currentColor);
+        threeCore.ringMesh.material.color.copy(threeCore.currentColor);
+
+        // Rotations
+        threeCore.outerMesh.rotation.x += threeCore.baseRotationSpeed * 0.7;
+        threeCore.outerMesh.rotation.y += threeCore.baseRotationSpeed;
+        threeCore.ringMesh.rotation.z += threeCore.baseRotationSpeed * 1.3;
+        threeCore.particles.rotation.y -= threeCore.baseRotationSpeed * 0.6;
+
+        // Pulse effect during alert / low battery
+        if (threeCore.isPulsing) {
+          threeCore.pulseTime += 0.05;
+          const scale = 0.70 + Math.sin(threeCore.pulseTime) * 0.07;
+          threeCore.innerMesh.scale.set(scale, scale, scale);
+          threeCore.innerMesh.material.emissiveIntensity = 1.0 + Math.sin(threeCore.pulseTime) * 0.55;
+        } else {
+          threeCore.innerMesh.scale.set(1, 1, 1);
+          threeCore.innerMesh.material.emissiveIntensity = 0.95;
+        }
+
+        if (threeCore.controls) threeCore.controls.update();
+        threeCore.renderer.render(threeCore.scene, threeCore.camera);
+      }
+
+      // 11. Tab Visibility Auto-pause (Zero CPU when tab inactive)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          threeCore.isPaused = true;
+          if (threeCore.animId) cancelAnimationFrame(threeCore.animId);
+        } else {
+          threeCore.isPaused = false;
+          animate();
+        }
+      });
+
+      // 12. Dynamic Container Resizing
+      window.addEventListener('resize', () => {
+        if (!threeCore.renderer || !container) return;
+        const w = container.clientWidth || 260;
+        const h = container.clientHeight || 220;
+        threeCore.camera.aspect = w / h;
+        threeCore.camera.updateProjectionMatrix();
+        threeCore.renderer.setSize(w, h);
+      });
+
+      threeCore.initialized = true;
+      animate();
+    }
+
+    function updateSentinelCore(data) {
+      if (!threeCore.initialized) return;
+      const sample = data?.latest_sample;
+      const conditions = data?.conditions || [];
+      const hasActiveAlert = conditions.some((c) => c.active);
+
+      const dot = $('core-dot');
+      const text = $('core-status-text');
+
+      if (sample) {
+        const isCharging = (sample.battery_status || '').toUpperCase() === 'CHARGING';
+        const battery = Number(sample.battery_level);
+
+        if (isCharging) {
+          // Emerald Green
+          threeCore.targetColor.setHex(0x30d158);
+          threeCore.targetEmissive.setHex(0x165d25);
+          threeCore.baseRotationSpeed = 0.012;
+          threeCore.isPulsing = false;
+          if (text) text.textContent = '⚡ Charging · Core Active';
+          if (dot) {
+            dot.style.background = '#30d158';
+            dot.style.boxShadow = '0 0 10px #30d158';
+          }
+        } else if (hasActiveAlert || battery <= 20) {
+          // Alert Red / Amber with Pulse
+          threeCore.targetColor.setHex(0xff453a);
+          threeCore.targetEmissive.setHex(0x8a1020);
+          threeCore.baseRotationSpeed = 0.015;
+          threeCore.isPulsing = true;
+          if (text) text.textContent = hasActiveAlert ? '⚠️ Alert · Condition Active' : '⚠️ Low Battery · Power Saver';
+          if (dot) {
+            dot.style.background = '#ff453a';
+            dot.style.boxShadow = '0 0 10px #ff453a';
+          }
+        } else {
+          // Apple Action Blue (Normal State)
+          threeCore.targetColor.setHex(0x0071e3);
+          threeCore.targetEmissive.setHex(0x002d62);
+          threeCore.baseRotationSpeed = 0.007;
+          threeCore.isPulsing = false;
+          if (text) text.textContent = '🛡️ Sentinel Core · Online';
+          if (dot) {
+            dot.style.background = '#0071e3';
+            dot.style.boxShadow = '0 0 8px #0071e3';
+          }
+        }
+      } else {
+        // Standby
+        threeCore.targetColor.setHex(0x6e6e73);
+        threeCore.targetEmissive.setHex(0x272729);
+        threeCore.baseRotationSpeed = 0.004;
+        threeCore.isPulsing = false;
+        if (text) text.textContent = 'Standby Mode';
+        if (dot) {
+          dot.style.background = '#6e6e73';
+          dot.style.boxShadow = 'none';
+        }
+      }
+    }
+
+    // =========================================================================
+    // AI Daily Digest UI Controller
+    // =========================================================================
+    function renderMarkdown(md) {
+      if (!md) return '';
+      // Escape HTML entities to prevent XSS
+      let text = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Replace bold and italics
+      text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+
+      const lines = text.split('\n');
+      const out = [];
+      let inList = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Horizontal Rule
+        if (/^[-*_]{3,}$/.test(trimmed)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push('<hr>');
+          continue;
+        }
+
+        // Headings (#, ##, ###)
+        const hMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
+        if (hMatch) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          const level = hMatch[1].length;
+          out.push(`<h${level}>${hMatch[2]}</h${level}>`);
+          continue;
+        }
+
+        // Sub-list item (indented by 2+ spaces or tab)
+        const subListMatch = line.match(/^\s{2,}[\*\-]\s+(.*)$/);
+        if (subListMatch) {
+          if (!inList) {
+            out.push('<ul>');
+            inList = true;
+          }
+          out.push(`<li style="margin-left: 18px; list-style-type: circle;">${subListMatch[1]}</li>`);
+          continue;
+        }
+
+        // Top-level List item
+        const listMatch = line.match(/^[\*\-]\s+(.*)$/);
+        if (listMatch) {
+          if (!inList) {
+            out.push('<ul>');
+            inList = true;
+          }
+          out.push(`<li>${listMatch[1]}</li>`);
+          continue;
+        }
+
+        if (inList) {
+          out.push('</ul>');
+          inList = false;
+        }
+
+        if (trimmed === '') {
+          continue;
+        }
+
+        out.push(`<p>${line}</p>`);
+      }
+
+      if (inList) {
+        out.push('</ul>');
+      }
+
+      return out.join('\n');
+    }
+
+    let currentDigestSections = {};
+    let activeDigestTab = 'ai';
+
+    function parseDigestSections(raw) {
+      if (!raw) return {};
+      const sections = {};
+
+      if (raw.includes('===SECTION:')) {
+        const parts = raw.split('===SECTION:');
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (!trimmed) continue;
+          const idx = trimmed.indexOf('===');
+          if (idx !== -1) {
+            const key = trimmed.substring(0, idx).toLowerCase().trim();
+            const content = trimmed.substring(idx + 3).trim();
+            sections[key] = content;
+          }
+        }
+      } else {
+        // Fallback: split by ###
+        const lines = raw.split('\n');
+        let currentKey = 'ai';
+        let currentLines = [];
+        for (const line of lines) {
+          if (line.includes('1.') || line.includes('AI')) {
+            if (currentLines.length) sections[currentKey] = currentLines.join('\n');
+            currentKey = 'ai';
+            currentLines = [line];
+          } else if (line.includes('2.') || line.includes('การเมือง')) {
+            if (currentLines.length) sections[currentKey] = currentLines.join('\n');
+            currentKey = 'politics';
+            currentLines = [line];
+          } else if (line.includes('3.') || line.includes('สาระน่ารู้')) {
+            if (currentLines.length) sections[currentKey] = currentLines.join('\n');
+            currentKey = 'trivia';
+            currentLines = [line];
+          } else {
+            currentLines.push(line);
+          }
+        }
+        if (currentLines.length) sections[currentKey] = currentLines.join('\n');
+      }
+
+      sections['all'] = raw;
+      return sections;
+    }
+
+    function renderCurrentDigestTab() {
+      const body = $('digest-body');
+      if (!body) return;
+
+      const content = currentDigestSections[activeDigestTab] || currentDigestSections['all'] || '';
+      if (!content) {
+        body.innerHTML = '<div class="loading">ไม่มีเนื้อหาสำหรับหมวดนี้</div>';
+        return;
+      }
+      body.innerHTML = renderMarkdown(content);
+    }
+
+    async function loadDigestStatus() {
+      try {
+        const res = await getJSON('/api/digest/status');
+        const st = res.settings;
+        const latest = res.latest_run;
+
+        const badge = $('digest-badge');
+        const toggleBtn = $('digest-toggle-btn');
+        const meta = $('digest-meta');
+        const body = $('digest-body');
+
+        if (st) {
+          if (st.enabled) {
+            badge.className = 'badge ok';
+            badge.textContent = `🟢 Active (${st.schedule || '13:00'})`;
+            toggleBtn.textContent = '⏸️ Pause';
+          } else {
+            badge.className = 'badge active';
+            badge.textContent = '⏸️ Paused';
+            toggleBtn.textContent = '▶️ Resume';
+          }
+        }
+
+        if (latest && latest.summary_md) {
+          meta.textContent = `Last run #${latest.id} · ${formatTime(latest.finished_at || latest.started_at)} · ${latest.items_count || 0} items`;
+          currentDigestSections = parseDigestSections(latest.summary_md);
+          renderCurrentDigestTab();
+        } else if (latest && latest.status === 'failed') {
+          meta.textContent = `Last run failed · ${formatTime(latest.finished_at || latest.started_at)}`;
+          body.textContent = `⚠️ Error: ${latest.error_message || 'Digest generation failed'}`;
+        } else {
+          meta.textContent = 'No digest generated yet';
+          body.textContent = 'คลิก "Run Now" เพื่อเริ่มดึงข่าวสดและให้ Gemini สรุปข่าว AI, การเมือง และเกร็ดความรู้ทันที';
+        }
+      } catch (err) {
+        console.warn('Failed to load digest status:', err);
+      }
+    }
+
+    document.querySelectorAll('.digest-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.digest-tab').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        activeDigestTab = btn.getAttribute('data-tab');
+        renderCurrentDigestTab();
+      });
+    });
+
+    $('digest-toggle-btn').addEventListener('click', async () => {
+      const btn = $('digest-toggle-btn');
+      btn.disabled = true;
+      try {
+        await fetch('/api/digest/toggle', { method: 'POST' });
+        await loadDigestStatus();
+      } catch (e) {
+        alert('Toggle failed: ' + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    $('digest-run-btn').addEventListener('click', async () => {
+      const btn = $('digest-run-btn');
+      btn.disabled = true;
+      $('digest-body').innerHTML = '<div class="loading">⏳ กำลังดึงข่าวสดและให้ Gemini ประมวลผลบทความสรุป (ใช้เวลาประมาณ 10-15 วินาที)...</div>';
+      try {
+        const res = await fetch('/api/digest/run', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        await loadDigestStatus();
+      } catch (e) {
+        $('digest-body').textContent = '❌ ล้มเหลว: ' + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       initCharts();
+      initThreeCore();
       refreshData();
+      loadDigestStatus();
       window.setInterval(refreshData, 60000);
+      window.setInterval(loadDigestStatus, 60000);
     });
   </script>
 </body>

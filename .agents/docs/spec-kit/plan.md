@@ -53,6 +53,19 @@ Implement in small vertical slices. First restore a reliable baseline around the
 
 **Exit:** target build starts under the established PM2 binary workflow, endpoints respond, and memory is within the project limit.
 
+### 5. Interactive Two-Way Telegram Sentinel (v2.0)
+
+- Add `modules/bot` package for bidirectional Telegram interaction:
+  - **Poller (`bot.go`):** Independent goroutine running HTTP Long Polling (`getUpdates`) with an update offset and cancellable context.
+  - **Security Gate (`auth.go`):** Single-user whitelist verifying incoming `Chat.ID` against `cfg.TelegramChatID`; rejects all other senders.
+  - **Command Router (`router.go`):** Routes `/status`, `/ping`, `/torch`, `/reboot`, `/exec`, `/help` and handles callback queries.
+  - **Hardware Controller (`hardware.go`):** Executes `termux-torch` with state tracking and an automated 3-minute safety auto-off timer (`time.AfterFunc`).
+  - **Interactive Keyboards (`keyboards.go`):** Generates inline keyboard markup and supports in-place message updates (`editMessageText`) on refresh.
+  - **Safe Command Runner (`executor.go`):** Enforces an immutable whitelist (`ps`, `df`, `free`, `uptime`, `pm2`) with 5s context timeouts.
+- Wire `bot.Worker` into `main.go` lifecycle alongside existing telemetry background collector.
+
+**Exit:** deterministic tests verify polling, auth whitelisting, command dispatch, safe exec, and hardware timeout; live verification on V11 demonstrates two-way command execution and interactive button clicks.
+
 ## Work sequencing
 
 Complete tasks in `tasks.md` in order within each phase. Tasks may be split further during implementation, but their acceptance criteria and evidence fields must remain attached to the resulting work. Do not mark a task complete from code inspection alone: execute its stated verification and paste concise actual output or link to the artifact/log.
