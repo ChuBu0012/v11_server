@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"v11-server/shared/hostmem"
 )
 
 // Router handles incoming Telegram messages and routes commands.
@@ -322,17 +324,24 @@ func (p *DefaultStatusProvider) GetStatusCard(ctx context.Context) (string, erro
 	// 5. Ngrok public URL
 	ngrokURL := p.getNgrokURL(ctx)
 
+	// Memory line (with Host RAM if available)
+	memLine := fmt.Sprintf("🧠 <b>Memory:</b> %.1f MB (Sys: %.1f MB)", allocMB, sysMB)
+	if hInfo, err := hostmem.Read(); err == nil && hInfo.TotalMB > 0 {
+		memLine = fmt.Sprintf("🧠 <b>Host RAM:</b> %.2f GB / %.2f GB (%.0f%%)\n⚙️ <b>Go Memory:</b> %.1f MB (Sys: %.1f MB)",
+			hInfo.UsedMB/1024, hInfo.TotalMB/1024, hInfo.UsedPercent, allocMB, sysMB)
+	}
+
 	// Format HTML status card
 	cardHTML := fmt.Sprintf(
 		"📊 <b>Pocket Sentinel — System Status</b>\n\n"+
 			"🔋 <b>Battery:</b> %s\n"+
-			"🧠 <b>Memory:</b> %.1f MB (Sys: %.1f MB)\n"+
+			"%s\n"+
 			"💾 <b>Disk (%s):</b> %.1f GB free / %.1f GB\n"+
 			"⏱️ <b>Uptime:</b> %s\n"+
 			"🌐 <b>Tunnel:</b> %s\n\n"+
 			"<i>Updated: %s UTC</i>",
 		batteryStr,
-		allocMB, sysMB,
+		memLine,
 		targetPath, diskFreeGB, diskTotalGB,
 		uptimeStr,
 		ngrokURL,

@@ -1,32 +1,76 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark light">
   <title>Pocket Sentinel — vivo V11</title>
+  
+  <!-- PWA Meta & Links -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#0c0d10" id="theme-color-meta">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sentinel">
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
   <style>
     :root {
+      /* Dark Theme (Default) */
+      --blue: #2997ff;
+      --blue-focus: #0071e3;
+      --ink: #f5f5f7;
+      --muted: #8e8e93;
+      --muted-dark: #a1a1a6;
+      --canvas: #16171d;
+      --parchment: #0c0d10;
+      --pearl: #1c1d24;
+      --dark: #121318;
+      --dark-2: #1c1e26;
+      --hairline: #282a35;
+      --hairline-dark: #383a48;
+      --border-subtle: #282a35;
+      --bg-hover: rgba(255, 255, 255, 0.08);
+      --card: #1c1d24;
+      --range-bg: #22242e;
+      --range-text: #a1a1a6;
+      --chart-grid: rgba(255, 255, 255, 0.07);
+      --green: #30d158;
+      --amber: #ffd60a;
+      --red: #ff453a;
+      --radius: 18px;
+    }
+
+    [data-theme="light"] {
       --blue: #0066cc;
       --blue-focus: #0071e3;
       --ink: #1d1d1f;
       --muted: #6e6e73;
       --muted-dark: #a1a1a6;
-      --canvas: #fff;
+      --canvas: #ffffff;
       --parchment: #f5f5f7;
       --pearl: #fafafc;
       --dark: #272729;
       --dark-2: #2a2a2c;
       --hairline: #e0e0e0;
       --hairline-dark: #424245;
+      --border-subtle: #e0e0e0;
+      --bg-hover: rgba(0, 0, 0, 0.05);
+      --card: #ffffff;
+      --range-bg: #e8e8ed;
+      --range-text: #515154;
+      --chart-grid: #f0f0f0;
       --green: #248a3d;
       --amber: #b45f06;
       --red: #d70015;
-      --radius: 18px;
     }
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -37,10 +81,11 @@
       line-height: 1.45;
       letter-spacing: -.2px;
       -webkit-font-smoothing: antialiased;
+      transition: background 0.25s ease, color 0.25s ease;
     }
     button { font: inherit; }
     .topbar {
-      height: 48px;
+      height: 52px;
       padding: 0 max(24px, calc((100vw - 1120px) / 2));
       background: #000;
       color: #fff;
@@ -50,16 +95,62 @@
       position: sticky;
       top: 0;
       z-index: 10;
+      border-bottom: 1px solid var(--hairline-dark);
     }
     .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34c759; flex: 0 0 auto; }
-    .status-dot.warning { background: #ff9f0a; }
-    .status-dot.error { background: #ff453a; }
+    .brand-sub { font-size: 11px; opacity: 0.65; font-weight: 500; padding: 2px 6px; background: rgba(255,255,255,0.12); border-radius: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34c759; flex: 0 0 auto; box-shadow: 0 0 6px rgba(52, 199, 89, 0.6); }
+    .status-dot.warning { background: #ff9f0a; box-shadow: 0 0 6px rgba(255, 159, 10, 0.6); }
+    .status-dot.error { background: #ff453a; box-shadow: 0 0 6px rgba(255, 69, 58, 0.6); }
+    
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
     .top-meta { color: #a1a1a6; font-size: 12px; text-align: right; }
+    
+    .theme-toggle {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 1px solid var(--hairline-dark);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .theme-toggle:hover { background: rgba(255, 255, 255, 0.18); transform: scale(1.05); }
+    .theme-toggle:active { transform: scale(0.95); }
+
+    .pwa-install-btn {
+      min-height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--blue);
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .pwa-install-btn:hover { opacity: 0.9; transform: scale(1.02); }
+    .pwa-install-btn:active { transform: scale(0.96); }
+    .pwa-install-btn[hidden] { display: none !important; }
+
     .hero {
       background: var(--canvas);
       padding: 40px 24px 36px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--hairline);
     }
     .wrap { width: min(1120px, 100%); margin: 0 auto; }
     .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
@@ -88,7 +179,7 @@
       align-items: center;
       gap: 7px;
       padding: 4px 12px;
-      background: var(--parchment);
+      background: var(--pearl);
       border: 1px solid var(--hairline);
       border-radius: 999px;
       font-size: 11px;
@@ -112,6 +203,7 @@
     .refresh {
       min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px;
       color: #fff; background: var(--blue); cursor: pointer; font-size: 14px;
+      font-weight: 600;
       transition: transform .15s, background .15s;
     }
     .refresh:active { transform: scale(.96); }
@@ -121,19 +213,22 @@
     .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     h2 { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -.45px; }
     .section-note { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
-    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    
+    .metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
     .card {
       min-width: 0; background: var(--canvas); border: 1px solid var(--hairline);
       border-radius: var(--radius); padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
-    .metric-label { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-    .metric-value { margin-top: 12px; font-size: clamp(25px, 3vw, 32px); font-weight: 600; line-height: 1.1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
-    .metric-sub { margin-top: 7px; min-height: 20px; color: var(--muted); font-size: 13px; }
-    .meter { height: 5px; margin-top: 16px; overflow: hidden; background: var(--parchment); border-radius: 9px; }
+    .metric-label { color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .metric-value { margin-top: 10px; font-size: clamp(23px, 2.5vw, 29px); font-weight: 600; line-height: 1.1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .metric-sub { margin-top: 7px; min-height: 20px; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+    .meter { height: 5px; margin-top: 14px; overflow: hidden; background: var(--bg-hover); border-radius: 9px; }
     .meter-fill { height: 100%; width: 0; background: var(--blue); border-radius: inherit; transition: width .35s ease; }
-    .meter-fill.warning { background: #ff9f0a; }
-    .meter-fill.critical { background: #ff453a; }
-    .dark-band { padding: 30px 24px; background: var(--dark); color: #fff; }
+    .meter-fill.warning { background: var(--amber); }
+    .meter-fill.critical { background: var(--red); }
+    
+    .dark-band { padding: 30px 24px; background: var(--dark); color: #fff; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
     .dark-band h2 { color: #fff; }
     .dark-band .section-note { color: var(--muted-dark); }
     .conditions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -141,13 +236,15 @@
     .condition-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
     .condition-name { color: #d2d2d7; font-size: 12px; font-weight: 600; text-transform: uppercase; }
     .badge { padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
-    .badge.ok { color: #70d78b; background: rgba(52,199,89,.16); }
-    .badge.active { color: #ffbf69; background: rgba(255,159,10,.17); }
+    .badge.ok { color: #70d78b; background: rgba(52,199,89,.18); }
+    .badge.active { color: #ffbf69; background: rgba(255,159,10,.2); }
     .condition-message { color: #f5f5f7; font-size: 14px; }
-    .range-controls { display: inline-flex; padding: 3px; gap: 2px; background: #e8e8ed; border-radius: 999px; }
-    .range-btn { min-width: 48px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; color: #515154; background: transparent; cursor: pointer; font-size: 12px; }
+    
+    .range-controls { display: inline-flex; padding: 3px; gap: 2px; background: var(--range-bg); border-radius: 999px; border: 1px solid var(--hairline); }
+    .range-btn { min-width: 48px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; color: var(--range-text); background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; }
     .range-btn[aria-pressed="true"] { color: #fff; background: var(--blue); }
-    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    
+    .chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
     .chart-card { padding: 18px 18px 12px; }
     .chart-card.wide { grid-column: 1 / -1; }
     .chart-title { margin: 0; font-size: 15px; font-weight: 600; }
@@ -156,12 +253,14 @@
     .chart-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; pointer-events: none; }
     .chart-empty[hidden] { display: none; }
     .chart-fallback { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+    
     details.samples { margin-top: 14px; }
-    details.samples summary { color: var(--blue); cursor: pointer; font-size: 13px; }
+    details.samples summary { color: var(--blue); cursor: pointer; font-size: 13px; font-weight: 500; }
     .table-scroll { margin-top: 10px; overflow-x: auto; }
-    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 12px; text-align: left; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; text-align: left; }
     th, td { padding: 9px 10px; border-bottom: 1px solid var(--hairline); font-variant-numeric: tabular-nums; }
     th { color: var(--muted); font-weight: 600; }
+    
     .logs { padding: 4px 20px; }
     .log-row { display: grid; grid-template-columns: 78px 64px minmax(0, 1fr); align-items: start; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
     .log-row:last-child { border-bottom: 0; }
@@ -171,12 +270,13 @@
     .log-level.warn, .log-level.warning { color: var(--amber); }
     .log-level.error, .log-level.fatal { color: var(--red); }
     .log-message { overflow-wrap: anywhere; }
-    .notice { padding: 12px 15px; border: 1px solid #e4b95f; border-radius: 10px; color: #6b4d00; background: #fff8e5; font-size: 13px; }
-    .notice.error { border-color: #e6a3a8; color: #8a1020; background: #fff1f2; }
+    
+    .notice { padding: 12px 15px; border: 1px solid rgba(255, 214, 10, 0.35); border-radius: 10px; color: var(--amber); background: rgba(255, 214, 10, 0.12); font-size: 13px; }
+    .notice.error { border-color: rgba(255, 69, 58, 0.35); color: var(--red); background: rgba(255, 69, 58, 0.12); }
     .notice[hidden] { display: none; }
     .loading { color: var(--muted); }
-    footer { padding: 26px 24px; color: var(--muted); text-align: center; font-size: 11px; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    footer { padding: 26px 24px; color: var(--muted); text-align: center; font-size: 11px; border-top: 1px solid var(--hairline); }
+    
     .digest-btn {
       min-height: 38px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 999px;
       color: var(--ink); background: var(--canvas); cursor: pointer; font-size: 13px; font-weight: 500;
@@ -201,36 +301,13 @@
       font-weight: 600;
       letter-spacing: -0.015em;
     }
-    .digest-content h3 {
-      font-size: 16px;
-      margin: 20px 0 8px;
-    }
-    .digest-content p {
-      margin: 8px 0;
-      line-height: 1.65;
-    }
-    .digest-content hr {
-      border: none;
-      height: 1px;
-      background: var(--border-subtle);
-      margin: 18px 0;
-    }
-    .digest-content ul {
-      margin: 8px 0 12px 20px;
-      padding: 0;
-    }
-    .digest-content li {
-      margin-bottom: 8px;
-      line-height: 1.65;
-    }
-    .digest-content strong {
-      font-weight: 600;
-      color: var(--ink);
-    }
-    .digest-content em {
-      font-style: italic;
-      color: var(--muted);
-    }
+    .digest-content h3 { font-size: 16px; margin: 20px 0 8px; }
+    .digest-content p { margin: 8px 0; line-height: 1.65; }
+    .digest-content hr { border: none; height: 1px; background: var(--border-subtle); margin: 18px 0; }
+    .digest-content ul { margin: 8px 0 12px 20px; padding: 0; }
+    .digest-content li { margin-bottom: 8px; line-height: 1.65; }
+    .digest-content strong { font-weight: 600; color: var(--ink); }
+    .digest-content em { font-style: italic; color: var(--muted); }
     .digest-tabs {
       display: flex;
       gap: 6px;
@@ -257,15 +334,19 @@
       transition: all .2s ease;
       white-space: nowrap;
     }
-    .digest-tab:hover {
-      color: var(--ink);
-    }
+    .digest-tab:hover { color: var(--ink); }
     .digest-tab.active {
       background: var(--card);
       color: var(--ink);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
     }
+
+    @media (max-width: 1080px) {
+      .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
     @media (max-width: 760px) {
       .topbar { padding: 0 16px; }
       .hero { padding: 30px 18px 24px; }
@@ -284,20 +365,29 @@
     }
     @media (max-width: 420px) {
       .metric-grid { grid-template-columns: 1fr 1fr; }
-      .metric-value { font-size: 25px; }
+      .metric-value { font-size: 21px; }
       .section-heading { align-items: start; flex-direction: column; }
       .log-row { grid-template-columns: 64px 52px minmax(0, 1fr); gap: 8px; }
-      .top-meta { max-width: 52%; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      .top-meta { max-width: 45%; }
     }
   </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="status-dot" id="status-dot" aria-hidden="true"></span><span>Pocket Sentinel</span></div>
-    <div class="top-meta" id="last-updated" aria-live="polite">Connecting…</div>
+    <div class="brand">
+      <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+      <span>Pocket Sentinel</span>
+      <span class="brand-sub">v11</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="pwa-install-btn" id="pwa-install-btn" type="button" title="Install App on Home Screen" hidden>
+        📲 Install
+      </button>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+        <span id="theme-icon">🌙</span>
+      </button>
+      <div class="top-meta" id="last-updated" aria-live="polite">Connecting…</div>
+    </div>
   </header>
 
   <main>
@@ -329,11 +419,12 @@
         </div>
         <div class="metric-grid">
           <article class="card">
-            <div class="metric-label">Server uptime</div><div class="metric-value" id="uptime-value">—</div>
-            <div class="metric-sub" id="uptime-sub">Since this process started</div>
+            <div class="metric-label">Host RAM (Device)</div><div class="metric-value" id="host-ram-value">—</div>
+            <div class="metric-sub" id="host-ram-sub">vivo 1804 · /proc/meminfo</div>
+            <div class="meter" aria-hidden="true"><div class="meter-fill" id="host-ram-meter"></div></div>
           </article>
           <article class="card">
-            <div class="metric-label">Go memory</div><div class="metric-value" id="memory-value">—</div>
+            <div class="metric-label">Go RAM (Runtime)</div><div class="metric-value" id="memory-value">—</div>
             <div class="metric-sub" id="memory-sub">of 250 MB restart limit</div>
             <div class="meter" aria-hidden="true"><div class="meter-fill" id="memory-meter"></div></div>
           </article>
@@ -346,6 +437,10 @@
             <div class="metric-label">Battery</div><div class="metric-value" id="battery-value">—</div>
             <div class="metric-sub" id="battery-sub">Checking Termux:API</div>
             <div class="meter" aria-hidden="true"><div class="meter-fill" id="battery-meter"></div></div>
+          </article>
+          <article class="card">
+            <div class="metric-label">Server uptime</div><div class="metric-value" id="uptime-value">—</div>
+            <div class="metric-sub" id="uptime-sub">Pocket Sentinel process</div>
           </article>
         </div>
       </section>
@@ -371,9 +466,13 @@
         <div class="notice" id="data-notice" role="status" hidden></div>
         <div class="chart-grid">
           <article class="card chart-card wide">
+            <h3 class="chart-title">Host RAM used (vivo V11)</h3><div class="chart-value" id="host-ram-current">No sample yet</div>
+            <div class="chart-wrap"><canvas id="host-ram-chart" role="img" aria-label="Host RAM used over time"></canvas><div class="chart-empty" id="host-ram-empty">Waiting for telemetry samples</div></div>
+            <p class="chart-fallback">Device host memory usage parsed from /proc/meminfo.</p>
+          </article>
+          <article class="card chart-card">
             <h3 class="chart-title">Go memory allocated</h3><div class="chart-value" id="memory-current">No sample yet</div>
             <div class="chart-wrap"><canvas id="memory-chart" role="img" aria-label="Go memory allocated over time"></canvas><div class="chart-empty" id="memory-empty">Waiting for telemetry samples</div></div>
-            <p class="chart-fallback">Values are also available in the sample table below.</p>
           </article>
           <article class="card chart-card">
             <h3 class="chart-title">Disk space available</h3><div class="chart-value" id="disk-current">No sample yet</div>
@@ -387,7 +486,7 @@
         <details class="samples">
           <summary>View sample values</summary>
           <div class="card table-scroll">
-            <table><thead><tr><th>Time</th><th>Memory</th><th>Disk free</th><th>Battery</th><th>Uptime</th></tr></thead><tbody id="samples-body"><tr><td colspan="5" class="loading">Loading samples…</td></tr></tbody></table>
+            <table><thead><tr><th>Time</th><th>Host RAM</th><th>Go RAM</th><th>Disk free</th><th>Battery</th><th>Uptime</th></tr></thead><tbody id="samples-body"><tr><td colspan="6" class="loading">Loading samples…</td></tr></tbody></table>
           </div>
         </details>
       </section>
@@ -435,9 +534,96 @@
     const $ = (id) => document.getElementById(id);
     const formatNumber = (value, digits = 1) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '—';
 
-    function setText(id, value) { $(id).textContent = value; }
+    // =========================================================================
+    // Theme Management (Dark by Default + Eye Protection)
+    // =========================================================================
+    function getSavedTheme() {
+      const saved = localStorage.getItem('sentinel-theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return 'dark'; // Dark theme default as requested
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const meta = $('theme-color-meta');
+      if (meta) {
+        meta.setAttribute('content', theme === 'dark' ? '#0c0d10' : '#ffffff');
+      }
+      const icon = $('theme-icon');
+      if (icon) {
+        icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+      }
+      localStorage.setItem('sentinel-theme', theme);
+      updateChartThemes(theme);
+    }
+
+    function updateChartThemes(theme) {
+      const isDark = theme === 'dark';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0';
+      const tickColor = isDark ? '#8e8e93' : '#86868b';
+      Object.values(state.charts).forEach((chart) => {
+        if (!chart || !chart.options || !chart.options.scales) return;
+        if (chart.options.scales.y) {
+          chart.options.scales.y.grid.color = gridColor;
+          chart.options.scales.y.ticks.color = tickColor;
+        }
+        if (chart.options.scales.x) {
+          chart.options.scales.x.ticks.color = tickColor;
+        }
+        chart.update('none');
+      });
+    }
+
+    $('theme-toggle')?.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Apply preferred theme immediately
+    applyTheme(getSavedTheme());
+
+    // =========================================================================
+    // PWA Service Worker & Install Prompt
+    // =========================================================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('PWA service worker registration failed:', err);
+        });
+      });
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = $('pwa-install-btn');
+      if (btn) btn.hidden = false;
+    });
+
+    $('pwa-install-btn')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        const btn = $('pwa-install-btn');
+        if (btn) btn.hidden = true;
+      }
+      deferredPrompt = null;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      const btn = $('pwa-install-btn');
+      if (btn) btn.hidden = true;
+    });
+
+    // =========================================================================
+    // UI Formatters & Helpers
+    // =========================================================================
+    function setText(id, value) { const el = $(id); if (el) el.textContent = value; }
     function setMeter(id, percent, status = '') {
       const meter = $(id);
+      if (!meter) return;
       meter.style.width = `${Math.max(0, Math.min(100, Number(percent) || 0))}%`;
       meter.classList.toggle('warning', status === 'warning');
       meter.classList.toggle('critical', status === 'critical');
@@ -485,6 +671,26 @@
       setText('sample-time', sample ? `Sampled ${formatTime(sample.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Waiting for first sample');
 
       if (sample) {
+        // 1. Host RAM (Physical Device Memory)
+        if (sample.host_memory_total_mb != null && sample.host_memory_used_mb != null) {
+          const hostTotalMB = Number(sample.host_memory_total_mb);
+          const hostUsedMB = Number(sample.host_memory_used_mb);
+          const hostFreeMB = sample.host_memory_free_mb != null ? Number(sample.host_memory_free_mb) : Math.max(0, hostTotalMB - hostUsedMB);
+          const hostPercent = hostTotalMB > 0 ? (hostUsedMB / hostTotalMB) * 100 : 0;
+          const hostUsedGB = hostUsedMB / 1024;
+          const hostTotalGB = hostTotalMB / 1024;
+          const hostFreeGB = hostFreeMB / 1024;
+
+          setText('host-ram-value', `${formatNumber(hostUsedGB, 2)} GB`);
+          setText('host-ram-sub', `${formatNumber(hostTotalGB, 1)} GB total · ${formatNumber(hostFreeGB, 1)} GB free (${formatNumber(hostPercent, 0)}%)`);
+          setMeter('host-ram-meter', hostPercent, hostPercent >= 90 ? 'critical' : hostPercent >= 80 ? 'warning' : '');
+        } else {
+          setText('host-ram-value', 'N/A');
+          setText('host-ram-sub', 'Reading /proc/meminfo');
+          setMeter('host-ram-meter', 0);
+        }
+
+        // 2. Go Runtime RAM
         const memory = Number(sample.memory_alloc_mb);
         const memorySys = Number(sample.memory_sys_mb);
         const memoryPercent = memory / 250 * 100;
@@ -493,6 +699,7 @@
         setText('memory-sub', `Sys ${formatNumber(memorySys, 1)} MB · of 250 MB restart limit`);
         setMeter('memory-meter', memoryPercent, memoryPercent >= 90 ? 'critical' : memoryPercent >= 75 ? 'warning' : '');
 
+        // 3. Storage
         const diskTotal = Number(sample.disk_total_gb);
         const diskFree = Number(sample.disk_free_gb);
         const diskUsedPercent = diskTotal > 0 ? (diskTotal - diskFree) / diskTotal * 100 : 0;
@@ -500,6 +707,7 @@
         setText('disk-sub', `${formatNumber(diskTotal, 1)} GB total · ${formatNumber(diskUsedPercent, 0)}% used`);
         setMeter('disk-meter', diskUsedPercent, diskUsedPercent >= 95 ? 'critical' : diskUsedPercent >= 85 ? 'warning' : '');
 
+        // 4. Battery
         if (sample.battery_level !== null && sample.battery_level !== undefined) {
           const battery = Number(sample.battery_level);
           setText('battery-value', `${formatNumber(battery, 0)}%`);
@@ -550,6 +758,10 @@
         $(emptyId).textContent = 'Chart.js could not load. Check the network connection and refresh.';
         return null;
       }
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0';
+      const tickColor = isDark ? '#8e8e93' : '#86868b';
+
       return new Chart($(canvasId), {
         type: 'line',
         data: { labels: [], datasets: [{ label, data: [], borderColor: color, backgroundColor: `${color}18`, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: .25, fill: true, spanGaps: false }] },
@@ -560,20 +772,31 @@
           interaction: { intersect: false, mode: 'index' },
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: (ctx) => `${label}: ${formatNumber(ctx.parsed.y, 1)} ${unit}` } }
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const y = ctx.parsed.y;
+                  if (unit === ' MB' && y >= 500) {
+                    return `${label}: ${formatNumber(y / 1024, 2)} GB (${formatNumber(y, 0)} MB)`;
+                  }
+                  return `${label}: ${formatNumber(y, 1)}${unit}`;
+                }
+              }
+            }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { color: '#86868b', maxTicksLimit: 6, maxRotation: 0, autoSkip: true, font: { size: 10 } }, border: { display: false } },
-            y: { beginAtZero: true, ...(maxValue ? { max: maxValue } : {}), grid: { color: '#f0f0f0' }, ticks: { color: '#86868b', maxTicksLimit: 5, font: { size: 10 }, callback: (v) => `${v}${unit}` }, border: { display: false } }
+            x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 6, maxRotation: 0, autoSkip: true, font: { size: 10 } }, border: { display: false } },
+            y: { beginAtZero: true, ...(maxValue ? { max: maxValue } : {}), grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 5, font: { size: 10 }, callback: (v) => `${v}${unit}` }, border: { display: false } }
           }
         }
       });
     }
 
     function initCharts() {
-      state.charts.memory = makeChart('memory-chart', 'memory-empty', 'Allocated', ' MB', '#0066cc');
-      state.charts.disk = makeChart('disk-chart', 'disk-empty', 'Available', ' GB', '#0066cc');
-      state.charts.battery = makeChart('battery-chart', 'battery-empty', 'Level', '%', '#0066cc', 100);
+      state.charts.hostRam = makeChart('host-ram-chart', 'host-ram-empty', 'Host RAM Used', ' MB', '#2997ff');
+      state.charts.memory = makeChart('memory-chart', 'memory-empty', 'Allocated', ' MB', '#0071e3');
+      state.charts.disk = makeChart('disk-chart', 'disk-empty', 'Available', ' GB', '#30d158');
+      state.charts.battery = makeChart('battery-chart', 'battery-empty', 'Level', '%', '#ffd60a', 100);
     }
 
     function updateChart(chart, canvasId, emptyId, samples, key, label, unit, currentId, digits = 1) {
@@ -586,12 +809,24 @@
       empty.hidden = hasEnough;
       if (!hasEnough) {
         empty.textContent = usable.length ? 'Collecting more samples to show a trend.' : 'No readings available for this period.';
-        setText(currentId, usable.length ? `${formatNumber(usable[0][key], digits)}${unit} · 1 sample` : 'No sample in this period');
+        if (usable.length) {
+          const val = Number(usable[0][key]);
+          const valStr = (key === 'host_memory_used_mb' && val >= 500)
+            ? `${formatNumber(val / 1024, 2)} GB (${formatNumber(val, 0)} MB)`
+            : `${formatNumber(val, digits)}${unit}`;
+          setText(currentId, `${valStr} · 1 sample`);
+        } else {
+          setText(currentId, 'No sample in this period');
+        }
       } else {
         chart.data.labels = usable.map((sample) => formatTime(sample.timestamp));
         chart.data.datasets[0].data = usable.map((sample) => Number(sample[key]));
         chart.update('none');
-        setText(currentId, `${formatNumber(usable[usable.length - 1][key], digits)}${unit} · latest`);
+        const lastVal = Number(usable[usable.length - 1][key]);
+        const valStr = (key === 'host_memory_used_mb' && lastVal >= 500)
+          ? `${formatNumber(lastVal / 1024, 2)} GB (${formatNumber(lastVal, 0)} MB)`
+          : `${formatNumber(lastVal, digits)}${unit}`;
+        setText(currentId, `${valStr} · latest`);
       }
     }
 
@@ -601,7 +836,7 @@
       if (!samples.length) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 5;
+        cell.colSpan = 6;
         cell.className = 'loading';
         cell.textContent = 'No telemetry samples in this period.';
         row.append(cell);
@@ -610,8 +845,12 @@
       }
       samples.slice(-12).reverse().forEach((sample) => {
         const row = document.createElement('tr');
+        const hostRamStr = (sample.host_memory_used_mb != null && sample.host_memory_total_mb != null)
+          ? `${formatNumber(sample.host_memory_used_mb / 1024, 2)} GB (${formatNumber((sample.host_memory_used_mb / sample.host_memory_total_mb) * 100, 0)}%)`
+          : '—';
         const values = [
           new Date(sample.timestamp).toLocaleString(),
+          hostRamStr,
           `${formatNumber(sample.memory_alloc_mb, 2)} MB`,
           `${formatNumber(sample.disk_free_gb, 2)} GB`,
           sample.battery_level == null ? 'N/A' : `${formatNumber(sample.battery_level, 0)}%`,
@@ -676,7 +915,8 @@
         }
         if (history.status === 'fulfilled') {
           state.samples = Array.isArray(history.value) ? history.value.slice().reverse() : [];
-          updateChart(state.charts.memory, 'memory-chart', 'memory-empty', state.samples, 'memory_alloc_mb', 'Memory', ' MB', 'memory-current', 1);
+          updateChart(state.charts.hostRam, 'host-ram-chart', 'host-ram-empty', state.samples, 'host_memory_used_mb', 'Host RAM', ' MB', 'host-ram-current', 0);
+          updateChart(state.charts.memory, 'memory-chart', 'memory-empty', state.samples, 'memory_alloc_mb', 'Go Memory', ' MB', 'memory-current', 1);
           updateChart(state.charts.disk, 'disk-chart', 'disk-empty', state.samples, 'disk_free_gb', 'Disk', ' GB', 'disk-current', 1);
           updateChart(state.charts.battery, 'battery-chart', 'battery-empty', state.samples, 'battery_level', 'Battery', '%', 'battery-current', 0);
           renderSamples(state.samples);
@@ -739,7 +979,6 @@
     function initThreeCore() {
       if (threeCore.initialized) return;
       if (typeof THREE === 'undefined') {
-        // Fallback: If Three.js CDN hasn't loaded yet, try again on window load
         window.addEventListener('load', () => {
           if (typeof THREE !== 'undefined' && !threeCore.initialized) initThreeCore();
           else if (typeof THREE === 'undefined') {
@@ -756,12 +995,10 @@
       const width = container.clientWidth || 260;
       const height = container.clientHeight || 220;
 
-      // 1. Scene & Perspective Camera
       threeCore.scene = new THREE.Scene();
       threeCore.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
       threeCore.camera.position.set(0, 0, 5.0);
 
-      // 2. High-performance, Low-power WebGL Renderer
       threeCore.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
       threeCore.renderer.setSize(width, height);
       threeCore.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -769,13 +1006,11 @@
       threeCore.renderer.toneMappingExposure = 1.15;
       container.appendChild(threeCore.renderer.domElement);
 
-      // 3. Dynamic Color Trackers
-      threeCore.targetColor = new THREE.Color(0x0071e3);
-      threeCore.currentColor = new THREE.Color(0x0071e3);
+      threeCore.targetColor = new THREE.Color(0x2997ff);
+      threeCore.currentColor = new THREE.Color(0x2997ff);
       threeCore.targetEmissive = new THREE.Color(0x002d62);
       threeCore.currentEmissive = new THREE.Color(0x002d62);
 
-      // 4. Outer Geometric Wireframe (Icosahedron)
       const outerGeo = new THREE.IcosahedronGeometry(1.38, 2);
       const outerMat = new THREE.MeshStandardMaterial({
         color: threeCore.currentColor,
@@ -788,7 +1023,6 @@
       threeCore.outerMesh = new THREE.Mesh(outerGeo, outerMat);
       threeCore.scene.add(threeCore.outerMesh);
 
-      // 5. Inner Glowing Core (Sphere)
       const innerGeo = new THREE.SphereGeometry(0.70, 32, 32);
       const innerMat = new THREE.MeshStandardMaterial({
         color: threeCore.currentColor,
@@ -802,7 +1036,6 @@
       threeCore.innerMesh = new THREE.Mesh(innerGeo, innerMat);
       threeCore.scene.add(threeCore.innerMesh);
 
-      // 6. Orbital Halo Ring
       const ringGeo = new THREE.TorusGeometry(1.82, 0.015, 16, 100);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0x00aaff,
@@ -813,7 +1046,6 @@
       threeCore.ringMesh.rotation.x = Math.PI / 3;
       threeCore.scene.add(threeCore.ringMesh);
 
-      // 7. Orbital Particle Halo (120 particles)
       const particleCount = 120;
       const particleGeo = new THREE.BufferGeometry();
       const positions = new Float32Array(particleCount * 3);
@@ -835,7 +1067,6 @@
       threeCore.particles = new THREE.Points(particleGeo, particleMat);
       threeCore.scene.add(threeCore.particles);
 
-      // 8. Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
       threeCore.scene.add(ambientLight);
 
@@ -846,65 +1077,70 @@
       dirLight.position.set(3, 4, 5);
       threeCore.scene.add(dirLight);
 
-      // 9. Interactive OrbitControls (Drag to rotate)
       if (typeof THREE.OrbitControls !== 'undefined') {
         threeCore.controls = new THREE.OrbitControls(threeCore.camera, threeCore.renderer.domElement);
-        threeCore.controls.enableZoom = false;
-        threeCore.controls.enablePan = false;
         threeCore.controls.enableDamping = true;
-        threeCore.controls.dampingFactor = 0.08;
-        threeCore.controls.autoRotate = true;
-        threeCore.controls.autoRotateSpeed = 1.1;
+        threeCore.controls.dampingFactor = 0.05;
+        threeCore.controls.enableZoom = false;
+        threeCore.controls.autoRotate = false;
       }
 
-      // 10. Animation Loop
       function animate() {
-        if (threeCore.isPaused) return;
         threeCore.animId = requestAnimationFrame(animate);
+        if (threeCore.isPaused) return;
 
-        // Smooth color & emissive interpolation
         threeCore.currentColor.lerp(threeCore.targetColor, 0.05);
         threeCore.currentEmissive.lerp(threeCore.targetEmissive, 0.05);
 
-        threeCore.outerMesh.material.color.copy(threeCore.currentColor);
-        threeCore.innerMesh.material.color.copy(threeCore.currentColor);
-        threeCore.innerMesh.material.emissive.copy(threeCore.currentEmissive);
-        threeCore.coreLight.color.copy(threeCore.currentColor);
-        threeCore.ringMesh.material.color.copy(threeCore.currentColor);
+        if (threeCore.outerMesh) {
+          threeCore.outerMesh.material.color.copy(threeCore.currentColor);
+          threeCore.outerMesh.rotation.x += threeCore.baseRotationSpeed * 0.75;
+          threeCore.outerMesh.rotation.y += threeCore.baseRotationSpeed;
+        }
 
-        // Rotations
-        threeCore.outerMesh.rotation.x += threeCore.baseRotationSpeed * 0.7;
-        threeCore.outerMesh.rotation.y += threeCore.baseRotationSpeed;
-        threeCore.ringMesh.rotation.z += threeCore.baseRotationSpeed * 1.3;
-        threeCore.particles.rotation.y -= threeCore.baseRotationSpeed * 0.6;
+        if (threeCore.innerMesh) {
+          threeCore.innerMesh.material.color.copy(threeCore.currentColor);
+          threeCore.innerMesh.material.emissive.copy(threeCore.currentEmissive);
+          threeCore.innerMesh.rotation.x -= threeCore.baseRotationSpeed * 1.2;
+          threeCore.innerMesh.rotation.z += threeCore.baseRotationSpeed * 0.9;
+        }
 
-        // Pulse effect during alert / low battery
+        if (threeCore.ringMesh) {
+          threeCore.ringMesh.rotation.z += threeCore.baseRotationSpeed * 0.45;
+        }
+
+        if (threeCore.particles) {
+          threeCore.particles.rotation.y -= threeCore.baseRotationSpeed * 0.35;
+        }
+
+        if (threeCore.coreLight) {
+          threeCore.coreLight.color.copy(threeCore.currentColor);
+        }
+
         if (threeCore.isPulsing) {
-          threeCore.pulseTime += 0.05;
-          const scale = 0.70 + Math.sin(threeCore.pulseTime) * 0.07;
-          threeCore.innerMesh.scale.set(scale, scale, scale);
-          threeCore.innerMesh.material.emissiveIntensity = 1.0 + Math.sin(threeCore.pulseTime) * 0.55;
-        } else {
+          threeCore.pulseTime += 0.08;
+          const scaleMod = 1.0 + Math.sin(threeCore.pulseTime) * 0.08;
+          if (threeCore.innerMesh) {
+            threeCore.innerMesh.scale.set(scaleMod, scaleMod, scaleMod);
+          }
+        } else if (threeCore.innerMesh) {
           threeCore.innerMesh.scale.set(1, 1, 1);
-          threeCore.innerMesh.material.emissiveIntensity = 0.95;
         }
 
         if (threeCore.controls) threeCore.controls.update();
         threeCore.renderer.render(threeCore.scene, threeCore.camera);
       }
 
-      // 11. Tab Visibility Auto-pause (Zero CPU when tab inactive)
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-          threeCore.isPaused = true;
-          if (threeCore.animId) cancelAnimationFrame(threeCore.animId);
-        } else {
-          threeCore.isPaused = false;
-          animate();
-        }
-      });
+      threeCore.initialized = true;
+      animate();
 
-      // 12. Dynamic Container Resizing
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          threeCore.isPaused = !entry.isIntersecting;
+        });
+      }, { threshold: 0.1 });
+      observer.observe(container);
+
       window.addEventListener('resize', () => {
         if (!threeCore.renderer || !container) return;
         const w = container.clientWidth || 260;
@@ -913,189 +1149,149 @@
         threeCore.camera.updateProjectionMatrix();
         threeCore.renderer.setSize(w, h);
       });
-
-      threeCore.initialized = true;
-      animate();
     }
 
     function updateSentinelCore(data) {
       if (!threeCore.initialized) return;
-      const sample = data?.latest_sample;
-      const conditions = data?.conditions || [];
-      const hasActiveAlert = conditions.some((c) => c.active);
 
-      const dot = $('core-dot');
-      const text = $('core-status-text');
+      const dotEl = $('core-dot');
+      const textEl = $('core-status-text');
+      const sample = data ? data.latest_sample : null;
+      const conditions = data ? (data.conditions || []) : [];
 
-      if (sample) {
-        const isCharging = (sample.battery_status || '').toUpperCase() === 'CHARGING';
-        const battery = Number(sample.battery_level);
+      let stateName = 'operational';
+      if (!sample) stateName = 'standby';
+      else if (data.last_error) stateName = 'error';
+      else {
+        const hasCritical = conditions.some(c => c.active && (c.type === 'Battery Low' || c.type === 'Memory High'));
+        const hasWarning = conditions.some(c => c.active);
+        if (hasCritical) stateName = 'critical';
+        else if (hasWarning) stateName = 'warning';
+      }
 
-        if (isCharging) {
-          // Emerald Green
-          threeCore.targetColor.setHex(0x30d158);
-          threeCore.targetEmissive.setHex(0x165d25);
-          threeCore.baseRotationSpeed = 0.012;
-          threeCore.isPulsing = false;
-          if (text) text.textContent = '⚡ Charging · Core Active';
-          if (dot) {
-            dot.style.background = '#30d158';
-            dot.style.boxShadow = '0 0 10px #30d158';
-          }
-        } else if (hasActiveAlert || battery <= 20) {
-          // Alert Red / Amber with Pulse
-          threeCore.targetColor.setHex(0xff453a);
-          threeCore.targetEmissive.setHex(0x8a1020);
-          threeCore.baseRotationSpeed = 0.015;
-          threeCore.isPulsing = true;
-          if (text) text.textContent = hasActiveAlert ? '⚠️ Alert · Condition Active' : '⚠️ Low Battery · Power Saver';
-          if (dot) {
-            dot.style.background = '#ff453a';
-            dot.style.boxShadow = '0 0 10px #ff453a';
-          }
-        } else {
-          // Apple Action Blue (Normal State)
-          threeCore.targetColor.setHex(0x0071e3);
-          threeCore.targetEmissive.setHex(0x002d62);
-          threeCore.baseRotationSpeed = 0.007;
-          threeCore.isPulsing = false;
-          if (text) text.textContent = '🛡️ Sentinel Core · Online';
-          if (dot) {
-            dot.style.background = '#0071e3';
-            dot.style.boxShadow = '0 0 8px #0071e3';
-          }
-        }
-      } else {
-        // Standby
-        threeCore.targetColor.setHex(0x6e6e73);
-        threeCore.targetEmissive.setHex(0x272729);
-        threeCore.baseRotationSpeed = 0.004;
+      if (stateName === 'operational') {
+        threeCore.targetColor.setHex(0x30d158); // Green
+        threeCore.targetEmissive.setHex(0x0a3d12);
+        threeCore.baseRotationSpeed = 0.007;
         threeCore.isPulsing = false;
-        if (text) text.textContent = 'Standby Mode';
-        if (dot) {
-          dot.style.background = '#6e6e73';
-          dot.style.boxShadow = 'none';
-        }
+        if (dotEl) { dotEl.style.background = '#30d158'; dotEl.style.boxShadow = '0 0 8px #30d158'; }
+        if (textEl) textEl.textContent = 'Core Active · Normal';
+      } else if (stateName === 'warning') {
+        threeCore.targetColor.setHex(0xff9f0a); // Amber
+        threeCore.targetEmissive.setHex(0x592d00);
+        threeCore.baseRotationSpeed = 0.014;
+        threeCore.isPulsing = true;
+        if (dotEl) { dotEl.style.background = '#ff9f0a'; dotEl.style.boxShadow = '0 0 8px #ff9f0a'; }
+        if (textEl) textEl.textContent = 'Core Pulse · Elevated';
+      } else if (stateName === 'critical' || stateName === 'error') {
+        threeCore.targetColor.setHex(0xff453a); // Red
+        threeCore.targetEmissive.setHex(0x610c06);
+        threeCore.baseRotationSpeed = 0.026;
+        threeCore.isPulsing = true;
+        if (dotEl) { dotEl.style.background = '#ff453a'; dotEl.style.boxShadow = '0 0 10px #ff453a'; }
+        if (textEl) textEl.textContent = 'Core Warning · Action Req';
+      } else {
+        threeCore.targetColor.setHex(0x2997ff); // Blue standby
+        threeCore.targetEmissive.setHex(0x002d62);
+        threeCore.baseRotationSpeed = 0.005;
+        threeCore.isPulsing = false;
+        if (dotEl) { dotEl.style.background = '#2997ff'; dotEl.style.boxShadow = '0 0 8px #2997ff'; }
+        if (textEl) textEl.textContent = 'Core Standby';
       }
     }
 
     // =========================================================================
-    // AI Daily Digest UI Controller
+    // AI Daily Digest Module
     // =========================================================================
-    function renderMarkdown(md) {
-      if (!md) return '';
-      // Escape HTML entities to prevent XSS
-      let text = md
+    let activeDigestTab = 'ai';
+    let currentDigestSections = {};
+
+    function escapeHtml(str) {
+      return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-      // Replace bold and italics
-      text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
-      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      text = text.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+    function renderMarkdown(md) {
+      if (!md) return '';
+      let html = md;
+      html = html.replace(/\r\n/g, '\n');
 
-      const lines = text.split('\n');
-      const out = [];
+      html = html.replace(/```([\s\S]*?)```/g, (match, p1) => {
+        return '<pre><code>' + escapeHtml(p1.trim()) + '</code></pre>';
+      });
+
+      html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      html = html.replace(/^---$/gim, '<hr>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+      const lines = html.split('\n');
       let inList = false;
+      const processed = [];
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const trimmed = line.trim();
-
-        // Horizontal Rule
-        if (/^[-*_]{3,}$/.test(trimmed)) {
-          if (inList) { out.push('</ul>'); inList = false; }
-          out.push('<hr>');
-          continue;
-        }
-
-        // Headings (#, ##, ###)
-        const hMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
-        if (hMatch) {
-          if (inList) { out.push('</ul>'); inList = false; }
-          const level = hMatch[1].length;
-          out.push(`<h${level}>${hMatch[2]}</h${level}>`);
-          continue;
-        }
-
-        // Sub-list item (indented by 2+ spaces or tab)
-        const subListMatch = line.match(/^\s{2,}[\*\-]\s+(.*)$/);
-        if (subListMatch) {
-          if (!inList) {
-            out.push('<ul>');
-            inList = true;
-          }
-          out.push(`<li style="margin-left: 18px; list-style-type: circle;">${subListMatch[1]}</li>`);
-          continue;
-        }
-
-        // Top-level List item
-        const listMatch = line.match(/^[\*\-]\s+(.*)$/);
+        const listMatch = line.match(/^(\*|-|\d+\.)\s+(.*)/);
         if (listMatch) {
           if (!inList) {
-            out.push('<ul>');
             inList = true;
+            processed.push('<ul>');
           }
-          out.push(`<li>${listMatch[1]}</li>`);
-          continue;
+          processed.push(`<li>${listMatch[2]}</li>`);
+        } else {
+          if (inList) {
+            inList = false;
+            processed.push('</ul>');
+          }
+          if (line.trim().length > 0 && !line.startsWith('<h') && !line.startsWith('<hr') && !line.startsWith('<pre')) {
+            processed.push(`<p>${line}</p>`);
+          } else {
+            processed.push(line);
+          }
         }
-
-        if (inList) {
-          out.push('</ul>');
-          inList = false;
-        }
-
-        if (trimmed === '') {
-          continue;
-        }
-
-        out.push(`<p>${line}</p>`);
       }
+      if (inList) processed.push('</ul>');
 
-      if (inList) {
-        out.push('</ul>');
-      }
-
-      return out.join('\n');
+      return processed.join('\n');
     }
 
-    let currentDigestSections = {};
-    let activeDigestTab = 'ai';
-
     function parseDigestSections(raw) {
-      if (!raw) return {};
-      const sections = {};
+      const sections = { ai: '', politics: '', trivia: '', all: '' };
+      if (!raw) return sections;
 
-      if (raw.includes('===SECTION:')) {
-        const parts = raw.split('===SECTION:');
-        for (const part of parts) {
-          const trimmed = part.trim();
-          if (!trimmed) continue;
-          const idx = trimmed.indexOf('===');
-          if (idx !== -1) {
-            const key = trimmed.substring(0, idx).toLowerCase().trim();
-            const content = trimmed.substring(idx + 3).trim();
-            sections[key] = content;
-          }
-        }
-      } else {
-        // Fallback: split by ###
+      const aiMatch = raw.match(/###\s*(?:🤖\s*)?AI & Tech[\s\S]*?(?=(?:###|$))/i);
+      const polMatch = raw.match(/###\s*(?:🏛️\s*)?การเมือง[\s\S]*?(?=(?:###|$))/i);
+      const triMatch = raw.match(/###\s*(?:💡\s*)?สาระน่ารู้[\s\S]*?(?=(?:###|$))/i);
+
+      if (aiMatch) sections.ai = aiMatch[0].trim();
+      if (polMatch) sections.politics = polMatch[0].trim();
+      if (triMatch) sections.trivia = triMatch[0].trim();
+
+      if (!sections.ai && !sections.politics && !sections.trivia) {
         const lines = raw.split('\n');
         let currentKey = 'ai';
         let currentLines = [];
+
         for (const line of lines) {
-          if (line.includes('1.') || line.includes('AI')) {
-            if (currentLines.length) sections[currentKey] = currentLines.join('\n');
-            currentKey = 'ai';
-            currentLines = [line];
-          } else if (line.includes('2.') || line.includes('การเมือง')) {
+          const lower = line.toLowerCase();
+          if (lower.includes('การเมือง') || lower.includes('politics')) {
             if (currentLines.length) sections[currentKey] = currentLines.join('\n');
             currentKey = 'politics';
             currentLines = [line];
-          } else if (line.includes('3.') || line.includes('สาระน่ารู้')) {
+          } else if (lower.includes('สาระน่ารู้') || lower.includes('trivia')) {
             if (currentLines.length) sections[currentKey] = currentLines.join('\n');
             currentKey = 'trivia';
+            currentLines = [line];
+          } else if (lower.includes('ai') || lower.includes('tech')) {
+            if (currentLines.length) sections[currentKey] = currentLines.join('\n');
+            currentKey = 'ai';
             currentLines = [line];
           } else {
             currentLines.push(line);

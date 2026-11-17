@@ -46,3 +46,52 @@ func TestDashboardEndpoint(t *testing.T) {
 		}
 	}
 }
+
+func TestPWARoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	// 1. Manifest
+	reqM := httptest.NewRequest(http.MethodGet, "/manifest.json", nil)
+	rrM := httptest.NewRecorder()
+	r.ServeHTTP(rrM, reqM)
+	if rrM.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for manifest.json, got %d", rrM.Code)
+	}
+	if !strings.Contains(rrM.Header().Get("Content-Type"), "json") {
+		t.Errorf("Expected JSON content-type for manifest, got %s", rrM.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(rrM.Body.String(), "Pocket Sentinel") {
+		t.Errorf("Expected manifest body to contain 'Pocket Sentinel'")
+	}
+
+	// 2. Service Worker
+	reqSW := httptest.NewRequest(http.MethodGet, "/sw.js", nil)
+	rrSW := httptest.NewRecorder()
+	r.ServeHTTP(rrSW, reqSW)
+	if rrSW.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for sw.js, got %d", rrSW.Code)
+	}
+	if !strings.Contains(rrSW.Header().Get("Content-Type"), "javascript") {
+		t.Errorf("Expected javascript content-type for sw.js, got %s", rrSW.Header().Get("Content-Type"))
+	}
+	if rrSW.Header().Get("Service-Worker-Allowed") != "/" {
+		t.Errorf("Expected Service-Worker-Allowed header to be '/'")
+	}
+
+	// 3. Icons
+	for _, path := range []string{"/icon-192.png", "/icon-512.png", "/icon.svg"} {
+		reqI := httptest.NewRequest(http.MethodGet, path, nil)
+		rrI := httptest.NewRecorder()
+		r.ServeHTTP(rrI, reqI)
+		if rrI.Code != http.StatusOK {
+			t.Errorf("Expected 200 for %s, got %d", path, rrI.Code)
+		}
+		if rrI.Body.Len() == 0 {
+			t.Errorf("Expected non-empty body for %s", path)
+		}
+	}
+}

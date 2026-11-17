@@ -1,5 +1,7 @@
 server
 server.new
+digest
+*.log
 *.exe
 *.dll
 *.so

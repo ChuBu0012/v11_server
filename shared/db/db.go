@@ -56,6 +56,9 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		disk_free_gb REAL NOT NULL,
 		battery_level REAL,
 		battery_status TEXT,
+		host_memory_total_mb REAL,
+		host_memory_used_mb REAL,
+		host_memory_free_mb REAL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX IF NOT EXISTS idx_health_samples_timestamp ON health_samples(timestamp DESC);
@@ -71,6 +74,16 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to create tables: %w", err)
+	}
+
+	// Apply migrations for columns that may not exist in pre-existing databases
+	migrations := []string{
+		"ALTER TABLE health_samples ADD COLUMN host_memory_total_mb REAL;",
+		"ALTER TABLE health_samples ADD COLUMN host_memory_used_mb REAL;",
+		"ALTER TABLE health_samples ADD COLUMN host_memory_free_mb REAL;",
+	}
+	for _, migration := range migrations {
+		_, _ = db.Exec(migration)
 	}
 
 	return db, nil

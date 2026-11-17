@@ -1,25 +1,18 @@
-- **SSH Host Alias:** `v11` (configured in `~/.ssh/config` via Tailscale IP `100.92.194.87`, user `u0_a244`, key-based auth enabled — no password prompt).
-- **Device & OS:** vivo 1804 (V11), Android 10 (non-rooted), Termux (`android/arm64` / `aarch64`).
-- **CPU:** Qualcomm Snapdragon 660 (`SDM660`), 8-core ARM64 architecture (5 active cores visible under normal governor).
-- **Memory & Swap:** `5.6Gi` Physical RAM (`~2.8Gi` available) + `3.0Gi` zRAM Swap (`~1.5Gi` free).
-  - *Constraint:* Keep active Go services lightweight (`< 300MB` RAM per process) to prevent Android 10 Low Memory Killer (LMK) eviction.
-- **Storage / Disk:** `/dev/block/dm-1` (`107G` total, `74G` available at `/data`).
-- **Primary Stack:** Go (compiled standalone binary) managed by `PM2` and exposed externally via `ngrok` tunnel.
-- **Remote Project Path:** `~/go-app` (`/data/data/com.termux/files/home/go-app`).
-- **Default Service Port:** `8080` (`http://localhost:8080`).
+# AGENTS.md — Pocket Sentinel (go-app)
 
-## 2. Strict OS & Runtime Constraints
-- **NO Root / Systemd / Docker:** Never use `sudo`, `systemctl`, `service`, or `docker`.
-- **Package Manager:** Always use `pkg install <pkg>` (never `apt-get`).
-- **Go Compilation Rules:**
-  - Always compile to a binary before running under PM2 (`go build -o server .`).
-  - **NEVER** run `pm2 start "go run ..."` (causes orphaned child processes and high memory overhead).
-  - If cross-compiling from macOS (ARM64), use `CGO_ENABLED=0 GOOS=linux GOARCH=arm64` or `GOOS=android GOARCH=arm64` with pure-Go libraries (e.g., `modernc.org/sqlite` for SQLite).
-- **Android Hardware Integration:** Invoke `termux-*` CLI tools (e.g., `termux-battery-status`, `termux-notification`, `termux-torch`) from Go via `os/exec`.
+## 1. Project Overview & Stack
+- **Role:** Pocket Sentinel — autonomous health and telemetry monitoring service
+- **Stack:**
+  - Go (Gin HTTP Framework)
+  - SQLite: Pure-Go driver (`modernc.org/sqlite`) ห้ามใช้ CGO เพื่อป้องกันปัญหา build บน Android Kernel 4.4
+  - Process Manager: PM2 (`ecosystem.config.js` คุม `go-server` และ `ngrok-tunnel`)
+  - Public Ingress: `ngrok` (รันผ่าน `run-ngrok.sh` ด้วย termux-chroot)
+  - Port: `8080` (`http://localhost:8080`)
 
-## 3. Process Management (`PM2`)
-- **Active Config:** `ecosystem.config.js` (defines `go-server` and `ngrok-tunnel`).
-- **Persistence:** Always run `pm2 save` after modifying PM2 processes so `~/.bashrc` auto-restores them via `pm2 resurrect`.
-- **Log Inspection Rule:** When inspecting PM2 logs remotely, **ALWAYS pass `--nostream`** so the SSH session does not hang:
-  ```bash
-  ssh v11 "pm2 logs go-server --lines 30 --nostream"
+## 2. Development & Build Rules (On-Device Independent)
+- **Standalone Binary:** คุณสามารถพัฒนา แก้ไขโค้ด และคอมไพล์บน v11 ได้โดยตรงด้วย:
+  `go build -o server .`
+- **ข้อห้ามเด็ดขาด:** ห้ามสั่ง `pm2 start "go run ..."` เด็ดขาด เพราะจะทำให้เกิด Orphan process กิน RAM มหาศาลและถูก LMK ฆ่าทิ้ง
+- **Restart Cycle:** เมื่อคอมไพล์ binary ใหม่เสร็จแล้ว ให้ reload process ด้วย:
+  `pm2 restart go-server`
+  `pm2 logs go-server --lines 20 --nostream`
