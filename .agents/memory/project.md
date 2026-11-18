@@ -48,3 +48,4 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 
 ## Next Steps
 - Verify automated daily execution at 13:00 Bangkok time via `crond` on vivo V11.
+- [Planned v2.1] Telegram-to-agy Async Agent Bridge with Multi-Layer Prompt Injection Guard (Spec-Kit ready in `.agents/docs/spec-kit/agent-bridge/`).
