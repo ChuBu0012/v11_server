@@ -33,6 +33,7 @@
   <script src="/static/js/components/digest.js"></script>
   <script src="/static/js/components/events.js"></script>
   <script src="/static/js/components/relay.js"></script>
+  <script src="/static/js/components/schedule-summary.js"></script>
 
   <!-- Alpine.js (Lightweight Reactive UI without Node build step) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -78,6 +79,23 @@
             <span id="core-status-text" x-text="statusText">Core Standby</span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="wrap next-up-section" aria-labelledby="next-up-title" x-data="scheduleSummaryComponent()" x-init="init()">
+      <div class="next-up-head">
+        <div><p class="eyebrow">YOUR DAY</p><h2 id="next-up-title">Next up</h2></div>
+        <a class="next-up-link" href="/schedule">Open schedule <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+      </div>
+      <div class="next-up-list" aria-live="polite">
+        <template x-if="loading"><p class="next-up-empty">Loading your upcoming reminders…</p></template>
+        <template x-if="!loading && failed"><p class="next-up-empty">Could not load your schedule right now.</p></template>
+        <template x-if="!loading && !failed && items.length === 0"><p class="next-up-empty">Nothing coming up. Your day is clear.</p></template>
+        <template x-for="item in items" :key="item.reminder_id + '-' + item.event_at">
+          <a class="next-up-item" :href="'/schedule?date=' + encodeURIComponent(item.event_at)">
+            <span class="next-up-time" x-text="time(item.event_at)"></span><span class="next-up-copy"><strong x-text="item.title"></strong><small x-text="item.details || label(item)"></small></span><i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+          </a>
+        </template>
       </div>
     </section>
 

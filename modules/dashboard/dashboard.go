@@ -14,6 +14,9 @@ var indexHTML []byte
 //go:embed tele-bridge.html
 var teleBridgeHTML []byte
 
+//go:embed schedule.html
+var scheduleHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -57,6 +60,8 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/tele-brige", m.HandleTeleBridge)
 	r.GET("/relay", m.HandleTeleBridge)
 	r.HEAD("/relay", m.HandleTeleBridge)
+	r.GET("/schedule", m.HandleSchedule)
+	r.HEAD("/schedule", m.HandleSchedule)
 
 	subFS, err := fs.Sub(staticFS, "static")
 	if err == nil {
@@ -72,6 +77,11 @@ func (m *Module) HandleDashboard(c *gin.Context) {
 // HandleTeleBridge serves the dedicated standalone Telegram Bridge interface.
 func (m *Module) HandleTeleBridge(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", teleBridgeHTML)
+}
+
+// HandleSchedule serves the focused personal reminder calendar.
+func (m *Module) HandleSchedule(c *gin.Context) {
+	c.Data(http.StatusOK, "text/html; charset=utf-8", scheduleHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.

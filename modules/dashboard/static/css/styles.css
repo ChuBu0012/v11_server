@@ -289,6 +289,28 @@ h1 { margin: 0; font-size: clamp(32px, 5vw, 44px); line-height: 1.08; letter-spa
 h2 { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -.45px; }
 .section-note { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
 
+.next-up-section { padding:24px; margin-top:8px; margin-bottom:10px; border:1px solid var(--hairline); border-radius:var(--radius); background:var(--canvas); }
+.next-up-head { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:12px; }
+.next-up-head .eyebrow { margin-bottom:3px; }
+.next-up-link { min-height:44px; display:inline-flex; align-items:center; gap:8px; padding:0 16px; border-radius:999px; color:#fff; background:var(--blue); text-decoration:none; font-size:13px; font-weight:600; transition:opacity .16s ease,transform .16s ease; }
+.next-up-link:hover { opacity:.9; }
+.next-up-link:focus-visible,.next-up-item:focus-visible { outline:2px solid var(--blue-focus); outline-offset:3px; }
+.next-up-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.next-up-item { min-width:0; min-height:68px; display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--hairline); border-radius:14px; color:var(--ink); background:var(--pearl); text-decoration:none; transition:border-color .16s ease,background .16s ease; }
+.next-up-item:hover { border-color:var(--blue); background:var(--bg-hover); }
+.next-up-time { min-width:52px; color:var(--blue); font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
+.next-up-copy { min-width:0; display:grid; gap:2px; flex:1; }
+.next-up-copy strong,.next-up-copy small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.next-up-copy strong { font-size:14px; }
+.next-up-copy small,.next-up-empty { color:var(--muted); font-size:12px; }
+.next-up-item > i { color:var(--muted); }
+.next-up-empty { margin:0; padding:12px 2px; }
+@media (max-width: 700px) {
+  .next-up-section { padding:18px 15px; }
+  .next-up-list { grid-template-columns:1fr; gap:7px; }
+  .next-up-item { min-height:58px; }
+}
+
 .metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
 .card {
   min-width: 0; background: var(--canvas); border: 1px solid var(--hairline);

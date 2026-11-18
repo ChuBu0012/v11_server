@@ -31,6 +31,9 @@ type Config struct {
 
 	// Relay
 	RelayPIN string // ENV: RELAY_PIN (default: "1804")
+
+	// Quiet Schedule
+	ReminderPIN string // ENV: REMINDER_PIN
 }
 
 // Load reads configuration from environment variables, applying defaults
@@ -116,6 +119,7 @@ func Load() (*Config, error) {
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
 	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
+	cfg.ReminderPIN = os.Getenv("REMINDER_PIN")
 
 	if pin := os.Getenv("RELAY_PIN"); pin != "" {
 		cfg.RelayPIN = pin
@@ -163,9 +167,16 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****, ReminderPIN:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
-		token, chatID, c.TelegramTimeout, geminiKey,
+		token, chatID, c.TelegramTimeout, geminiKey, secretState(c.ReminderPIN),
 	)
+}
+
+func secretState(value string) string {
+	if value == "" {
+		return "(not set)"
+	}
+	return "****"
 }

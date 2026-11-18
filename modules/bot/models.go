@@ -67,10 +67,11 @@ type APIResponse struct {
 
 // SendMessagePayload is the request payload for sendMessage.
 type SendMessagePayload struct {
-	ChatID      int64                 `json:"chat_id"`
-	Text        string                `json:"text"`
-	ParseMode   string                `json:"parse_mode,omitempty"`
-	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+	ChatID              int64                 `json:"chat_id"`
+	Text                string                `json:"text"`
+	ParseMode           string                `json:"parse_mode,omitempty"`
+	ReplyMarkup         *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+	DisableNotification bool                  `json:"disable_notification,omitempty"`
 }
 
 // EditMessageTextPayload is the request payload for editMessageText.

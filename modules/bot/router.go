@@ -21,20 +21,26 @@ type TelegramSender interface {
 
 // Router handles incoming Telegram messages and routes commands.
 type Router struct {
-	client     *Client
-	sender     TelegramSender
-	authorizer *Authorizer
-	torch      *TorchController
-	executor   *SafeExecutor
-	keyboards  *KeyboardsModule
-	statusProv StatusCardProvider
-	rebootFunc func()
-	digestFunc func(ctx context.Context) (string, error)
+	client          *Client
+	sender          TelegramSender
+	authorizer      *Authorizer
+	torch           *TorchController
+	executor        *SafeExecutor
+	keyboards       *KeyboardsModule
+	statusProv      StatusCardProvider
+	rebootFunc      func()
+	digestFunc      func(ctx context.Context) (string, error)
+	callbackHandler func(ctx context.Context, callback *CallbackQuery) error
 
 	runner      *AgentRunner
 	guard       *PromptGuard
 	scrubber    *OutputScrubber
 	ramProvider func() float64
+}
+
+// WithCallbackHandler registers an application callback handler after owner authorization.
+func WithCallbackHandler(handler func(context.Context, *CallbackQuery) error) RouterOption {
+	return func(r *Router) { r.callbackHandler = handler }
 }
 
 // RouterOption configures a Router.
@@ -215,6 +221,9 @@ func (r *Router) HandleUpdate(ctx context.Context, u Update) error {
 
 	// 2. Handle CallbackQuery (inline button clicks)
 	if u.CallbackQuery != nil {
+		if r.callbackHandler != nil && strings.HasPrefix(u.CallbackQuery.Data, "qs:") {
+			return r.callbackHandler(ctx, u.CallbackQuery)
+		}
 		return r.keyboards.HandleCallbackQuery(ctx, u.CallbackQuery)
 	}
 

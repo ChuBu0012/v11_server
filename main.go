@@ -24,6 +24,7 @@ import (
 	"v11-server/modules/digest"
 	"v11-server/modules/logs"
 	"v11-server/modules/relay"
+	"v11-server/modules/reminders"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
 	"v11-server/shared/config"
@@ -74,19 +75,21 @@ func setupAndroidDNS() {
 }
 
 type App struct {
-	cfg       *config.Config
-	db        *sql.DB
-	port      string
-	system    *system.Module
-	logs      *logs.Module
-	telemetry *telemetry.Module
-	dashboard *dashboard.Module
-	collector *telemetry.Collector
-	worker    *worker.Worker
-	botPoller *bot.Poller
-	botClient *bot.Client
-	digest    *digest.Module
-	relay     *relay.Module
+	cfg             *config.Config
+	db              *sql.DB
+	port            string
+	system          *system.Module
+	logs            *logs.Module
+	telemetry       *telemetry.Module
+	dashboard       *dashboard.Module
+	collector       *telemetry.Collector
+	worker          *worker.Worker
+	botPoller       *bot.Poller
+	botClient       *bot.Client
+	digest          *digest.Module
+	relay           *relay.Module
+	reminders       *reminders.Module
+	reminderService *reminders.Service
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -109,6 +112,10 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	sysMod := system.New(startTime)
 	logsMod := logs.New(dbConn)
 	dashMod := dashboard.New()
+	reminderStore, reminderErr := reminders.NewStore(dbConn)
+	if reminderErr != nil {
+		log.Printf("Warning: failed to initialize quiet schedule: %v", reminderErr)
+	}
 
 	thresholds := alerts.Thresholds{
 		BatteryPercent: float64(cfg.BatteryThreshold),
@@ -147,12 +154,20 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
+	var reminderService *reminders.Service
+	var reminderTelegramReady bool
 	if cfg.TelegramEnabled() {
 		var clientOpts []bot.ClientOption
 		if apiURL := os.Getenv("TELEGRAM_API_URL"); apiURL != "" {
 			clientOpts = append(clientOpts, bot.WithBaseURL(apiURL))
 		}
 		botClient = bot.NewClient(cfg.TelegramBotToken, clientOpts...)
+		if reminderStore != nil {
+			if chatID, err := strconv.ParseInt(cfg.TelegramChatID, 10, 64); err == nil && chatID != 0 {
+				reminderService = reminders.NewService(reminderStore, botClient, chatID)
+				reminderTelegramReady = true
+			}
+		}
 		botAuth := bot.NewAuthorizer(cfg.TelegramChatID, logsMod)
 		torchCtrl := bot.NewTorchController()
 		execRunner := bot.NewSafeExecutor()
@@ -166,6 +181,9 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		}
 
 		var routerOpts []bot.RouterOption
+		if reminderService != nil {
+			routerOpts = append(routerOpts, bot.WithCallbackHandler(reminderService.HandleCallback))
+		}
 		routerOpts = append(routerOpts, bot.WithRebootFunc(rebootHandler))
 		if digestSvc != nil {
 			routerOpts = append(routerOpts, bot.WithDigestFunc(func(ctx context.Context) (string, error) {
@@ -193,21 +211,30 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botRouter := bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
 	}
+	if reminderStore != nil && reminderService == nil {
+		reminderService = reminders.NewService(reminderStore, nil, 0)
+	}
+	var reminderMod *reminders.Module
+	if reminderStore != nil {
+		reminderMod = reminders.NewModule(reminderStore, cfg.ReminderPIN, reminderTelegramReady)
+	}
 
 	return &App{
-		cfg:       cfg,
-		db:        dbConn,
-		port:      port,
-		system:    sysMod,
-		logs:      logsMod,
-		telemetry: telemetryMod,
-		dashboard: dashMod,
-		collector: collector,
-		worker:    bgWorker,
-		botPoller: botPoller,
-		botClient: botClient,
-		digest:    digestMod,
-		relay:     relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
+		cfg:             cfg,
+		db:              dbConn,
+		port:            port,
+		system:          sysMod,
+		logs:            logsMod,
+		telemetry:       telemetryMod,
+		dashboard:       dashMod,
+		collector:       collector,
+		worker:          bgWorker,
+		botPoller:       botPoller,
+		botClient:       botClient,
+		digest:          digestMod,
+		relay:           relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
+		reminders:       reminderMod,
+		reminderService: reminderService,
 	}
 }
 
@@ -227,6 +254,9 @@ func setupRouter(app *App) *gin.Engine {
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
 	app.relay.RegisterRoutes(r)
+	if app.reminders != nil {
+		app.reminders.RegisterRoutes(r)
+	}
 
 	return r
 }
@@ -266,6 +296,9 @@ func main() {
 	// Start background worker with cancellable context
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
+	if app.reminderService != nil {
+		app.reminderService.Start(workerCtx)
+	}
 	startWeeklyEventLogPurge(workerCtx, app.logs)
 
 	if app.botPoller != nil {

@@ -129,13 +129,23 @@ func (c *Client) GetUpdates(ctx context.Context, offset int64, limit int, timeou
 
 // SendMessage sends an HTML formatted text message.
 func (c *Client) SendMessage(ctx context.Context, chatID int64, text string, replyMarkup *InlineKeyboardMarkup) (*Message, error) {
+	return c.sendMessage(ctx, chatID, text, replyMarkup, false)
+}
+
+// SendMessageSilent sends a message without a sound or vibration notification.
+func (c *Client) SendMessageSilent(ctx context.Context, chatID int64, text string, replyMarkup *InlineKeyboardMarkup) (*Message, error) {
+	return c.sendMessage(ctx, chatID, text, replyMarkup, true)
+}
+
+func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, replyMarkup *InlineKeyboardMarkup, silent bool) (*Message, error) {
 	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", c.baseURL, c.token)
 
 	payload := SendMessagePayload{
-		ChatID:      chatID,
-		Text:        text,
-		ParseMode:   "HTML",
-		ReplyMarkup: replyMarkup,
+		ChatID:              chatID,
+		Text:                text,
+		ParseMode:           "HTML",
+		ReplyMarkup:         replyMarkup,
+		DisableNotification: silent,
 	}
 
 	data, err := json.Marshal(payload)
