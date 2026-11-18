@@ -35,8 +35,8 @@ type rssFeed struct {
 
 // AtomEntry represents an Atom entry.
 type atomEntry struct {
-	Title   string `xml:"title"`
-	Link    struct {
+	Title string `xml:"title"`
+	Link  struct {
 		Href string `xml:"href,attr"`
 	} `xml:"link"`
 	Summary string `xml:"summary"`

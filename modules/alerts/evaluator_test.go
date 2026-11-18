@@ -163,4 +163,4 @@ func TestTransitions(t *testing.T) {
 }
 
 func ptrFloat(f float64) *float64 { return &f }
-func ptrBool(b bool) *bool       { return &b }
+func ptrBool(b bool) *bool        { return &b }

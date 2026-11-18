@@ -3,30 +3,33 @@
 // =============================================================================
 
 document.addEventListener('alpine:init', () => {
+  // Keep Three.js state outside of Alpine's reactive Proxy to prevent
+  // 'get' on proxy: property 'modelViewMatrix' is a read-only and non-configurable error
+  const tc = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    controls: null,
+    outerMesh: null,
+    innerMesh: null,
+    ringMesh: null,
+    particles: null,
+    coreLight: null,
+    targetColor: null,
+    currentColor: null,
+    targetEmissive: null,
+    currentEmissive: null,
+    baseRotationSpeed: 0.007,
+    isPulsing: false,
+    pulseTime: 0,
+    animId: null,
+    isPaused: false
+  };
+
   Alpine.data('threeCoreComponent', () => ({
     initialized: false,
     statusText: 'Core Standby',
     dotStyle: { background: '#2997ff', boxShadow: '0 0 8px #2997ff' },
-    threeCore: {
-      scene: null,
-      camera: null,
-      renderer: null,
-      controls: null,
-      outerMesh: null,
-      innerMesh: null,
-      ringMesh: null,
-      particles: null,
-      coreLight: null,
-      targetColor: null,
-      currentColor: null,
-      targetEmissive: null,
-      currentEmissive: null,
-      baseRotationSpeed: 0.007,
-      isPulsing: false,
-      pulseTime: 0,
-      animId: null,
-      isPaused: false
-    },
 
     init() {
       this.initThree();
@@ -53,8 +56,6 @@ document.addEventListener('alpine:init', () => {
 
       const width = container.clientWidth || 260;
       const height = container.clientHeight || 220;
-
-      const tc = this.threeCore;
       tc.scene = new THREE.Scene();
       tc.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
       tc.camera.position.set(0, 0, 5.0);
@@ -212,7 +213,6 @@ document.addEventListener('alpine:init', () => {
     updateCoreState(data) {
       if (!this.initialized) return;
 
-      const tc = this.threeCore;
       const sample = data ? data.latest_sample : null;
       const conditions = data ? (data.conditions || []) : [];
 

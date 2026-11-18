@@ -1,5 +1,5 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v2';
+const CACHE_NAME = 'sentinel-shell-v3';
 const SHELL_ASSETS = [
   '/',
   '/manifest.json',

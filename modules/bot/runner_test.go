@@ -676,3 +676,42 @@ func TestRunner_ReentrantCallbackSafety(t *testing.T) {
 		t.Fatal("DEADLOCK DETECTED: onComplete could not query runner status")
 	}
 }
+
+// TestRunner_EffortFlagPassed verifies that Effort specified in TaskRequest is passed as --effort to the agy command.
+func TestRunner_EffortFlagPassed(t *testing.T) {
+	var capturedArgs []string
+	mockExec := func(ctx context.Context, dir string, env []string, binPath string, args ...string) ([]byte, int, error) {
+		capturedArgs = args
+		return []byte("done"), 0, nil
+	}
+
+	r := NewAgentRunner(WithCustomExec(mockExec))
+
+	done := make(chan bool, 1)
+	err := r.DispatchAsync(context.Background(), TaskRequest{
+		RawPrompt: "check battery status",
+		Effort:    "low",
+	}, func(res TaskResult) {
+		done <- true
+	})
+	if err != nil {
+		t.Fatalf("dispatch error: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for task completion")
+	}
+
+	foundEffort := false
+	for i, arg := range capturedArgs {
+		if arg == "--effort" && i+1 < len(capturedArgs) && capturedArgs[i+1] == "low" {
+			foundEffort = true
+			break
+		}
+	}
+	if !foundEffort {
+		t.Fatalf("expected args to contain '--effort low', got: %v", capturedArgs)
+	}
+}

@@ -14,9 +14,9 @@ type StatusCardProvider interface {
 
 // KeyboardsModule manages inline keyboards and callback query routing.
 type KeyboardsModule struct {
-	client       *Client
-	statusProv   StatusCardProvider
-	torch        *TorchController
+	client     *Client
+	statusProv StatusCardProvider
+	torch      *TorchController
 }
 
 // NewKeyboardsModule creates an inline keyboard manager.

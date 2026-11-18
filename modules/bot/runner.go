@@ -26,6 +26,7 @@ var (
 type TaskRequest struct {
 	ChatID    int64
 	RawPrompt string
+	Effort    string
 	CreatedAt time.Time
 }
 
@@ -174,9 +175,13 @@ func (r *AgentRunner) DispatchAsync(ctx context.Context, req TaskRequest, onComp
 		log.Printf("[bot:runner] starting async agy execution: chat_id=%d, timeout=%v", req.ChatID, r.timeout)
 
 		cleanEnv := SanitizeEnvironment(os.Environ())
+		effort := strings.ToLower(strings.TrimSpace(req.Effort))
+		if effort != "low" && effort != "medium" && effort != "high" && effort != "max" {
+			effort = "medium"
+		}
 		args := []string{
 			"--dangerously-skip-permissions",
-			"--effort", "medium",
+			"--effort", effort,
 			"-p", req.RawPrompt,
 		}
 

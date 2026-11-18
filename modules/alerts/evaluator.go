@@ -115,9 +115,9 @@ func boolToFloat(b bool) float64 {
 type TransitionKind int
 
 const (
-	NoTransition TransitionKind = iota
-	TransitionToAlert    // OK -> Problem
-	TransitionToRecovery // Problem -> OK
+	NoTransition         TransitionKind = iota
+	TransitionToAlert                   // OK -> Problem
+	TransitionToRecovery                // Problem -> OK
 )
 
 func (t TransitionKind) String() string {
@@ -133,10 +133,10 @@ func (t TransitionKind) String() string {
 
 // AlertState tracks the current state of a single condition for edge detection.
 type AlertState struct {
-	ConditionType ConditionType
-	Active        bool
-	TriggeredAt   time.Time
-	LastCheckedAt time.Time
+	ConditionType  ConditionType
+	Active         bool
+	TriggeredAt    time.Time
+	LastCheckedAt  time.Time
 	ValueAtTrigger float64
 }
 

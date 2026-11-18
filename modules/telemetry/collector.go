@@ -37,15 +37,15 @@ type AlertProcessor interface {
 
 // Collector coordinates periodic health sampling and alert processing.
 type Collector struct {
-	repo           *Repository
-	sysProvider    SystemMetricsProvider
-	batProvider    BatteryProvider
+	repo            *Repository
+	sysProvider     SystemMetricsProvider
+	batProvider     BatteryProvider
 	hostMemProvider HostMemoryProvider
-	alertProc      AlertProcessor
-	retentionAge   time.Duration
-	retentionRows  int
-	lastCollected  time.Time
-	lastError      string
+	alertProc       AlertProcessor
+	retentionAge    time.Duration
+	retentionRows   int
+	lastCollected   time.Time
+	lastError       string
 }
 
 // CollectorOption configures the Collector.

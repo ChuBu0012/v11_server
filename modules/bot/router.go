@@ -164,6 +164,48 @@ func (r *Router) sendMessage(ctx context.Context, chatID int64, text string, rep
 	return nil, nil
 }
 
+func (r *Router) editMessage(ctx context.Context, chatID int64, messageID int64, text string, replyMarkup *InlineKeyboardMarkup) error {
+	if r.client != nil {
+		return r.client.EditMessageText(ctx, chatID, messageID, text, replyMarkup)
+	}
+	if editor, ok := r.sender.(interface {
+		EditMessageText(ctx context.Context, chatID int64, messageID int64, text string, replyMarkup *InlineKeyboardMarkup) error
+	}); ok {
+		return editor.EditMessageText(ctx, chatID, messageID, text, replyMarkup)
+	}
+	return nil
+}
+
+// ParseTaskEffort extracts an optional [low|medium|high|max] or --effort=... prefix
+// and returns the normalized effort (low, medium, high, max) and the clean prompt.
+func ParseTaskEffort(input string) (string, string) {
+	trimmed := strings.TrimSpace(input)
+	if strings.HasPrefix(trimmed, "[") {
+		closeIdx := strings.Index(trimmed, "]")
+		if closeIdx > 1 {
+			eff := strings.ToLower(strings.TrimSpace(trimmed[1:closeIdx]))
+			switch eff {
+			case "low", "medium", "high", "max":
+				rest := strings.TrimSpace(trimmed[closeIdx+1:])
+				return eff, rest
+			}
+		}
+	}
+	if strings.HasPrefix(trimmed, "--effort=") {
+		parts := strings.SplitN(trimmed, " ", 2)
+		eff := strings.ToLower(strings.TrimPrefix(parts[0], "--effort="))
+		switch eff {
+		case "low", "medium", "high", "max":
+			rest := ""
+			if len(parts) > 1 {
+				rest = strings.TrimSpace(parts[1])
+			}
+			return eff, rest
+		}
+	}
+	return "medium", trimmed
+}
+
 // GetKeyboardsModule returns the keyboards module.
 func (r *Router) GetKeyboardsModule() *KeyboardsModule {
 	return r.keyboards
@@ -231,19 +273,24 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			return err
 		}
 
-		prompt := ""
+		rawInput := ""
 		if len(text) > len(parts[0]) {
-			prompt = strings.TrimSpace(text[len(parts[0]):])
+			rawInput = strings.TrimSpace(text[len(parts[0]):])
 		}
 
-		if prompt == "" {
-			usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
+		if rawInput == "" {
+			usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task [low|medium|high] &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
 				"ตัวอย่าง:\n" +
-				"• <code>/task ตรวจสอบ disk และ memory</code>\n" +
-				"• <code>/task เช็คสถานะ pm2 go-server</code>\n" +
-				"• <code>/task ตรวจสอบ log ล่าสุดของระบบ</code>"
+				"• <code>/task [low] ตรวจสอบ disk และ memory</code>\n" +
+				"• <code>/task [medium] เช็คสถานะ pm2 go-server</code>\n" +
+				"• <code>/task [high] วิเคราะห์สถาปัตยกรรมและช่วยรีแฟกเตอร์</code>"
 			_, err := r.sendMessage(ctx, chatID, usageHTML, keyboard)
 			return err
+		}
+
+		effort, cleanPrompt := ParseTaskEffort(rawInput)
+		if cleanPrompt == "" {
+			cleanPrompt = rawInput
 		}
 
 		if !r.runner.CanAcquireLock() {
@@ -257,18 +304,18 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			return err
 		}
 
-		framedPrompt, err := r.guard.ValidateAndFrame(prompt)
+		framedPrompt, err := r.guard.ValidateAndFrame(cleanPrompt)
 		if err != nil {
 			if errors.Is(err, ErrPromptTooLong) {
 				lenHTML := fmt.Sprintf("⚠️ <b>ความยาวข้อความเกินกำหนด:</b> คำสั่งต้องไม่เกิน %d ตัวอักษร (ปัจจุบัน %d ตัวอักษร)",
-					MaxPromptLength, utf8.RuneCountInString(prompt))
+					MaxPromptLength, utf8.RuneCountInString(cleanPrompt))
 				_, sendErr := r.sendMessage(ctx, chatID, lenHTML, keyboard)
 				return sendErr
 			}
 			if errors.Is(err, ErrPromptEmpty) {
-				usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
+				usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task [low|medium|high] &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
 					"ตัวอย่าง:\n" +
-					"• <code>/task ตรวจสอบ disk และ memory</code>"
+					"• <code>/task [low] ตรวจสอบ disk และ memory</code>"
 				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, keyboard)
 				return sendErr
 			}
@@ -280,12 +327,21 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		taskReq := TaskRequest{
 			ChatID:    chatID,
 			RawPrompt: framedPrompt,
+			Effort:    effort,
 			CreatedAt: time.Now(),
 		}
 
-		ackSent := make(chan struct{})
+		ackSent := make(chan *Message, 1)
+		stopHeartbeat := make(chan struct{})
+
 		dispatchErr := r.runner.DispatchAsync(context.Background(), taskReq, func(result TaskResult) {
 			<-ackSent // Guarantee ACK has finished sending before transmitting result
+			select {
+			case <-stopHeartbeat:
+			default:
+				close(stopHeartbeat) // Stop heartbeat ticker if still active
+			}
+
 			ramMB := 0.0
 			if r.ramProvider != nil {
 				ramMB = r.ramProvider()
@@ -300,27 +356,54 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		})
 
 		if errors.Is(dispatchErr, ErrAgentBusy) {
-			close(ackSent) // Unblock on error
+			ackSent <- nil
 			busyHTML := "⏳ <b>Agent กำลังทำงานอื่นอยู่:</b> ไม่สามารถรับงานซ้อนได้ในขณะนี้ กรุณารอสักครู่แล้วลองใหม่อีกครั้ง\n(พิมพ์ /task_status เพื่อดูสถานะ)"
 			_, sendErr := r.sendMessage(ctx, chatID, busyHTML, keyboard)
 			return sendErr
 		}
 		if dispatchErr != nil {
-			close(ackSent) // Unblock on error
+			ackSent <- nil
 			_, sendErr := r.sendMessage(ctx, chatID, fmt.Sprintf("❌ ไม่สามารถเริ่มงานได้: %s", r.scrubber.EscapeHTML(dispatchErr.Error())), keyboard)
 			return sendErr
 		}
 
 		// Send immediate ACK (< 500ms)
-		promptSnippet := prompt
+		promptSnippet := cleanPrompt
 		if utf8.RuneCountInString(promptSnippet) > 60 {
 			runes := []rune(promptSnippet)
 			promptSnippet = string(runes[:60]) + "..."
 		}
-		ackHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⏱ กำลังประมวลผลในเบื้องหลัง (Timeout: 3 นาที)\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
-			r.scrubber.EscapeHTML(promptSnippet))
-		_, ackErr := r.sendMessage(ctx, chatID, ackHTML, keyboard)
-		close(ackSent) // Unblock background completion handler
+		ackHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: 3 นาที\n⏱ กำลังประมวลผลในเบื้องหลัง...\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
+			r.scrubber.EscapeHTML(promptSnippet), strings.ToUpper(effort))
+		ackMsg, ackErr := r.sendMessage(ctx, chatID, ackHTML, keyboard)
+		ackSent <- ackMsg
+
+		// Start in-place heartbeat ticker if message was sent successfully
+		if ackErr == nil && ackMsg != nil && ackMsg.MessageID > 0 {
+			go func(msgID int64, snippet, eff string) {
+				ticker := time.NewTicker(15 * time.Second)
+				defer ticker.Stop()
+				start := time.Now()
+				for {
+					select {
+					case <-stopHeartbeat:
+						return
+					case <-ticker.C:
+						elapsed := time.Since(start).Round(time.Second)
+						ramMB := 0.0
+						if r.ramProvider != nil {
+							ramMB = r.ramProvider()
+						}
+						progressHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: 3 นาที\n⏳ <b>กำลังประมวลผล...</b> (ผ่านไปแล้ว %s | RAM: %.1f MB)\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
+							r.scrubber.EscapeHTML(snippet), strings.ToUpper(eff), elapsed.String(), ramMB)
+						editCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+						_ = r.editMessage(editCtx, chatID, msgID, progressHTML, nil)
+						cancel()
+					}
+				}
+			}(ackMsg.MessageID, promptSnippet, effort)
+		}
+
 		return ackErr
 
 	case "/task_status":

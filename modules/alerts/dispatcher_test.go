@@ -68,9 +68,9 @@ func TestAlertManagerTransitionAndSuppression(t *testing.T) {
 
 	// Sample 1: Low disk (3 GB) -> should trigger alert
 	s1 := Sample{
-		Timestamp:   time.Now().UTC(),
-		DiskFreeGB:  3.0,
-		ServiceOK:   true,
+		Timestamp:  time.Now().UTC(),
+		DiskFreeGB: 3.0,
+		ServiceOK:  true,
 	}
 	if err := mgr.ProcessSample(s1); err != nil {
 		t.Fatalf("ProcessSample failed: %v", err)

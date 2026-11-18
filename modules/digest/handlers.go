@@ -38,8 +38,8 @@ func (m *Module) handleStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"settings":    settings,
-		"latest_run":  latest,
+		"settings":   settings,
+		"latest_run": latest,
 	})
 }
 

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -81,6 +83,7 @@ type App struct {
 	collector *telemetry.Collector
 	worker    *worker.Worker
 	botPoller *bot.Poller
+	botClient *bot.Client
 	digest    *digest.Module
 }
 
@@ -141,12 +144,13 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	})
 
 	var botPoller *bot.Poller
+	var botClient *bot.Client
 	if cfg.TelegramEnabled() {
 		var clientOpts []bot.ClientOption
 		if apiURL := os.Getenv("TELEGRAM_API_URL"); apiURL != "" {
 			clientOpts = append(clientOpts, bot.WithBaseURL(apiURL))
 		}
-		botClient := bot.NewClient(cfg.TelegramBotToken, clientOpts...)
+		botClient = bot.NewClient(cfg.TelegramBotToken, clientOpts...)
 		botAuth := bot.NewAuthorizer(cfg.TelegramChatID, logsMod)
 		torchCtrl := bot.NewTorchController()
 		execRunner := bot.NewSafeExecutor()
@@ -199,6 +203,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		collector: collector,
 		worker:    bgWorker,
 		botPoller: botPoller,
+		botClient: botClient,
 		digest:    digestMod,
 	}
 }
@@ -281,6 +286,26 @@ func main() {
 
 	go func() {
 		log.Printf("🚀 Pocket Sentinel running on port :%s (DB: %s)", port, dbPath)
+		if app.botClient != nil && app.cfg.TelegramChatID != "" {
+			go func() {
+				time.Sleep(1 * time.Second)
+				chatID, _ := strconv.ParseInt(app.cfg.TelegramChatID, 10, 64)
+				if chatID != 0 {
+					var m runtime.MemStats
+					runtime.ReadMemStats(&m)
+					ramMB := float64(m.Alloc) / 1024 / 1024
+					bootMsg := fmt.Sprintf("🚀 <b>Pocket Sentinel ออนไลน์แล้ว!</b>\n"+
+						"📍 <b>Version:</b> 2.1 (Async Agent Bridge)\n"+
+						"🆔 <b>PID:</b> <code>%d</code>\n"+
+						"💾 <b>Process RAM:</b> <code>%.1f MB</code>\n"+
+						"🕒 <b>เวลา:</b> %s",
+						os.Getpid(), ramMB, time.Now().Format("2006-01-02 15:04:05"))
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					_, _ = app.botClient.SendMessage(ctx, chatID, bootMsg, nil)
+				}
+			}()
+		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -290,6 +315,19 @@ func main() {
 	log.Printf("Received signal: %v. Initiating graceful shutdown...", sig)
 
 	_ = app.logs.RecordLog("info", "Server shutting down", fmt.Sprintf("signal=%v", sig))
+
+	if app.botClient != nil && app.cfg.TelegramChatID != "" {
+		chatID, _ := strconv.ParseInt(app.cfg.TelegramChatID, 10, 64)
+		if chatID != 0 {
+			downMsg := fmt.Sprintf("⚠️ <b>Pocket Sentinel กำลังรีสตาร์ท / ปิดระบบ</b>\n"+
+				"🆔 <b>PID:</b> <code>%d</code> (Signal: %v)\n"+
+				"🕒 <b>เวลา:</b> %s",
+				os.Getpid(), sig, time.Now().Format("2006-01-02 15:04:05"))
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			_, _ = app.botClient.SendMessage(ctx, chatID, downMsg, nil)
+		}
+	}
 
 	// 1. Cancel background worker
 	cancelWorker()

@@ -1,6 +1,7 @@
-server
-server.new
-digest
+/server
+/server.new
+/digest
+/digest.new
 *.log
 *.exe
 *.dll

@@ -915,3 +915,126 @@ func TestRouter_Task_CausalMessageOrdering_Deterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTaskEffort(t *testing.T) {
+	tests := []struct {
+		input       string
+		expectedEff string
+		expectedPrm string
+	}{
+		{"[low] check disk", "low", "check disk"},
+		{"[high] analyze architecture", "high", "analyze architecture"},
+		{"[medium] regular prompt", "medium", "regular prompt"},
+		{"[max] max reasoning", "max", "max reasoning"},
+		{"--effort=high deep check", "high", "deep check"},
+		{"--effort=low quick ping", "low", "quick ping"},
+		{"standard prompt without effort", "medium", "standard prompt without effort"},
+		{"[invalid] prompt", "medium", "[invalid] prompt"},
+	}
+
+	for _, tt := range tests {
+		eff, prm := ParseTaskEffort(tt.input)
+		if eff != tt.expectedEff {
+			t.Errorf("ParseTaskEffort(%q) eff = %q, want %q", tt.input, eff, tt.expectedEff)
+		}
+		if prm != tt.expectedPrm {
+			t.Errorf("ParseTaskEffort(%q) prm = %q, want %q", tt.input, prm, tt.expectedPrm)
+		}
+	}
+}
+
+func TestRouter_Task_EffortPassedToSubprocess(t *testing.T) {
+	var capturedArgs []string
+	var mu sync.Mutex
+
+	mockExec := func(ctx context.Context, dir string, env []string, binPath string, args ...string) ([]byte, int, error) {
+		mu.Lock()
+		capturedArgs = args
+		mu.Unlock()
+		return []byte("done"), 0, nil
+	}
+
+	runner := NewAgentRunner(WithCustomExec(mockExec))
+	router, recorder := setupTestRouterWithRecorder(t, runner)
+
+	err := router.HandleUpdate(context.Background(), Update{
+		UpdateID: 1,
+		Message:  &Message{MessageID: 101, Chat: &Chat{ID: 123456}, Text: "/task [high] check system vitals"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate failed: %v", err)
+	}
+
+	ackMsg, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("failed to receive ACK: %v", err)
+	}
+	if !strings.Contains(ackMsg.Text, "HIGH") {
+		t.Errorf("ACK should mention HIGH effort, got: %s", ackMsg.Text)
+	}
+
+	_, _ = recorder.nextMessage(2 * time.Second)
+
+	mu.Lock()
+	defer mu.Unlock()
+	foundEffort := false
+	for i, arg := range capturedArgs {
+		if arg == "--effort" && i+1 < len(capturedArgs) && capturedArgs[i+1] == "high" {
+			foundEffort = true
+			break
+		}
+	}
+	if !foundEffort {
+		t.Errorf("expected subprocess args to contain '--effort high', got: %v", capturedArgs)
+	}
+}
+
+func TestRouter_EditMessage(t *testing.T) {
+	var editedText string
+	var editedMsgID int64
+	var mu sync.Mutex
+
+	mockTransport := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if strings.Contains(r.URL.Path, "editMessageText") {
+			var payload EditMessageTextPayload
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			editedText = payload.Text
+			editedMsgID = payload.MessageID
+
+			resp := APIResponse{
+				OK:     true,
+				Result: json.RawMessage(`{"message_id": 99}`),
+			}
+			bodyBytes, _ := json.Marshal(resp)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(bytes.NewReader(bodyBytes)),
+			}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Body:       io.NopCloser(strings.NewReader("404")),
+		}, nil
+	})
+
+	httpClient := &http.Client{Transport: mockTransport}
+	client := NewClient("TEST_TOKEN", WithBaseURL("https://api.telegram.org"), WithHTTPClient(httpClient))
+	router := NewRouter(client, NewAuthorizer("123456", nil), NewTorchController(), NewSafeExecutor(), nil)
+
+	err := router.editMessage(context.Background(), 123456, 99, "⏳ กำลังประมวลผล... (15s)", nil)
+	if err != nil {
+		t.Fatalf("editMessage failed: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if editedMsgID != 99 {
+		t.Errorf("expected message_id 99, got %d", editedMsgID)
+	}
+	if !strings.Contains(editedText, "กำลังประมวลผล") {
+		t.Errorf("expected progress text, got: %s", editedText)
+	}
+}

@@ -82,7 +82,7 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadOverrides(t *testing.T) {
 	clearConfigEnv(t)
 	withEnv(t, map[string]string{
-		"SAMPLE_INTERVAL":   "30s",
+		"SAMPLE_INTERVAL":    "30s",
 		"RETENTION_MAX_AGE":  "24h",
 		"RETENTION_MAX_ROWS": "1000",
 		"BATTERY_THRESHOLD":  "15",

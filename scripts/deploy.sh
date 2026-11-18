@@ -15,6 +15,27 @@ REMOTE_HOST="v11"
 REMOTE_DIR="/data/data/com.termux/files/home/go-app"
 SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 
+notify_telegram() {
+  local msg="$1"
+  if [[ -f .env ]]; then
+    local token=$(grep -E "^TELEGRAM_BOT_TOKEN=" .env | cut -d '=' -f2- | tr -d '"'\'' ' || true)
+    local chat_id=$(grep -E "^TELEGRAM_CHAT_ID=" .env | cut -d '=' -f2- | tr -d '"'\'' ' || true)
+    if [[ -n "${token}" && -n "${chat_id}" ]]; then
+      curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+        -d "chat_id=${chat_id}" \
+        --data-urlencode "text=${msg}" \
+        -d "parse_mode=HTML" > /dev/null 2>&1 || true
+    fi
+  fi
+}
+
+on_error() {
+  local line="$1"
+  echo "❌ Deploy failed on line ${line}"
+  notify_telegram "❌ <b>การ Deploy ล้มเหลว!</b> (เกิดข้อผิดพลาดที่บรรทัด ${line} ของ deploy script)"
+}
+trap 'on_error $LINENO' ERR
+
 MODE="full"
 if [[ "${1:-}" == "--config-only" || "${1:-}" == "-c" ]]; then
   MODE="config"
@@ -30,6 +51,7 @@ echo "=================================================="
 echo "🚀 Pocket Sentinel Deploy [mode: ${MODE}]"
 echo "   Target: ${REMOTE_HOST}:${REMOTE_DIR}"
 echo "=================================================="
+notify_telegram "🔄 <b>เริ่มกระบวนการ Deploy บน vivo v11</b> [mode: ${MODE}]..."
 
 # ------------------------------------------------------------------------------
 # [1/4] Build Stage (Full mode only)
@@ -87,10 +109,10 @@ echo "🔄 [3/4] Reloading PM2 services on ${REMOTE_HOST}..."
 ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "REMOTE_DIR='${REMOTE_DIR}' bash -s" << 'EOF'
   cd "${REMOTE_DIR}"
   # If ngrok-tunnel is already online, leave it alone to prevent tunnel drop / reconnection delay.
-  # Only restart go-server. If ngrok is not online, start/restart ecosystem.
+  # Restart go-server. If go-server is not running or restart fails, start it explicitly.
   NGROK_PID=$(pm2 pid ngrok-tunnel 2>/dev/null || true)
   if [ -n "$NGROK_PID" ] && [ "$NGROK_PID" != "0" ]; then
-    pm2 restart go-server --update-env > /dev/null
+    pm2 restart go-server --update-env > /dev/null || pm2 start ecosystem.config.js --only go-server --update-env > /dev/null
   else
     pkill -9 -x ngrok 2>/dev/null || true
     pkill -9 -x proot 2>/dev/null || true
@@ -118,7 +140,8 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" '
   if [ "$OK" -eq 1 ]; then
     echo "✅ Service Health Check: PASS (HTTP 200)"
   else
-    echo "⚠️ Service Health Check: Waiting for server to respond..."
+    echo "❌ Service Health Check: Server failed to respond on :8080 within 8s"
+    exit 1
   fi
 
   echo ""
@@ -138,3 +161,11 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" '
 TOTAL_TIME=$(( $(date +%s) - START_TIME ))
 echo ""
 echo "✨ Deploy completed successfully in ${TOTAL_TIME}s!"
+
+ENDPOINT=$(ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" 'curl -s --max-time 3 http://localhost:4040/api/tunnels 2>/dev/null | grep -oE "https://[a-zA-Z0-9.-]+\.ngrok(-free)?\.(app|dev)" | head -n 1 || true' 2>/dev/null || true)
+SUCCESS_MSG="✅ <b>Deploy สำเร็จสมบูรณ์</b> ใน ${TOTAL_TIME}s! บริการพร้อมใช้งาน"
+if [[ -n "${ENDPOINT}" ]]; then
+  SUCCESS_MSG+=$'\n'
+  SUCCESS_MSG+="🌐 <b>URL:</b> ${ENDPOINT}"
+fi
+notify_telegram "${SUCCESS_MSG}"
