@@ -97,7 +97,8 @@ rm -f server.new digest.new
 
 # Atomic swap & permissions on remote
 if [[ "${MODE}" == "full" ]]; then
-  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && mv -f server.new server 2>/dev/null || true; mv -f digest.new digest 2>/dev/null || true; chmod +x server digest run-ngrok.sh 2>/dev/null || true"
+  echo "💾 Creating automatic remote backup (server -> server.bak)..."
+  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && if [ -f server ]; then cp -f server server.bak; fi && mv -f server.new server 2>/dev/null || true; mv -f digest.new digest 2>/dev/null || true; chmod +x server digest run-ngrok.sh 2>/dev/null || true"
 else
   ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && chmod +x run-ngrok.sh 2>/dev/null || true"
 fi
@@ -141,6 +142,17 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" '
     echo "✅ Service Health Check: PASS (HTTP 200)"
   else
     echo "❌ Service Health Check: Server failed to respond on :8080 within 8s"
+    echo "⚠️ Initiating automated rollback to server.bak..."
+    if [ -f server.bak ]; then
+      cp -f server.bak server
+      chmod +x server
+      pm2 restart go-server --update-env > /dev/null 2>&1 || true
+      echo "🔄 Restored server.bak and reloaded go-server via PM2."
+      echo "📋 Diagnostics: Recent PM2 logs (nostream):"
+      pm2 logs go-server --lines 30 --nostream
+    else
+      echo "⚠️ No server.bak found on remote host; unable to restore previous binary."
+    fi
     exit 1
   fi
 

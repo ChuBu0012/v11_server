@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"log"
@@ -27,6 +28,8 @@ import (
 	"v11-server/modules/reminders"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
+	"v11-server/modules/watchtower"
+	"v11-server/shared/ai"
 	"v11-server/shared/config"
 	"v11-server/shared/db"
 	"v11-server/shared/worker"
@@ -75,21 +78,24 @@ func setupAndroidDNS() {
 }
 
 type App struct {
-	cfg             *config.Config
-	db              *sql.DB
-	port            string
-	system          *system.Module
-	logs            *logs.Module
-	telemetry       *telemetry.Module
-	dashboard       *dashboard.Module
-	collector       *telemetry.Collector
-	worker          *worker.Worker
-	botPoller       *bot.Poller
-	botClient       *bot.Client
-	digest          *digest.Module
-	relay           *relay.Module
-	reminders       *reminders.Module
-	reminderService *reminders.Service
+	cfg               *config.Config
+	db                *sql.DB
+	port              string
+	system            *system.Module
+	logs              *logs.Module
+	telemetry         *telemetry.Module
+	dashboard         *dashboard.Module
+	collector         *telemetry.Collector
+	worker            *worker.Worker
+	botPoller         *bot.Poller
+	botClient         *bot.Client
+	digest            *digest.Module
+	relay             *relay.Module
+	reminders         *reminders.Module
+	reminderService   *reminders.Service
+	watchtower        *watchtower.Module
+	watchtowerService *watchtower.Service
+	aiClient          *ai.Client
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -219,22 +225,58 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		reminderMod = reminders.NewModule(reminderStore, cfg.ReminderPIN, reminderTelegramReady)
 	}
 
+	// OpenRouter AI client initialization
+	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
+
+	// Watchtower module initialization
+	watchtowerStore, err := watchtower.NewStore(dbConn)
+	if err != nil {
+		log.Printf("Warning: failed to initialize watchtower store: %v", err)
+	}
+	var watchtowerSvc *watchtower.Service
+	var watchtowerMod *watchtower.Module
+	if watchtowerStore != nil {
+		watchtowerSvc = watchtower.NewService(watchtowerStore, notifier, cfg.WatchtowerPIN, log.Default())
+		if aiClient != nil {
+			watchtowerSvc.SetIncidentSummarizer(func(ctx context.Context, w *watchtower.Watcher, res watchtower.CheckResult) string {
+				metadata := ai.IncidentMetadata{
+					Timestamp:      res.CheckedAt,
+					WatcherName:    w.Name,
+					URL:            w.URL,
+					ExpectedStatus: w.ExpectedStatus,
+					ActualStatus:   res.StatusCode,
+					LatencyMs:      res.LatencyMs,
+					ErrorSummary:   res.Error,
+				}
+				sum, err := ai.SummarizeIncident(ctx, aiClient, metadata)
+				if err != nil || sum == nil {
+					return ""
+				}
+				return sum.RawSummary
+			})
+		}
+		watchtowerMod = watchtower.NewModule(watchtowerSvc)
+	}
+
 	return &App{
-		cfg:             cfg,
-		db:              dbConn,
-		port:            port,
-		system:          sysMod,
-		logs:            logsMod,
-		telemetry:       telemetryMod,
-		dashboard:       dashMod,
-		collector:       collector,
-		worker:          bgWorker,
-		botPoller:       botPoller,
-		botClient:       botClient,
-		digest:          digestMod,
-		relay:           relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
-		reminders:       reminderMod,
-		reminderService: reminderService,
+		cfg:               cfg,
+		db:                dbConn,
+		port:              port,
+		system:            sysMod,
+		logs:              logsMod,
+		telemetry:         telemetryMod,
+		dashboard:         dashMod,
+		collector:         collector,
+		worker:            bgWorker,
+		botPoller:         botPoller,
+		botClient:         botClient,
+		digest:            digestMod,
+		relay:             relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
+		reminders:         reminderMod,
+		reminderService:   reminderService,
+		watchtower:        watchtowerMod,
+		watchtowerService: watchtowerSvc,
+		aiClient:          aiClient,
 	}
 }
 
@@ -257,8 +299,84 @@ func setupRouter(app *App) *gin.Engine {
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
 	}
+	if app.watchtower != nil {
+		app.watchtower.RegisterRoutes(r)
+	}
+
+	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
+	r.POST("/api/schedule/parse", requirePINAuth(app.cfg.ReminderPIN, "X-Reminder-PIN"), func(c *gin.Context) {
+		var req struct {
+			Prompt string `json:"prompt"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
+			return
+		}
+		if strings.TrimSpace(req.Prompt) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
+			return
+		}
+		result, err := ai.ParseSchedulePrompt(c.Request.Context(), app.aiClient, req.Prompt, "Asia/Bangkok")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
+
+	// Mount Telegram Bridge proofread endpoint: POST /api/relay/proofread (PIN protected)
+	r.POST("/api/relay/proofread", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
+		var req struct {
+			Text string `json:"text"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
+			return
+		}
+		if strings.TrimSpace(req.Text) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "text cannot be empty"})
+			return
+		}
+		result, err := ai.ProofreadText(c.Request.Context(), app.aiClient, req.Text)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	})
 
 	return r
+}
+
+func requirePINAuth(configuredPIN, headerName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if configuredPIN == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่า PIN"})
+			return
+		}
+
+		provided := c.GetHeader(headerName)
+		if provided == "" {
+			provided = c.GetHeader("X-PIN")
+		}
+		if provided == "" {
+			authHeader := c.GetHeader("Authorization")
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				provided = strings.TrimSpace(authHeader[7:])
+			}
+		}
+		if provided == "" {
+			provided = c.Query("pin")
+		}
+
+		if len(provided) != len(configuredPIN) ||
+			subtle.ConstantTimeCompare([]byte(provided), []byte(configuredPIN)) != 1 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง หรือไม่ได้รับอนุญาต"})
+			return
+		}
+
+		c.Next()
+	}
 }
 
 func main() {
@@ -298,6 +416,14 @@ func main() {
 	app.worker.Start(workerCtx)
 	if app.reminderService != nil {
 		app.reminderService.Start(workerCtx)
+	}
+	if app.watchtowerService != nil {
+		app.watchtowerService.Start(workerCtx)
+		if app.watchtowerService.Store() != nil {
+			if purged, err := app.watchtowerService.Store().PurgeOldChecks(context.Background(), watchtower.RetentionDays); err == nil && purged > 0 {
+				log.Printf("[retention:watchtower] purged %d checks older than %d days on startup", purged, watchtower.RetentionDays)
+			}
+		}
 	}
 	startWeeklyEventLogPurge(workerCtx, app.logs)
 
@@ -369,6 +495,9 @@ func main() {
 
 	// 1. Cancel background worker
 	cancelWorker()
+	if app.watchtowerService != nil {
+		app.watchtowerService.Stop()
+	}
 
 	// 2. Gracefully stop HTTP server
 	shutdownCtx, cancelHTTP := context.WithTimeout(context.Background(), 5*time.Second)

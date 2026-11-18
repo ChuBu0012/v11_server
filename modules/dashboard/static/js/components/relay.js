@@ -26,6 +26,13 @@ document.addEventListener('alpine:init', () => {
     fileSizeFormatted: '',
     isImageFile: false,
 
+    // AI Proofread state (Use Case 2)
+    isProofreading: false,
+    showProofreadDiff: false,
+    proofreadOriginal: '',
+    proofreadSuggested: '',
+    proofreadHasChanges: false,
+
     // UI state
     isDragging: false,
     isSending: false,
@@ -123,6 +130,87 @@ document.addEventListener('alpine:init', () => {
       this.isUnlocked = false;
       localStorage.removeItem('sentinel-relay-pin');
       this.showPinModal = true;
+    },
+
+    async proofreadText() {
+      if (this.isProofreading) return;
+      if (!this.pin) {
+        this.showPinModal = true;
+        this.showNotice('กรุณาตั้งค่าหรือกรอกรหัส PIN ก่อนใช้งาน AI Proofread', 'error');
+        return;
+      }
+      const text = this.messageText.trim();
+      if (!text) {
+        this.showNotice('กรุณากรอกข้อความที่ต้องการตรวจทานก่อน', 'error');
+        return;
+      }
+
+      this.isProofreading = true;
+      this.showNotice('🤖 กำลังตรวจทานภาษาด้วย AI (OpenRouter free)...', 'info');
+
+      try {
+        const resp = await fetch('/api/relay/proofread', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Relay-PIN': this.pin
+          },
+          body: JSON.stringify({ text })
+        });
+
+        if (resp.status === 401) {
+          this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN', 'error');
+          this.showPinModal = true;
+          return;
+        }
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        this.proofreadOriginal = data.original || text;
+        this.proofreadSuggested = data.suggested || text;
+        this.proofreadHasChanges = Boolean(data.has_changes);
+        this.showProofreadDiff = true;
+
+        if (this.proofreadHasChanges) {
+          this.showNotice('✨ ตรวจทานภาษาเสร็จแล้ว: พบข้อความที่ปรับปรุงได้ โปรดเลือกข้อความที่จะส่ง', 'success');
+        } else {
+          this.showNotice('✨ ข้อความของคุณสมบูรณ์แล้ว ไม่จำเป็นต้องแก้ไข สามารถส่งได้ทันที', 'info');
+        }
+      } catch (err) {
+        this.showNotice(`AI ตรวจทานไม่สำเร็จ (${err.message}) — สามารถส่งข้อความเดิมได้ตามปกติ`, 'error');
+        this.showProofreadDiff = false;
+      } finally {
+        this.isProofreading = false;
+      }
+    },
+
+    async sendRevised() {
+      this.messageText = this.proofreadSuggested;
+      this.showProofreadDiff = false;
+      await this.submit();
+    },
+
+    async sendOriginal() {
+      this.messageText = this.proofreadOriginal;
+      this.showProofreadDiff = false;
+      await this.submit();
+    },
+
+    editProofread() {
+      this.messageText = this.proofreadSuggested;
+      this.showProofreadDiff = false;
+      this.$nextTick(() => {
+        const textarea = document.getElementById('relay-message-input');
+        if (textarea) textarea.focus();
+      });
+    },
+
+    cancelProofread() {
+      this.showProofreadDiff = false;
     },
 
     handleDragOver(e) {

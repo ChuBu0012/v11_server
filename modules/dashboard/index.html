@@ -34,6 +34,7 @@
   <script src="/static/js/components/events.js"></script>
   <script src="/static/js/components/relay.js"></script>
   <script src="/static/js/components/schedule-summary.js"></script>
+  <script src="/static/js/components/watchtower.js"></script>
 
   <!-- Alpine.js (Lightweight Reactive UI without Node build step) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -98,6 +99,89 @@
         </template>
       </div>
     </section>
+
+    <!-- Personal Watchtower Summary Card -->
+    <div class="wrap" x-data="watchtowerSummaryComponent()">
+      <section class="section" aria-labelledby="watchtower-summary-title" style="padding-top: 10px;">
+        <div class="section-heading">
+          <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(41, 151, 255, 0.12); border: 1px solid rgba(41, 151, 255, 0.35); color: var(--blue); font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;">
+              <i class="ri-map-pin-user-line"></i>
+              <span>📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11</span>
+            </div>
+            <h2 id="watchtower-summary-title">Personal Watchtower</h2>
+            <p class="section-note">เฝ้าระวังบริการสาธารณะและบันทึกความพร้อมใช้งานจากมุมมอง vivo V11</p>
+          </div>
+          <div class="actions">
+            <a href="/watchtower" class="app-action-btn primary" style="text-decoration: none;">
+              <i class="ri-radar-line"></i> Manage Watchers
+            </a>
+          </div>
+        </div>
+
+        <!-- Red Outage Banner when down > 0 -->
+        <div x-show="summary.down > 0" x-cloak style="background: rgba(255, 69, 58, 0.16); border: 1px solid var(--red); color: #ff6b62; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 500;">
+          <i class="ri-error-warning-fill" style="font-size: 18px; color: var(--red);"></i>
+          <span>
+            <strong>ตรวจพบ Outage:</strong> มี <span x-text="summary.down"></span> บริการที่ส่งผลตรวจ Down ต่อเนื่องจากมุมมอง V11
+          </span>
+        </div>
+
+        <article class="card" style="padding: 18px;">
+          <!-- Live Count Pills -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px;">
+            <div style="background: var(--parchment); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px 12px;">
+              <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600;">Total</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--ink);" x-text="summary.total">0</div>
+            </div>
+            <div style="background: var(--parchment); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px 12px;">
+              <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600;">Up</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--green);" x-text="summary.up">0</div>
+            </div>
+            <div style="background: var(--parchment); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px 12px;">
+              <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600;">Down</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--red);" x-text="summary.down">0</div>
+            </div>
+            <div style="background: var(--parchment); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px 12px;">
+              <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600;">Paused</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--muted);" x-text="summary.paused">0</div>
+            </div>
+          </div>
+
+          <!-- Watcher List Preview -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <template x-if="loading">
+              <div style="text-align: center; color: var(--muted); padding: 12px; font-size: 13px;">กำลังโหลดสถานะ Watchtower…</div>
+            </template>
+            <template x-if="!loading && watchers.length === 0">
+              <div style="text-align: center; color: var(--muted); padding: 12px; font-size: 13px;">ยังไม่มีการตั้งค่า Watcher</div>
+            </template>
+            <template x-for="w in watchers" :key="w.id">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--parchment); border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%;"
+                        :style="w.state === 'up' ? 'background: var(--green);' : (w.state === 'down' ? 'background: var(--red);' : 'background: var(--muted);')"></span>
+                  <strong x-text="w.name"></strong>
+                  <span style="color: var(--muted); font-size: 11.5px;" x-text="w.url"></span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="color: var(--muted); font-size: 12px;" x-text="formatLatency(w.last_latency_ms)"></span>
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px;"
+                        :style="w.state === 'up' ? 'background: rgba(48, 209, 88, 0.15); color: var(--green);' : (w.state === 'down' ? 'background: rgba(255, 69, 58, 0.15); color: var(--red);' : 'background: rgba(142, 142, 147, 0.15); color: var(--muted);')"
+                        x-text="w.state"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
+            <a href="/watchtower" class="app-action-btn secondary" style="font-size: 12px;">
+              <i class="ri-arrow-right-line"></i> Manage Watchers &amp; 7-Day History
+            </a>
+          </div>
+        </article>
+      </section>
+    </div>
 
     <!-- App Hub & Gateway Launcher -->
     <div class="wrap" x-data="relayComponent()">
@@ -203,7 +287,57 @@
               <textarea id="relay-message-input" x-model="messageText" rows="5" placeholder="พิมพ์ข้อความที่ต้องการส่งเข้า Telegram ที่นี่... (กด ⌘+Enter เพื่อส่ง)" maxlength="4000"></textarea>
               <div class="textarea-footer">
                 <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>
-                <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="proofread-btn" @click="proofreadText()" :disabled="isProofreading || !messageText.trim()" title="ตรวจทานภาษาและตัวสะกดด้วย AI (OpenRouter free)">
+                    <i :class="isProofreading ? 'ri-loader-4-line spin' : 'ri-sparkling-fill'"></i>
+                    <span x-text="isProofreading ? 'กำลังตรวจทาน…' : 'AI Proofread'"></span>
+                  </button>
+                  <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Diff Comparison View -->
+            <div class="proofread-diff-card" x-show="showProofreadDiff" x-transition x-cloak>
+              <div class="proofread-diff-header">
+                <span class="proofread-badge"><i class="ri-sparkling-fill"></i> AI PROOFREAD PREVIEW</span>
+                <button type="button" class="btn-action" @click="cancelProofread()" style="border: none; padding: 2px 6px;">
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+
+              <div class="diff-blocks-grid">
+                <!-- Original Text -->
+                <div class="diff-block">
+                  <div class="diff-block-title">
+                    <span>ต้นฉบับ</span>
+                    <span class="diff-badge-status unchanged">ข้อความเดิม</span>
+                  </div>
+                  <p class="diff-text" x-text="proofreadOriginal"></p>
+                </div>
+
+                <!-- Suggested Revision -->
+                <div class="diff-block">
+                  <div class="diff-block-title">
+                    <span>ข้อความที่แนะนำ</span>
+                    <span class="diff-badge-status" :class="proofreadHasChanges ? 'changed' : 'unchanged'"
+                          x-text="proofreadHasChanges ? 'ปรับปรุงแล้ว' : 'ตรงกับต้นฉบับ'"></span>
+                  </div>
+                  <p class="diff-text" x-text="proofreadSuggested"></p>
+                </div>
+              </div>
+
+              <!-- Explicit Send Controls: Zero automatic sending -->
+              <div class="proofread-controls">
+                <button type="button" class="btn-action" @click="editProofread()">
+                  <i class="ri-edit-line"></i> แก้ไขต่อ
+                </button>
+                <button type="button" class="btn-action" @click="sendOriginal()" :disabled="isSending">
+                  <i class="ri-send-plane-line"></i> ส่งข้อความเดิม
+                </button>
+                <button type="button" class="app-action-btn primary" @click="sendRevised()" :disabled="isSending">
+                  <i class="ri-sparkling-fill"></i> ส่งข้อความที่แนะนำ
+                </button>
               </div>
             </div>
           </div>

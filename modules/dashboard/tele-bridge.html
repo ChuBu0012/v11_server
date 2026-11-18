@@ -86,10 +86,59 @@
           <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>
           <div class="composer-actions">
             <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+            <!-- Opt-in AI Proofread Button -->
+            <button type="button" class="proofread-btn" @click="proofreadText()" :disabled="isProofreading || !messageText.trim()" title="ตรวจทานภาษาและตัวสะกดด้วย AI (OpenRouter free)">
+              <i :class="isProofreading ? 'ri-loader-4-line spin' : 'ri-sparkling-fill'"></i>
+              <span x-text="isProofreading ? 'กำลังตรวจทาน…' : 'AI Proofread (ตรวจทานภาษา)'"></span>
+            </button>
             <button class="composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
               <i class="ri-send-plane-fill"></i><span>ส่ง</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- Diff Comparison View (Shown when proofreading complete) -->
+      <div class="proofread-diff-card" x-show="showProofreadDiff" x-transition x-cloak>
+        <div class="proofread-diff-header">
+          <span class="proofread-badge"><i class="ri-sparkling-fill"></i> AI PROOFREAD PREVIEW</span>
+          <button type="button" class="btn-action" @click="cancelProofread()" style="border: none; padding: 2px 6px;">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+
+        <div class="diff-blocks-grid">
+          <!-- Original Text -->
+          <div class="diff-block">
+            <div class="diff-block-title">
+              <span>ต้นฉบับ (Original)</span>
+              <span class="diff-badge-status unchanged">ข้อความเดิม</span>
+            </div>
+            <p class="diff-text" x-text="proofreadOriginal"></p>
+          </div>
+
+          <!-- Suggested Revision -->
+          <div class="diff-block">
+            <div class="diff-block-title">
+              <span>ข้อความที่แนะนำ (Suggested Revision)</span>
+              <span class="diff-badge-status" :class="proofreadHasChanges ? 'changed' : 'unchanged'"
+                    x-text="proofreadHasChanges ? 'มีการปรับปรุง' : 'ตรงกับต้นฉบับ'"></span>
+            </div>
+            <p class="diff-text" x-text="proofreadSuggested"></p>
+          </div>
+        </div>
+
+        <!-- Explicit Send Controls: Zero automatic sending -->
+        <div class="proofread-controls">
+          <button type="button" class="btn-action" @click="editProofread()">
+            <i class="ri-edit-line"></i> แก้ไขต่อ (Edit)
+          </button>
+          <button type="button" class="btn-action" @click="sendOriginal()" :disabled="isSending">
+            <i class="ri-send-plane-line"></i> ส่งข้อความเดิม (Send Original)
+          </button>
+          <button type="button" class="app-action-btn primary" @click="sendRevised()" :disabled="isSending">
+            <i class="ri-sparkling-fill"></i> ส่งข้อความที่แนะนำ (Send Revised)
+          </button>
         </div>
       </div>
     </div>

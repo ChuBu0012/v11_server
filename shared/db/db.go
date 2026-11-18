@@ -29,6 +29,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		"PRAGMA journal_mode=WAL;",
 		"PRAGMA busy_timeout=5000;",
 		"PRAGMA synchronous=NORMAL;",
+		"PRAGMA foreign_keys=ON;",
 	}
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
@@ -70,6 +71,37 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		last_checked_at DATETIME NOT NULL,
 		value_at_trigger REAL NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS watchers (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		url TEXT NOT NULL,
+		expected_status INTEGER NOT NULL DEFAULT 200,
+		enabled INTEGER NOT NULL DEFAULT 1,
+		state TEXT NOT NULL DEFAULT 'unknown',
+		consecutive_failures INTEGER NOT NULL DEFAULT 0,
+		down_since DATETIME,
+		last_checked_at DATETIME,
+		last_status_code INTEGER,
+		last_latency_ms INTEGER,
+		last_error TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_watchers_enabled ON watchers(enabled);
+
+	CREATE TABLE IF NOT EXISTS watcher_checks (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		watcher_id INTEGER NOT NULL REFERENCES watchers(id) ON DELETE CASCADE,
+		checked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		success BOOLEAN NOT NULL,
+		status_code INTEGER,
+		latency_ms INTEGER,
+		error TEXT,
+		attempt_count INTEGER NOT NULL DEFAULT 1
+	);
+	CREATE INDEX IF NOT EXISTS idx_watcher_checks_watcher_id_checked_at ON watcher_checks(watcher_id, checked_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_watcher_checks_checked_at ON watcher_checks(checked_at DESC);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

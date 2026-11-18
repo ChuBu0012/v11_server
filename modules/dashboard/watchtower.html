@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Personal Watchtower — Pocket Sentinel</title>
+  <meta name="description" content="Autonomous public URL health and telemetry monitoring from vivo 1804 (vivo V11).">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0c10">
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem('sentinel-theme');
+      document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
+    })();
+  </script>
+
+  <!-- Remix Icon -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css" rel="stylesheet">
+
+  <!-- Chart.js for Latency Trends -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" defer></script>
+
+  <!-- Base & Shared Stylesheet -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <style>
+    /* Watchtower Specific View Styling */
+    .watchtower-page {
+      background: var(--parchment);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .watchtower-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+      width: 100%;
+    }
+    .v11-perspective-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(41, 151, 255, 0.12);
+      border: 1px solid rgba(41, 151, 255, 0.35);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      letter-spacing: 0.2px;
+    }
+    .watchtower-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .watchtower-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      color: var(--ink);
+    }
+    .watchtower-subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.45;
+    }
+    .summary-pills-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-pill {
+      background: var(--card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-pill-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .stat-pill-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .outage-banner {
+      background: rgba(255, 69, 58, 0.15);
+      border: 1px solid var(--red);
+      color: #ff6b62;
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .watcher-card {
+      background: var(--card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .watcher-card:hover {
+      border-color: rgba(41, 151, 255, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .watcher-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .watcher-meta-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .watcher-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0;
+    }
+    .watcher-url {
+      font-size: 13px;
+      color: var(--blue);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .watcher-url:hover {
+      text-decoration: underline;
+    }
+    .badge-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+    .badge-up {
+      background: rgba(48, 209, 88, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(48, 209, 88, 0.35);
+    }
+    .badge-down {
+      background: rgba(255, 69, 58, 0.18);
+      color: var(--red);
+      border: 1px solid rgba(255, 69, 58, 0.45);
+    }
+    .badge-paused {
+      background: rgba(142, 142, 147, 0.15);
+      color: var(--muted);
+      border: 1px solid rgba(142, 142, 147, 0.3);
+    }
+    .badge-unknown {
+      background: rgba(120, 120, 128, 0.15);
+      color: var(--muted-dark);
+      border: 1px solid rgba(120, 120, 128, 0.25);
+    }
+    .watcher-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+      padding: 12px 14px;
+      background: var(--parchment);
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .stat-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .watcher-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .btn-action {
+      border: 1px solid var(--border-subtle);
+      background: var(--card);
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 980px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-action:hover {
+      background: var(--bg-hover);
+      border-color: var(--blue);
+    }
+    .btn-action.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .btn-action.primary:hover {
+      background: var(--blue-focus);
+    }
+    .btn-action.danger {
+      color: var(--red);
+      border-color: rgba(255, 69, 58, 0.3);
+    }
+    .btn-action.danger:hover {
+      background: rgba(255, 69, 58, 0.12);
+      border-color: var(--red);
+    }
+    .checks-panel {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .chart-container-wt {
+      height: 180px;
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .checks-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .checks-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+    }
+    .checks-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .checks-table tr:last-child td {
+      border-bottom: none;
+    }
+    /* Toast notice */
+    .wt-notice {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .wt-notice.success { background: #1c3829; border: 1px solid #30d158; color: #70d78b; }
+    .wt-notice.error   { background: #3d1c1c; border: 1px solid #ff453a; color: #ff857d; }
+    .wt-notice.info    { background: #1a273b; border: 1px solid #2997ff; color: #8ec5ff; }
+  </style>
+
+  <!-- Watchtower Component Scripts -->
+  <script src="/static/js/components/watchtower.js" defer></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body class="watchtower-page" x-data="watchtowerComponent()">
+
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+        <span class="status-dot ok"></span>
+        <span class="brand-name">Pocket Sentinel</span>
+        <span class="brand-sub">v11</span>
+      </a>
+    </div>
+    <div class="topbar-actions">
+      <a href="/" class="app-action-btn secondary" style="min-height: 32px; font-size: 12px;">
+        <i class="ri-arrow-left-line"></i> Dashboard
+      </a>
+      <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN is configured' : 'Click to set PIN'">
+        <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
+        <span x-text="isUnlocked ? 'PIN Set' : 'Need PIN'"></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="watchtower-shell">
+    
+    <!-- Prominent V11 Local Observer Perspective Badge -->
+    <div class="v11-perspective-badge">
+      <i class="ri-map-pin-user-line"></i>
+      <span>📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11</span>
+    </div>
+
+    <div class="watchtower-header-row">
+      <div>
+        <h1 class="watchtower-title">Personal Watchtower</h1>
+        <p class="watchtower-subtitle">เฝ้าระวังบริการสาธารณะและบันทึกความพร้อมใช้งานจากมุมมอง vivo V11 (ไม่ใช้ Edge/Global CDN)</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-action primary" type="button" @click="openAddModal()">
+          <i class="ri-add-line"></i> เพิ่ม Watcher
+        </button>
+        <button class="btn-action" type="button" @click="refreshAll()" :disabled="loadingWatchers">
+          <i class="ri-refresh-line" :class="{ 'spin': loadingWatchers }"></i> รีเฟรช
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Count Pills -->
+    <div class="summary-pills-row">
+      <div class="stat-pill">
+        <span class="stat-pill-label">Total Watchers</span>
+        <span class="stat-pill-val" x-text="summary.total">0</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-label">Operational (Up)</span>
+        <span class="stat-pill-val" style="color: var(--green);" x-text="summary.up">0</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-label">Outage (Down)</span>
+        <span class="stat-pill-val" style="color: var(--red);" x-text="summary.down">0</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-label">Paused</span>
+        <span class="stat-pill-val" style="color: var(--muted);" x-text="summary.paused">0</span>
+      </div>
+    </div>
+
+    <!-- Outage Banner (Appears when down > 0) -->
+    <template x-if="summary.down > 0">
+      <div class="outage-banner" role="alert">
+        <i class="ri-alarm-warning-fill" style="font-size: 20px;"></i>
+        <div>
+          <strong>ตรวจพบปัญหา Outage จากมุมมอง vivo V11:</strong>
+          <span x-text="'มี ' + summary.down + ' บริการที่ส่งผลตรวจ Down ต่อเนื่อง (แจ้งเตือนผ่าน Telegram หลัง 3 รอบตรวจ)'"></span>
+        </div>
+      </div>
+    </template>
+
+    <!-- Watchers List -->
+    <section aria-label="Watchers list">
+      <template x-if="loadingWatchers && watchers.length === 0">
+        <div class="card" style="padding: 30px; text-align: center; color: var(--muted);">
+          <i class="ri-loader-4-line spin" style="font-size: 24px;"></i>
+          <p style="margin-top: 8px;">กำลังโหลดรายการ Watchers จากเซิร์ฟเวอร์…</p>
+        </div>
+      </template>
+
+      <template x-if="!loadingWatchers && watchers.length === 0">
+        <div class="card" style="padding: 40px; text-align: center;">
+          <div style="font-size: 36px; color: var(--muted); margin-bottom: 10px;">
+            <i class="ri-radar-line"></i>
+          </div>
+          <h3 style="margin: 0 0 6px;">ยังไม่มีการตั้งค่า Watcher</h3>
+          <p style="color: var(--muted); margin: 0 0 16px; font-size: 14px;">เริ่มเฝ้าระวังบริการสาธารณะ เช่น Vercel app โดยกดปุ่มด้านล่าง</p>
+          <button class="btn-action primary" type="button" @click="openAddModal()">
+            <i class="ri-add-line"></i> เพิ่ม Watcher แรก
+          </button>
+        </div>
+      </template>
+
+      <template x-for="watcher in watchers" :key="watcher.id">
+        <article class="watcher-card">
+          <div class="watcher-top">
+            <div class="watcher-meta-col">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 class="watcher-name" x-text="watcher.name"></h2>
+                <span class="badge-state" :class="getStateBadge(watcher.state).class">
+                  <i :class="getStateBadge(watcher.state).icon"></i>
+                  <span x-text="getStateBadge(watcher.state).label"></span>
+                </span>
+              </div>
+              <a :href="watcher.url" target="_blank" rel="noopener noreferrer" class="watcher-url">
+                <i class="ri-external-link-line"></i> <span x-text="watcher.url"></span>
+              </a>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="watcher-actions" style="margin-top: 0;">
+              <button class="btn-action primary" type="button" 
+                      @click="checkNow(watcher.id)" 
+                      :disabled="isDiagnosing && diagnosingId === watcher.id"
+                      title="ตรวจทันทีแบบ Diagnostic (ไม่นับ failure streak)">
+                <i class="ri-search-eye-line" :class="{ 'spin': isDiagnosing && diagnosingId === watcher.id }"></i>
+                <span x-text="isDiagnosing && diagnosingId === watcher.id ? 'Checking…' : 'Check now'"></span>
+              </button>
+
+              <button class="btn-action" type="button" 
+                      @click="togglePause(watcher)"
+                      :title="watcher.state === 'paused' ? 'Resume monitoring' : 'Pause monitoring'">
+                <i :class="watcher.state === 'paused' ? 'ri-play-line' : 'ri-pause-line'"></i>
+                <span x-text="watcher.state === 'paused' ? 'Resume' : 'Pause'"></span>
+              </button>
+
+              <button class="btn-action" type="button" @click="openEditModal(watcher)" title="Edit configuration">
+                <i class="ri-edit-line"></i> Edit
+              </button>
+
+              <button class="btn-action danger" type="button" @click="deleteWatcher(watcher)" title="Delete watcher">
+                <i class="ri-delete-bin-line"></i>
+              </button>
+
+              <button class="btn-action" type="button" @click="toggleChecks(watcher.id)">
+                <i class="ri-history-line"></i>
+                <span x-text="selectedWatcherId === watcher.id ? 'ซ่อนประวัติ' : 'ประวัติ 7 วัน'"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Watcher metrics summary row -->
+          <div class="watcher-stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">Last Checked</span>
+              <span class="stat-text" x-text="formatTime(watcher.last_checked_at)">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Last Latency</span>
+              <span class="stat-text" x-text="(watcher.last_latency_ms || 0) + ' ms'">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Expected Status</span>
+              <span class="stat-text" x-text="'HTTP ' + (watcher.expected_status || 200)">HTTP 200</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Streak Failures</span>
+              <span class="stat-text" :style="watcher.consecutive_failures > 0 ? 'color: var(--red);' : ''" x-text="watcher.consecutive_failures + ' / 3'">0 / 3</span>
+            </div>
+          </div>
+
+          <!-- Collapsible 7-Day History & Mini Latency Chart -->
+          <div class="checks-panel" x-show="selectedWatcherId === watcher.id" x-transition x-cloak>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h3 style="font-size: 14px; font-weight: 600; margin: 0; color: var(--ink);">
+                <i class="ri-line-chart-line"></i> Latency Trend (7 Days)
+              </h3>
+              <span style="font-size: 11px; color: var(--muted);" x-text="checksHistory.length + ' samples recorded'"></span>
+            </div>
+
+            <div class="chart-container-wt">
+              <canvas :id="'watcher-chart-' + watcher.id"></canvas>
+            </div>
+
+            <div style="overflow-x: auto; max-height: 260px; overflow-y: auto;">
+              <table class="checks-table">
+                <thead>
+                  <tr>
+                    <th>Checked At (UTC+7)</th>
+                    <th>Status</th>
+                    <th>Latency</th>
+                    <th>Result</th>
+                    <th>Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-if="loadingChecks">
+                    <tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 16px;">กำลังโหลดประวัติ…</td></tr>
+                  </template>
+                  <template x-if="!loadingChecks && checksHistory.length === 0">
+                    <tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 16px;">ยังไม่มีประวัติการตรวจสอบ</td></tr>
+                  </template>
+                  <template x-for="c in checksHistory" :key="c.id">
+                    <tr>
+                      <td x-text="formatTime(c.checked_at)"></td>
+                      <td>
+                        <span style="font-family: monospace; font-weight: 600;" 
+                              :style="c.status_code === (watcher.expected_status || 200) ? 'color: var(--green);' : 'color: var(--red);'"
+                              x-text="c.status_code || '—'"></span>
+                      </td>
+                      <td x-text="c.latency_ms + ' ms'"></td>
+                      <td>
+                        <span :style="c.is_up ? 'color: var(--green);' : 'color: var(--red);'" 
+                              x-text="c.is_up ? 'UP' : (c.error_message || 'DOWN')"></span>
+                      </td>
+                      <td>
+                        <span style="font-size: 11px; color: var(--muted);" x-text="c.is_manual ? 'Manual' : 'Scheduled'"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </template>
+    </section>
+
+  </main>
+
+  <!-- Add / Edit Watcher Modal -->
+  <dialog class="reminder-dialog" :open="showFormModal" style="border: 1px solid var(--border-subtle); background: var(--card); border-radius: 18px; max-width: 480px; width: 90vw; color: var(--ink);" x-cloak>
+    <form @submit.prevent="saveWatcher()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 18px; margin: 0;" x-text="isEditing ? 'แก้ไข Watcher' : 'เพิ่ม Watcher ใหม่'"></h2>
+        <button type="button" class="btn-action" @click="closeFormModal()" style="border: none; padding: 4px 8px;">
+          <i class="ri-close-line" style="font-size: 18px;"></i>
+        </button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <label class="form-field">
+          <span style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">ชื่อบริการ / ชื่อเป้าหมาย:</span>
+          <input type="text" id="watcher-form-name" x-model="formName" placeholder="เช่น Todo FM Vercel" required
+                 style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--parchment); color: var(--ink);">
+        </label>
+
+        <label class="form-field">
+          <span style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Public URL:</span>
+          <input type="url" x-model="formUrl" placeholder="https://todo-fm-d.vercel.app/" required
+                 style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--parchment); color: var(--ink);">
+          <small style="color: var(--muted); font-size: 11px; margin-top: 4px; display: block;">
+            * ระบบมีระบบป้องกัน SSRF & DNS rebinding สกัดกั้น IP ส่วนตัวและ Loopback โดยอัตโนมัติ
+          </small>
+        </label>
+
+        <label class="form-field">
+          <span style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Expected HTTP Status:</span>
+          <input type="number" x-model="formExpectedStatus" min="100" max="599" placeholder="200" required
+                 style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--parchment); color: var(--ink);">
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="btn-action" @click="closeFormModal()">ยกเลิก</button>
+        <button type="submit" class="btn-action primary">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- PIN Setup Dialog Modal -->
+  <dialog class="reminder-dialog pin-dialog" :open="showPinModal" style="border: 1px solid var(--border-subtle); background: var(--card); border-radius: 18px; max-width: 420px; width: 90vw; color: var(--ink);" x-cloak>
+    <form @submit.prevent="savePin()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="font-size: 18px; margin: 0;"><i class="ri-lock-line"></i> Watchtower PIN</h2>
+        <button type="button" class="btn-action" @click="showPinModal = false" x-show="pin" style="border: none; padding: 4px 8px;">
+          <i class="ri-close-line" style="font-size: 18px;"></i>
+        </button>
+      </div>
+      <p style="font-size: 13px; color: var(--muted); line-height: 1.4; margin-bottom: 14px;">
+        กรุณากรอก PIN สำหรับการจัดการ Watchtower (ค่าเริ่มต้นคือ <code>1804</code> ตามที่ตั้งใน <code>.env</code>) เบราว์เซอร์จะจำรหัสนี้บนอุปกรณ์นี้ให้โดยอัตโนมัติ
+      </p>
+      <input type="password" x-model="tempPin" placeholder="เช่น 1804" maxlength="32" required
+             style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--parchment); color: var(--ink); margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between;">
+        <button type="button" class="btn-action danger" @click="clearPin()" x-show="pin">ลืม PIN</button>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+          <button type="button" class="btn-action" @click="showPinModal = false" x-show="pin">ยกเลิก</button>
+          <button type="submit" class="btn-action primary">ใช้ PIN</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Notice Toast Banner -->
+  <div class="wt-notice" :class="noticeType" x-show="noticeText" x-transition x-cloak>
+    <i :class="{
+      'ri-checkbox-circle-fill': noticeType === 'success',
+      'ri-error-warning-fill': noticeType === 'error',
+      'ri-information-fill': noticeType === 'info'
+    }"></i>
+    <span x-text="noticeText"></span>
+  </div>
+
+  <footer style="margin-top: auto; padding: 24px 16px; text-align: center; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border-subtle);">
+    Pocket Sentinel · Personal Watchtower · vivo 1804 · Termux arm64 · Local Monitoring Perspective
+  </footer>
+
+</body>
+</html>

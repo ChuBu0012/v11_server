@@ -134,10 +134,151 @@
     catch(error){showToast(error.message)}
   }
   async function savePin(event){event.preventDefault();const value=$('#reminder-pin').value.trim();if(!value){$('#pin-error').textContent='กรอก PIN ก่อน';return;}state.pin=value;localStorage.setItem('reminder-pin',value);$('#pin-dialog').close();$('#pin-state').textContent='PIN พร้อมใช้';$('#reminder-pin').value='';if($('#reminder-dialog').open)await save(new Event('submit',{cancelable:true}));}
+
+  async function parseNLPrompt() {
+    const prompt = $('#nl-prompt-input')?.value?.trim();
+    if (!prompt) { showToast('พิมพ์ข้อความที่ต้องการเตือนก่อนนะ'); $('#nl-prompt-input')?.focus(); return; }
+    if (!getPin()) return;
+
+    const btn = $('#nl-parse-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ri-loader-4-line spin"></i> <span>กำลังวิเคราะห์...</span>'; }
+
+    try {
+      const data = await api('/api/schedule/parse', {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+        auth: true
+      });
+
+      const preview = data?.preview || {};
+      const needsClarification = Boolean(data?.needs_clarification);
+
+      const alertEl = $('#nl-ambiguity-alert');
+      if (alertEl) {
+        alertEl.hidden = !needsClarification;
+        if (needsClarification) {
+          const msgEl = $('#nl-ambiguity-msg');
+          if (msgEl) msgEl.textContent = data?.question || 'ระบุเวลาไม่ชัดเจน กรุณาระบุหรือเลือกเวลาที่แน่นอนด้านล่าง';
+        }
+      }
+
+      const titleInput = $('#nl-field-title');
+      if (titleInput) titleInput.value = preview.title || prompt;
+
+      const detailsInput = $('#nl-field-details');
+      if (detailsInput) detailsInput.value = preview.details || '';
+
+      const recurrenceSelect = $('#nl-field-recurrence');
+      if (recurrenceSelect) recurrenceSelect.value = preview.recurrence || 'once';
+
+      const startsAtInput = $('#nl-field-starts-at');
+      if (startsAtInput) {
+        if (preview.starts_at) {
+          try {
+            const dt = new Date(preview.starts_at);
+            startsAtInput.value = localDateTimeValue(dt);
+          } catch (_) {
+            startsAtInput.value = '';
+          }
+        }
+        if (!startsAtInput.value) {
+          const now = new Date(Date.now() + 3600000);
+          startsAtInput.value = localDateTimeValue(now);
+        }
+      }
+
+      const offsets = Array.isArray(preview.offsets) ? preview.offsets : [0];
+      document.querySelectorAll('input[name="nl-offsets"]').forEach(input => {
+        input.checked = offsets.includes(Number(input.value));
+      });
+
+      const card = $('#nl-preview-card');
+      if (card) {
+        card.hidden = false;
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    } catch (err) {
+      showToast('AI แปลผลไม่สำเร็จ — เปิดแบบฟอร์มปกติให้แล้ว');
+      openForm();
+      const titleEl = $('#reminder-title');
+      if (titleEl) titleEl.value = prompt;
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-magic-line"></i> <span>แปลผลด้วย AI</span>'; }
+    }
+  }
+
+  async function saveNLPreview() {
+    if (!getPin()) return;
+    const titleInput = $('#nl-field-title');
+    const local = $('#nl-field-starts-at')?.value;
+    if (!titleInput?.value?.trim()) { showToast('กรุณาระบุเรื่องที่ต้องการเตือน'); titleInput?.focus(); return; }
+    if (!local) { showToast('กรุณาเลือกวันและเวลาก่อนนะ'); $('#nl-field-starts-at')?.focus(); return; }
+
+    const offsets = [...document.querySelectorAll('input[name="nl-offsets"]:checked')].map(i => Number(i.value));
+    const body = {
+      title: titleInput.value.trim(),
+      details: $('#nl-field-details')?.value?.trim() || '',
+      starts_at: `${local}:00+07:00`,
+      recurrence: $('#nl-field-recurrence')?.value || 'once',
+      offsets: offsets.length ? offsets : [0]
+    };
+
+    const confirmBtn = $('#nl-confirm-save-btn');
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'กำลังบันทึก…'; }
+
+    try {
+      await api('/api/schedule/reminders', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        auth: true
+      });
+      const card = $('#nl-preview-card');
+      if (card) card.hidden = true;
+      const promptInput = $('#nl-prompt-input');
+      if (promptInput) promptInput.value = '';
+      showToast('เพิ่มการเตือนแล้ว');
+      await load();
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.innerHTML = '<i class="ri-check-line"></i> ยืนยันและบันทึก'; }
+    }
+  }
+
+  function openManualFormFromNL() {
+    const title = $('#nl-field-title')?.value || '';
+    const details = $('#nl-field-details')?.value || '';
+    const recurrence = $('#nl-field-recurrence')?.value || 'once';
+    const local = $('#nl-field-starts-at')?.value || '';
+    const offsets = [...document.querySelectorAll('input[name="nl-offsets"]:checked')].map(i => Number(i.value));
+
+    const card = $('#nl-preview-card');
+    if (card) card.hidden = true;
+
+    openForm();
+    if (title) $('#reminder-title').value = title;
+    if (details) $('#reminder-details').value = details;
+    if (recurrence) $('#reminder-recurrence').value = recurrence;
+    if (local) $('#reminder-start').value = local;
+    if (offsets.length) {
+      document.querySelectorAll('input[name="offsets"]').forEach(i => {
+        i.checked = offsets.includes(Number(i.value));
+      });
+    }
+  }
+
   function setView(view){state.view=view;const agenda=view==='agenda';$('#month-grid').hidden=agenda;$('.weekday-row').hidden=agenda;$('#agenda-list').hidden=!agenda;$('#month-view-button').classList.toggle('selected',!agenda);$('#agenda-view-button').classList.toggle('selected',agenda);$('#month-view-button').setAttribute('aria-pressed',String(!agenda));$('#agenda-view-button').setAttribute('aria-pressed',String(agenda));renderAgenda();}
   function bind(){
     $('#pin-state').textContent=state.pin?'PIN พร้อมใช้':'ตั้งค่า PIN';$('#pin-open').addEventListener('click',()=>{$('#pin-error').textContent='';$('#reminder-pin').value=state.pin;$('#pin-dialog').showModal()});$('#pin-close').addEventListener('click',()=>$('#pin-dialog').close());$('#pin-form').addEventListener('submit',savePin);$('#forget-pin').addEventListener('click',()=>{state.pin='';localStorage.removeItem('reminder-pin');$('#pin-state').textContent='ตั้งค่า PIN';$('#pin-dialog').close();showToast('ล้าง PIN ที่บันทึกในอุปกรณ์แล้ว')});
     $('#add-reminder').addEventListener('click',()=>openForm());$('#dialog-close').addEventListener('click',()=>$('#reminder-dialog').close());$('#cancel-form').addEventListener('click',()=>$('#reminder-dialog').close());$('#reminder-form').addEventListener('submit',save);
+    $('#nl-parse-btn')?.addEventListener('click', parseNLPrompt);
+    $('#nl-prompt-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); parseNLPrompt(); }
+    });
+    $('#nl-confirm-save-btn')?.addEventListener('click', saveNLPreview);
+    $('#nl-open-modal-btn')?.addEventListener('click', openManualFormFromNL);
+    $('#nl-cancel-btn')?.addEventListener('click', () => { const c = $('#nl-preview-card'); if (c) c.hidden = true; });
+    $('#nl-discard-btn')?.addEventListener('click', () => { const c = $('#nl-preview-card'); if (c) c.hidden = true; });
     $('#previous-month').addEventListener('click',()=>{state.month--;if(state.month<0){state.month=11;state.year--}if(state.view==='agenda')state.selected=`${state.year}-${String(state.month+1).padStart(2,'0')}-01`;render()});$('#next-month').addEventListener('click',()=>{state.month++;if(state.month>11){state.month=0;state.year++}if(state.view==='agenda')state.selected=`${state.year}-${String(state.month+1).padStart(2,'0')}-01`;render()});$('#jump-today').addEventListener('click',()=>{const p=parts(new Date());state.year=Number(p.year);state.month=Number(p.month)-1;state.selected=currentKey();render();setView('agenda')});
     $('#month-view-button').addEventListener('click',()=>setView('month'));$('#agenda-view-button').addEventListener('click',()=>setView('agenda'));$('#month-grid').addEventListener('click',(event)=>{const cell=event.target.closest('[data-date]');if(!cell)return;state.selected=cell.dataset.date;setView('agenda')});$('#agenda-list').addEventListener('click',(event)=>{const button=event.target.closest('[data-action]');if(button)act(button)});$('#paused-list').addEventListener('click',(event)=>{const button=event.target.closest('[data-action]');if(button)act(button)});
     window.addEventListener('keydown',(event)=>{if(event.key==='Escape')return;if((event.metaKey||event.ctrlKey)&&event.key==='n'){event.preventDefault();openForm()}});

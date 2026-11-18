@@ -34,7 +34,7 @@ func clearConfigEnv(t *testing.T) {
 		"SAMPLE_INTERVAL", "RETENTION_MAX_AGE", "RETENTION_MAX_ROWS",
 		"BATTERY_THRESHOLD", "DISK_THRESHOLD_GB",
 		"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_TIMEOUT",
-		"GEMINI_API_KEY",
+		"GEMINI_API_KEY", "REMINDER_PIN", "WATCHTOWER_PIN", "OPENROUTER_API_KEY",
 	}
 	saved := make(map[string]string)
 	for _, k := range keys {
@@ -90,6 +90,8 @@ func TestLoadOverrides(t *testing.T) {
 		"TELEGRAM_BOT_TOKEN": "123456:ABC-DEF-token",
 		"TELEGRAM_CHAT_ID":   "-100999",
 		"TELEGRAM_TIMEOUT":   "5s",
+		"WATCHTOWER_PIN":     "wt-pin-1234",
+		"OPENROUTER_API_KEY": "sk-or-v1-secret-key",
 	})
 
 	cfg, err := Load()
@@ -116,6 +118,12 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.TelegramTimeout != 5*time.Second {
 		t.Errorf("TelegramTimeout = %v, want 5s", cfg.TelegramTimeout)
+	}
+	if cfg.WatchtowerPIN != "wt-pin-1234" {
+		t.Errorf("WatchtowerPIN = %v, want wt-pin-1234", cfg.WatchtowerPIN)
+	}
+	if cfg.OpenRouterAPIKey != "sk-or-v1-secret-key" {
+		t.Errorf("OpenRouterAPIKey = %v, want sk-or-v1-secret-key", cfg.OpenRouterAPIKey)
 	}
 }
 
@@ -187,9 +195,19 @@ func TestStringRedaction(t *testing.T) {
 		TelegramBotToken: "123456789:ABCDEF-long-token",
 		TelegramChatID:   "-100999888",
 		TelegramTimeout:  10 * time.Second,
+		WatchtowerPIN:    "secret-watchtower-pin",
+		OpenRouterAPIKey: "sk-or-v1-secret-openrouter-key",
 	}
 
 	s := cfg.String()
+
+	// Secrets should not be present in cleartext
+	if strings.Contains(s, "secret-watchtower-pin") {
+		t.Error("String() should not contain WatchtowerPIN")
+	}
+	if strings.Contains(s, "sk-or-v1-secret-openrouter-key") {
+		t.Error("String() should not contain OpenRouterAPIKey")
+	}
 
 	// Token should be partially masked
 	if strings.Contains(s, "123456789:ABCDEF-long-token") {

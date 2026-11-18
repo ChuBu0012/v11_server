@@ -24,6 +24,91 @@
       <button class="schedule-primary" id="add-reminder" type="button"><i class="ri-add-line" aria-hidden="true"></i> เพิ่มเตือน</button>
     </section>
 
+    <!-- Natural Language Schedule Creator & AI Preview -->
+    <section class="schedule-nl-section" aria-label="สร้างการเตือนด้วยภาษาธรรมชาติ">
+      <div class="nl-input-bar">
+        <div class="nl-input-wrap">
+          <i class="ri-sparkling-fill nl-sparkle-icon" aria-hidden="true"></i>
+          <input type="text" id="nl-prompt-input" placeholder="พิมพ์ภาษาธรรมชาติ เช่น 'ประชุมทีม วันจันทร์ 10:00 เตือนก่อน 15 นาที'" maxlength="500">
+        </div>
+        <button type="button" id="nl-parse-btn" class="schedule-primary nl-parse-btn">
+          <i class="ri-magic-line"></i> <span>แปลผลด้วย AI</span>
+        </button>
+      </div>
+
+      <!-- Interactive AI Preview Card (Initially Hidden) -->
+      <div id="nl-preview-card" class="nl-preview-card" hidden>
+        <div class="nl-preview-head">
+          <div class="nl-preview-title-wrap">
+            <span class="nl-badge"><i class="ri-robot-2-line"></i> AI PREVIEW</span>
+            <h3>ตรวจสอบความถูกต้องก่อนบันทึก</h3>
+          </div>
+          <button type="button" id="nl-cancel-btn" class="icon-button" aria-label="ปิดการ์ดพรีวิว"><i class="ri-close-line"></i></button>
+        </div>
+
+        <!-- Ambiguity Warning Alert (if ambiguous/vague date/time) -->
+        <div id="nl-ambiguity-alert" class="nl-ambiguity-alert" hidden role="alert">
+          <i class="ri-alert-fill" style="font-size: 18px; flex-shrink: 0;"></i>
+          <div class="nl-ambiguity-content">
+            <strong id="nl-ambiguity-msg">ระบุเวลาไม่ชัดเจน กรุณาระบุหรือเลือกเวลาที่แน่นอน</strong>
+            <p>โปรดตรวจสอบและแก้ไขข้อมูลในฟิลด์ด้านล่างก่อนยืนยันบันทึก</p>
+          </div>
+        </div>
+
+        <div class="nl-preview-body">
+          <div class="nl-preview-row">
+            <label class="nl-field">
+              <span class="nl-field-label">เรื่อง:</span>
+              <input type="text" id="nl-field-title" class="nl-input-editable" required>
+            </label>
+          </div>
+          <div class="nl-preview-grid">
+            <label class="nl-field">
+              <span class="nl-field-label">วันและเวลา (เวลาไทย UTC+7):</span>
+              <input type="datetime-local" id="nl-field-starts-at" class="nl-input-editable" required>
+            </label>
+            <label class="nl-field">
+              <span class="nl-field-label">การทำซ้ำ:</span>
+              <select id="nl-field-recurrence" class="nl-input-editable">
+                <option value="once">ครั้งเดียว</option>
+                <option value="weekly">ทุกสัปดาห์</option>
+              </select>
+            </label>
+          </div>
+          <div class="nl-preview-row">
+            <fieldset class="nl-field offset-field" style="border: 0; padding: 0;">
+              <legend class="nl-field-label" style="margin-bottom: 6px;">เตือนล่วงหน้า:</legend>
+              <div class="offset-options">
+                <label><input type="checkbox" name="nl-offsets" value="0"><span>ตรงเวลา</span></label>
+                <label><input type="checkbox" name="nl-offsets" value="5"><span>5 นาที</span></label>
+                <label><input type="checkbox" name="nl-offsets" value="10"><span>10 นาที</span></label>
+                <label><input type="checkbox" name="nl-offsets" value="15"><span>15 นาที</span></label>
+                <label><input type="checkbox" name="nl-offsets" value="30"><span>30 นาที</span></label>
+              </div>
+            </fieldset>
+          </div>
+          <div class="nl-preview-row">
+            <label class="nl-field">
+              <span class="nl-field-label">รายละเอียด (ถ้ามี):</span>
+              <input type="text" id="nl-field-details" class="nl-input-editable" placeholder="รายละเอียดเพิ่มเติม">
+            </label>
+          </div>
+        </div>
+
+        <div class="nl-preview-actions">
+          <button type="button" id="nl-open-modal-btn" class="schedule-secondary">
+            <i class="ri-edit-line"></i> แก้ไขในแบบฟอร์มปกติ
+          </button>
+          <div class="nl-actions-right">
+            <button type="button" id="nl-discard-btn" class="schedule-secondary">ยกเลิก</button>
+            <button type="button" id="nl-confirm-save-btn" class="schedule-primary">
+              <i class="ri-check-line"></i> ยืนยันและบันทึก
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="schedule-next" aria-labelledby="schedule-next-title">
       <div class="next-date-mark"><span id="next-weekday">—</span><strong id="next-day">—</strong></div>
       <div class="schedule-next-copy"><p class="eyebrow">UP NEXT</p><h2 id="schedule-next-title">กำลังโหลดตาราง…</h2><p id="schedule-next-description">รายการถัดไปจะอยู่ตรงนี้</p></div>

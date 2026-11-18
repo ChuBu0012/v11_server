@@ -37,6 +37,15 @@ func TestDashboardEndpoint(t *testing.T) {
 	if !strings.Contains(body, "Hardware &amp; Runtime Metrics") && !strings.Contains(body, "Hardware & Runtime Metrics") {
 		t.Errorf("Expected dashboard body to contain hardware metrics section")
 	}
+	if !strings.Contains(body, "Personal Watchtower") {
+		t.Errorf("Expected dashboard body to contain 'Personal Watchtower'")
+	}
+	if !strings.Contains(body, "📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11") {
+		t.Errorf("Expected dashboard body to contain V11 observer perspective badge")
+	}
+	if !strings.Contains(body, "watchtowerSummaryComponent") {
+		t.Errorf("Expected dashboard body to contain 'watchtowerSummaryComponent'")
+	}
 
 	// Secret scan: Ensure no bot tokens or sensitive placeholders leaked into HTML
 	forbidden := []string{"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "NGROK_AUTHTOKEN", "BEGIN PRIVATE KEY"}
@@ -81,6 +90,16 @@ func TestPWARoutes(t *testing.T) {
 	if rrSW.Header().Get("Service-Worker-Allowed") != "/" {
 		t.Errorf("Expected Service-Worker-Allowed header to be '/'")
 	}
+	swBody := rrSW.Body.String()
+	if !strings.Contains(swBody, "sentinel-shell-v12") {
+		t.Errorf("Expected sw.js to contain cache name 'sentinel-shell-v12', got body: %s", swBody)
+	}
+	if !strings.Contains(swBody, "/watchtower") {
+		t.Errorf("Expected sw.js to cache '/watchtower'")
+	}
+	if !strings.Contains(swBody, "/static/js/components/watchtower.js") {
+		t.Errorf("Expected sw.js to cache '/static/js/components/watchtower.js'")
+	}
 
 	// 3. Icons
 	for _, path := range []string{"/icon-192.png", "/icon-512.png", "/icon.svg"} {
@@ -111,6 +130,7 @@ func TestStaticRoutes(t *testing.T) {
 		"/static/js/components/three-core.js",
 		"/static/js/components/digest.js",
 		"/static/js/components/events.js",
+		"/static/js/components/watchtower.js",
 	}
 
 	for _, path := range staticFiles {
@@ -150,5 +170,93 @@ func TestTeleBridgeEndpoint(t *testing.T) {
 		if !strings.Contains(body, "relayComponent") {
 			t.Errorf("Expected body of %s to contain 'relayComponent'", p)
 		}
+		if !strings.Contains(body, "proofread-btn") {
+			t.Errorf("Expected body of %s to contain 'proofread-btn'", p)
+		}
+		if !strings.Contains(body, "proofread-diff-card") {
+			t.Errorf("Expected body of %s to contain 'proofread-diff-card'", p)
+		}
+	}
+}
+
+func TestWatchtowerEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/watchtower", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for /watchtower, got %d", rr.Code)
+	}
+
+	ct := rr.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/html") {
+		t.Errorf("Expected Content-Type to contain 'text/html', got '%s'", ct)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "Personal Watchtower") {
+		t.Errorf("Expected /watchtower body to contain 'Personal Watchtower'")
+	}
+	if !strings.Contains(body, "📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11") {
+		t.Errorf("Expected /watchtower body to contain V11 perspective badge")
+	}
+	if !strings.Contains(body, "watchtowerComponent") {
+		t.Errorf("Expected /watchtower body to contain 'watchtowerComponent'")
+	}
+	if !strings.Contains(body, "watcher-chart-") {
+		t.Errorf("Expected /watchtower body to contain watcher chart canvas")
+	}
+	if !strings.Contains(body, "Check now") {
+		t.Errorf("Expected /watchtower body to contain 'Check now' button")
+	}
+
+	// HEAD request verification
+	reqHead := httptest.NewRequest(http.MethodHead, "/watchtower", nil)
+	rrHead := httptest.NewRecorder()
+	r.ServeHTTP(rrHead, reqHead)
+	if rrHead.Code != http.StatusOK {
+		t.Errorf("Expected 200 for HEAD /watchtower, got %d", rrHead.Code)
+	}
+}
+
+func TestScheduleNLEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/schedule", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for /schedule, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "nl-prompt-input") {
+		t.Errorf("Expected /schedule to contain 'nl-prompt-input'")
+	}
+	if !strings.Contains(body, "nl-parse-btn") {
+		t.Errorf("Expected /schedule to contain 'nl-parse-btn'")
+	}
+	if !strings.Contains(body, "nl-preview-card") {
+		t.Errorf("Expected /schedule to contain 'nl-preview-card'")
+	}
+	if !strings.Contains(body, "nl-ambiguity-alert") {
+		t.Errorf("Expected /schedule to contain 'nl-ambiguity-alert'")
+	}
+	if !strings.Contains(body, "nl-confirm-save-btn") {
+		t.Errorf("Expected /schedule to contain 'nl-confirm-save-btn'")
+	}
+	if !strings.Contains(body, "nl-open-modal-btn") {
+		t.Errorf("Expected /schedule to contain 'nl-open-modal-btn'")
 	}
 }

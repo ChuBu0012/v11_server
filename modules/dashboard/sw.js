@@ -1,9 +1,10 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v11';
+const CACHE_NAME = 'sentinel-shell-v12';
 const SHELL_ASSETS = [
   '/',
   '/tele-bridge',
   '/schedule',
+  '/watchtower',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -18,7 +19,8 @@ const SHELL_ASSETS = [
   '/static/js/components/events.js',
   '/static/js/components/relay.js',
   '/static/js/components/schedule-summary.js',
-  '/static/js/components/schedule.js'
+  '/static/js/components/schedule.js',
+  '/static/js/components/watchtower.js'
 ];
 
 self.addEventListener('install', (event) => {

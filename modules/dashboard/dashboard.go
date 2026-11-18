@@ -17,6 +17,9 @@ var teleBridgeHTML []byte
 //go:embed schedule.html
 var scheduleHTML []byte
 
+//go:embed watchtower.html
+var watchtowerHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -62,6 +65,8 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/relay", m.HandleTeleBridge)
 	r.GET("/schedule", m.HandleSchedule)
 	r.HEAD("/schedule", m.HandleSchedule)
+	r.GET("/watchtower", m.HandleWatchtower)
+	r.HEAD("/watchtower", m.HandleWatchtower)
 
 	subFS, err := fs.Sub(staticFS, "static")
 	if err == nil {
@@ -82,6 +87,11 @@ func (m *Module) HandleTeleBridge(c *gin.Context) {
 // HandleSchedule serves the focused personal reminder calendar.
 func (m *Module) HandleSchedule(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", scheduleHTML)
+}
+
+// HandleWatchtower serves the dedicated Personal Watchtower management interface.
+func (m *Module) HandleWatchtower(c *gin.Context) {
+	c.Data(http.StatusOK, "text/html; charset=utf-8", watchtowerHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.
