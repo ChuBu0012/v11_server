@@ -48,5 +48,9 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 
 ## Next Steps
 - Verify automated daily execution at 13:00 Bangkok time via `crond` on vivo V11.
-- [2026-11-18] Completed Pocket Sentinel v2.1 (Telegram-to-agy Async Agent Bridge with Multi-Layer Prompt Injection Guard, Tasks T101–T106). Features single-flight concurrency lock, 3-min hard timeout, secret environment stripping, regex scrubber, causal ordering ACK, and live deployment under PM2 on vivo 1804 (PID 25471, 18.6MB RAM).
-- [Planned] Verify daily automated digest execution at 13:00 Bangkok time via `crond` on vivo V11.
+- [2026-11-18] Completed Pocket Sentinel v2.1 (Telegram-to-agy Async Agent Bridge with Multi-Layer Prompt Injection Guard, Tasks T101–T106).
+- [2026-11-18] Fixed Three.js and Chart.js proxy conflicts: extracted `tc` and `chartInstances` completely outside Alpine.js reactive data proxies to eliminate `modelViewMatrix` TypeError and ensure continuous charts rendering with direct fallback loader.
+- [2026-11-18] Added dynamic reasoning effort parsing (`[low|medium|high|max]` / `--effort=...`) in Telegram `/task` and passed to `agy`.
+- [2026-11-18] Implemented dual-level Telegram lifecycle & deploy notifications (boot/shutdown in `main.go`, start/error/success in `scripts/deploy.sh`) and 15s in-place progress heartbeat.
+- [2026-11-18] Configured deterministic post-tool quality guardrail hook (`.agents/hooks.json` & `scripts/hook-validate.sh`) enforcing `gofmt -w` and `go vet ./...`.
+- [2026-11-18] Successfully committed, pushed to GitHub `origin/main`, pulled directly on vivo v11, recompiled standalone ARM64 binary on-device, and reloaded PM2 `go-server` (PID 4967, ~11.7MB RAM, Health Check 200 OK).
