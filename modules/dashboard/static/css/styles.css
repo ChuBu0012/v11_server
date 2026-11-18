@@ -1286,4 +1286,241 @@ body.drawer-locked { overflow: hidden !important; }
   .relay-submit-btn { flex: 1; justify-content: center; }
 }
 
+/* Telegram Bridge uses its own explicit tokens so it stays readable in either theme. */
+.tele-bridge-page {
+  --bridge-page: var(--parchment);
+  --bridge-card: var(--canvas);
+  --bridge-border: var(--hairline);
+  --bridge-text: var(--ink);
+  --bridge-muted: var(--muted);
+  --bridge-control: var(--pearl);
+  --bridge-control-border: var(--hairline);
+  --bridge-tab-bg: var(--range-bg);
+  min-height: 100vh;
+  padding: 36px 20px 52px;
+  color: var(--bridge-text);
+  background: var(--bridge-page);
+}
+
+[data-theme="light"] .tele-bridge-page {
+  background: var(--bridge-page);
+}
+
+.tele-nav, .tele-card, .tele-footer-hint { max-width: 760px; }
+.tele-nav { margin-bottom: 16px; }
+.tele-back-btn {
+  color: var(--bridge-muted);
+  background: var(--bridge-card);
+  border-color: var(--bridge-border);
+}
+.tele-back-btn:hover { color: var(--bridge-text); border-color: var(--blue); }
+.tele-card {
+  padding: 36px 38px 30px;
+  color: var(--bridge-text);
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.tele-title-wrap { margin-bottom: 28px; }
+.tele-heading { color: var(--bridge-text); font-size: 24px; line-height: 1.2; }
+.tele-subheading { color: var(--bridge-muted); font-size: 14px; line-height: 1.55; }
+.tele-footer-hint { color: var(--bridge-muted); }
+.tele-bridge-page .drawer-pin-pill {
+  color: var(--bridge-text);
+  background: var(--bridge-card);
+  border-color: var(--bridge-border);
+  padding: 8px 12px;
+}
+.tele-bridge-page .pin-setup-box {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.tele-bridge-page .pin-hint { color: var(--bridge-muted); line-height: 1.5; }
+.tele-bridge-page .relay-tabs {
+  margin: 0 0 22px;
+  padding: 5px;
+  background: var(--bridge-tab-bg);
+  border: 1px solid var(--bridge-border);
+  border-radius: 14px;
+}
+.tele-bridge-page .relay-tab-btn {
+  min-height: 48px;
+  color: var(--bridge-muted);
+  font-size: 14px;
+}
+.tele-bridge-page .relay-tab-btn.active {
+  color: var(--bridge-text);
+  background: var(--bridge-card);
+  border-color: var(--blue);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.tele-bridge-page #relay-message-input,
+.tele-bridge-page .caption-input {
+  color: var(--bridge-text);
+  background: var(--bridge-control);
+  border: 1px solid var(--bridge-control-border);
+  border-radius: 14px;
+}
+.tele-bridge-page #relay-message-input { min-height: 180px; padding: 16px; line-height: 1.6; }
+.tele-bridge-page #relay-message-input::placeholder,
+.tele-bridge-page .caption-input::placeholder { color: var(--bridge-muted); opacity: 0.8; }
+.tele-bridge-page #relay-message-input:focus,
+.tele-bridge-page .caption-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(41, 151, 255, 0.16);
+}
+.tele-bridge-page .drop-zone {
+  background: var(--bridge-control);
+  border-color: var(--bridge-control-border);
+  padding: 34px 20px;
+}
+.tele-bridge-page .file-chip-card {
+  background: var(--bridge-card);
+  border-color: var(--bridge-border);
+}
+.tele-bridge-page .file-chip-name { color: var(--bridge-text); }
+.tele-bridge-page .file-chip-meta,
+.tele-bridge-page .drop-sub-text,
+.tele-bridge-page .textarea-footer { color: var(--bridge-muted); }
+.tele-bridge-page .relay-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--bridge-border);
+}
+.tele-bridge-page .relay-cancel-btn,
+.tele-bridge-page .relay-submit-btn {
+  min-height: 44px;
+  padding: 10px 20px;
+  font-size: 14px;
+}
+.tele-bridge-page .relay-cancel-btn {
+  color: var(--bridge-text);
+  background: transparent;
+  border-color: var(--bridge-border);
+}
+.tele-bridge-page .relay-cancel-btn:hover { background: var(--bridge-tab-bg); }
+.tele-bridge-page .relay-submit-btn { background: var(--blue); box-shadow: 0 2px 8px rgba(41, 151, 255, 0.25); }
+.tele-bridge-page .relay-status-banner { margin-top: 18px; padding: 12px 14px; font-size: 13px; }
+.tele-bridge-page .relay-status-banner.success { color: #15803d; }
+.tele-bridge-page .relay-status-banner.error { color: #b42318; }
+
+@media (max-width: 600px) {
+  .tele-bridge-page { padding: 20px 14px 36px; }
+  .tele-nav { gap: 10px; }
+  .tele-back-btn { padding: 8px 11px; font-size: 12px; }
+  .tele-bridge-page .drawer-pin-pill { font-size: 11px; }
+  .tele-card { padding: 24px 20px 20px; border-radius: 20px; }
+  .tele-title-wrap { align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+  .tele-icon-huge { width: 48px; height: 48px; font-size: 23px; }
+  .tele-heading { font-size: 21px; }
+  .tele-subheading { font-size: 13px; }
+  .tele-bridge-page .relay-tab-btn { min-height: 46px; padding: 9px 7px; font-size: 12px; }
+  .tele-bridge-page #relay-message-input { min-height: 160px; }
+  .tele-bridge-page .relay-footer { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
+  .tele-bridge-page .relay-cancel-btn,
+  .tele-bridge-page .relay-submit-btn { justify-content: center; padding: 10px 12px; font-size: 13px; }
+  .tele-footer-hint { margin-top: 18px; padding: 0 10px; font-size: 11px; }
+}
+
+/* Chat-style composer and live upload feedback for the standalone Bridge. */
+.tele-bridge-page .chat-composer {
+  padding: 12px 14px 10px;
+  overflow: hidden;
+  background: var(--bridge-control);
+  border: 1px solid var(--bridge-control-border);
+  border-radius: 20px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.tele-bridge-page .chat-composer:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(41, 151, 255, 0.12);
+}
+.tele-bridge-page .chat-composer #relay-message-input {
+  min-height: 138px;
+  padding: 8px 4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: vertical;
+}
+.tele-bridge-page .chat-composer #relay-message-input:focus { box-shadow: none; }
+.tele-bridge-page .chat-composer .textarea-footer {
+  min-height: 42px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--bridge-border);
+}
+.tele-bridge-page .composer-actions { display: flex; align-items: center; gap: 12px; }
+.tele-bridge-page .char-count { font-variant-numeric: tabular-nums; }
+.tele-bridge-page .composer-send-btn {
+  min-height: 38px;
+  padding: 8px 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #fff;
+  background: var(--blue);
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(41, 151, 255, 0.25);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.tele-bridge-page .composer-send-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.tele-bridge-page .composer-send-btn:disabled { opacity: 0.48; cursor: not-allowed; box-shadow: none; }
+.tele-bridge-page .relay-progress-card {
+  margin-top: 18px;
+  padding: 14px 16px;
+  color: var(--bridge-text);
+  background: var(--bridge-control);
+  border: 1px solid var(--bridge-border);
+  border-radius: 14px;
+}
+.tele-bridge-page .relay-progress-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tele-bridge-page .relay-progress-label { min-width: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.tele-bridge-page .relay-progress-value { flex: 0 0 auto; color: var(--bridge-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tele-bridge-page .relay-progress-track {
+  height: 8px;
+  margin-top: 11px;
+  overflow: hidden;
+  background: var(--bridge-border);
+  border-radius: 999px;
+}
+.tele-bridge-page .relay-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+.tele-bridge-page .relay-progress-track.indeterminate .relay-progress-fill {
+  width: 38%;
+  animation: relay-progress-sweep 1.2s ease-in-out infinite;
+}
+.tele-bridge-page .relay-progress-hint { margin: 8px 0 0; color: var(--bridge-muted); font-size: 11px; }
+@keyframes relay-progress-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(270%); }
+}
+
+@media (max-width: 600px) {
+  .tele-bridge-page .chat-composer { padding: 10px 12px 8px; border-radius: 18px; }
+  .tele-bridge-page .chat-composer #relay-message-input { min-height: 120px; }
+  .tele-bridge-page .chat-composer .textarea-footer { align-items: flex-end; gap: 8px; }
+  .tele-bridge-page .shortcut-tip { font-size: 10px; }
+  .tele-bridge-page .composer-actions { gap: 8px; }
+  .tele-bridge-page .composer-send-btn { min-height: 36px; padding: 7px 11px; font-size: 12px; }
+}
+
 

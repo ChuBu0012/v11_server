@@ -5,6 +5,7 @@
 // Architecture Guardrail (frontend-proxy-guard):
 // Keep browser File object in module-level scope to avoid Alpine Proxy prototype corruption.
 let pendingRelayFile = null;
+let relayUploadRequest = null;
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('relayComponent', () => ({
@@ -28,6 +29,9 @@ document.addEventListener('alpine:init', () => {
     // UI state
     isDragging: false,
     isSending: false,
+    uploadProgress: 0,
+    uploadProgressMode: 'indeterminate',
+    progressText: '',
     statusText: '',
     statusType: '', // 'success' | 'error' | 'info' | ''
 
@@ -218,6 +222,40 @@ document.addEventListener('alpine:init', () => {
       throw new Error(`เซิร์ฟเวอร์ตอบกลับข้อมูลที่อ่านไม่ได้ (HTTP ${resp.status})`);
     },
 
+    sendFileWithProgress(formData) {
+      return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        relayUploadRequest = request;
+        request.open('POST', '/api/relay/send');
+        request.setRequestHeader('X-Relay-PIN', this.pin);
+        request.timeout = 90000;
+        request.upload.addEventListener('progress', (event) => {
+          if (!event.lengthComputable) return;
+          this.uploadProgress = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          this.uploadProgressMode = event.loaded >= event.total ? 'indeterminate' : 'determinate';
+          if (event.loaded >= event.total) this.progressText = 'อัปโหลดไฟล์แล้ว กำลังส่งต่อเข้า Telegram…';
+        });
+        request.addEventListener('load', () => {
+          relayUploadRequest = null;
+          resolve({
+            ok: request.status >= 200 && request.status < 300,
+            status: request.status,
+            headers: { get: (name) => request.getResponseHeader(name) || '' },
+            text: async () => request.responseText
+          });
+        });
+        request.addEventListener('error', () => {
+          relayUploadRequest = null;
+          reject(new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาตรวจสอบเครือข่ายแล้วลองอีกครั้ง'));
+        });
+        request.addEventListener('timeout', () => {
+          relayUploadRequest = null;
+          reject(new Error('การส่งใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'));
+        });
+        request.send(formData);
+      });
+    },
+
     async submit() {
       if (this.isSending) return;
 
@@ -237,6 +275,8 @@ document.addEventListener('alpine:init', () => {
         this.isSending = true;
         this.statusText = 'กำลังส่งข้อความไปยัง Telegram…';
         this.statusType = 'info';
+        this.progressText = 'กำลังส่งข้อความไปยัง Telegram…';
+        this.uploadProgressMode = 'indeterminate';
 
         try {
           const resp = await fetch('/api/relay/send', {
@@ -278,6 +318,7 @@ document.addEventListener('alpine:init', () => {
           }
         } finally {
           this.isSending = false;
+          this.uploadProgress = 0;
         }
 
       } else {
@@ -290,6 +331,9 @@ document.addEventListener('alpine:init', () => {
         this.isSending = true;
         this.statusText = `กำลังอัปโหลด ${this.fileName} (${this.fileSizeFormatted}) ไปยัง Telegram…`;
         this.statusType = 'info';
+        this.progressText = `กำลังอัปโหลด ${this.fileName}`;
+        this.uploadProgress = 0;
+        this.uploadProgressMode = 'determinate';
 
         const formData = new FormData();
         formData.append('file', pendingRelayFile, this.fileName);
@@ -298,13 +342,7 @@ document.addEventListener('alpine:init', () => {
         }
 
         try {
-          const resp = await fetch('/api/relay/send', {
-            method: 'POST',
-            headers: {
-              'X-Relay-PIN': this.pin
-            },
-            body: formData
-          });
+          const resp = await this.sendFileWithProgress(formData);
 
           const data = await this.readRelayResponse(resp);
 
@@ -340,6 +378,8 @@ document.addEventListener('alpine:init', () => {
           }
         } finally {
           this.isSending = false;
+          this.uploadProgress = 0;
+          this.uploadProgressMode = 'indeterminate';
         }
       }
     }

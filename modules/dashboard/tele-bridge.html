@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th" class="dark">
+<html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a0c10">
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem('sentinel-theme');
+      document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
+    })();
+  </script>
 
   <!-- Remix Icon -->
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
@@ -74,11 +80,16 @@
 
     <!-- Tab 1: Text Message -->
     <div class="relay-tab-content" x-show="activeTab === 'text'">
-      <div class="field-wrap">
-        <textarea id="relay-message-input" x-model="messageText" rows="6" placeholder="พิมพ์ข้อความที่ต้องการส่งเข้า Telegram ที่นี่... (กด ⌘+Enter เพื่อส่งทันที)" maxlength="4000"></textarea>
+      <div class="field-wrap chat-composer">
+        <textarea id="relay-message-input" x-model="messageText" rows="5" placeholder="พิมพ์ข้อความของคุณ..." maxlength="4000"></textarea>
         <div class="textarea-footer">
           <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>
-          <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+          <div class="composer-actions">
+            <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+            <button class="composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
+              <i class="ri-send-plane-fill"></i><span>ส่งข้อความ</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -131,8 +142,20 @@
       </div>
     </div>
 
+    <!-- Live send progress -->
+    <div class="relay-progress-card" x-show="isSending" x-transition x-cloak aria-live="polite">
+      <div class="relay-progress-heading">
+        <span class="relay-progress-label" x-text="progressText"></span>
+        <span class="relay-progress-value" x-show="uploadProgressMode === 'determinate'" x-text="uploadProgress + '%'" aria-hidden="true"></span>
+      </div>
+      <div class="relay-progress-track" :class="uploadProgressMode" role="progressbar" aria-label="ความคืบหน้าการส่ง" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="uploadProgressMode === 'determinate' ? uploadProgress : null">
+        <span class="relay-progress-fill" :style="uploadProgressMode === 'determinate' ? `width: ${uploadProgress}%` : ''"></span>
+      </div>
+      <p class="relay-progress-hint" x-text="uploadProgressMode === 'determinate' ? 'กำลังอัปโหลดไฟล์ไปยังเซิร์ฟเวอร์' : 'กำลังรอการตอบกลับจาก Telegram'" x-show="activeTab === 'file'"></p>
+    </div>
+
     <!-- Status Banner -->
-    <div class="relay-status-banner" :class="statusType" x-show="statusText" x-transition x-cloak>
+    <div class="relay-status-banner" :class="statusType" x-show="statusText && statusType !== 'info'" x-transition x-cloak>
       <i :class="{
         'ri-checkbox-circle-fill': statusType === 'success',
         'ri-error-warning-fill': statusType === 'error',
@@ -146,7 +169,7 @@
       <button class="relay-cancel-btn" type="button" @click="window.location.href='/'">
         กลับหน้าหลัก
       </button>
-      <button class="relay-submit-btn" type="button" :disabled="isSending" @click="submit()">
+      <button class="relay-submit-btn" type="button" x-show="activeTab === 'file'" :disabled="isSending" @click="submit()">
         <span x-show="!isSending"><i class="ri-send-plane-fill"></i> ส่งเข้า Telegram</span>
         <span x-show="isSending"><i class="ri-loader-4-line spin"></i> กำลังส่ง…</span>
       </button>
