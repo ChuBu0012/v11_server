@@ -174,6 +174,16 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			}))
 		}
 
+		var runnerOpts []bot.AgentRunnerOption
+		if binPath := os.Getenv("AGY_BIN_PATH"); binPath != "" {
+			runnerOpts = append(runnerOpts, bot.WithCustomBinary(binPath))
+		}
+		if workDir := os.Getenv("AGY_WORK_DIR"); workDir != "" {
+			runnerOpts = append(runnerOpts, bot.WithCustomWorkDir(workDir))
+		}
+		agentRunner := bot.NewAgentRunner(runnerOpts...)
+		routerOpts = append(routerOpts, bot.WithAgentRunner(agentRunner))
+
 		botRouter := bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
 	}

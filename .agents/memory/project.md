@@ -48,4 +48,5 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 
 ## Next Steps
 - Verify automated daily execution at 13:00 Bangkok time via `crond` on vivo V11.
-- [Planned v2.1] Telegram-to-agy Async Agent Bridge with Multi-Layer Prompt Injection Guard (Spec-Kit ready in `.agents/docs/spec-kit/agent-bridge/`).
+- [2026-11-18] Completed Pocket Sentinel v2.1 (Telegram-to-agy Async Agent Bridge with Multi-Layer Prompt Injection Guard, Tasks T101–T106). Features single-flight concurrency lock, 3-min hard timeout, secret environment stripping, regex scrubber, causal ordering ACK, and live deployment under PM2 on vivo 1804 (PID 25471, 18.6MB RAM).
+- [Planned] Verify daily automated digest execution at 13:00 Bangkok time via `crond` on vivo V11.
