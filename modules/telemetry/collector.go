@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"v11-server/modules/alerts"
+	"v11-server/shared/hostmem"
 )
 
 // SystemMetricsProvider supplies system runtime and disk statistics.
@@ -24,6 +25,11 @@ type BatteryProvider interface {
 	GetBattery(ctx context.Context) (level *float64, status *string, err error)
 }
 
+// HostMemoryProvider supplies host device RAM statistics.
+type HostMemoryProvider interface {
+	GetHostMemory() (totalMB, usedMB, freeMB *float64, err error)
+}
+
 // AlertProcessor receives collected samples for threshold evaluation.
 type AlertProcessor interface {
 	ProcessSample(sample alerts.Sample) error
@@ -34,6 +40,7 @@ type Collector struct {
 	repo           *Repository
 	sysProvider    SystemMetricsProvider
 	batProvider    BatteryProvider
+	hostMemProvider HostMemoryProvider
 	alertProc      AlertProcessor
 	retentionAge   time.Duration
 	retentionRows  int
@@ -52,6 +59,10 @@ func WithBatteryProvider(p BatteryProvider) CollectorOption {
 	return func(c *Collector) { c.batProvider = p }
 }
 
+func WithHostMemoryProvider(p HostMemoryProvider) CollectorOption {
+	return func(c *Collector) { c.hostMemProvider = p }
+}
+
 func WithAlertProcessor(p AlertProcessor) CollectorOption {
 	return func(c *Collector) { c.alertProc = p }
 }
@@ -66,11 +77,12 @@ func WithRetention(maxAge time.Duration, maxRows int) CollectorOption {
 // NewCollector creates a collector with defaults for vivo V11 / Termux.
 func NewCollector(repo *Repository, startTime time.Time, opts ...CollectorOption) *Collector {
 	c := &Collector{
-		repo:          repo,
-		sysProvider:   NewDefaultSystemProvider(startTime),
-		batProvider:   &DefaultBatteryProvider{},
-		retentionAge:  72 * time.Hour,
-		retentionRows: 4320,
+		repo:            repo,
+		sysProvider:     NewDefaultSystemProvider(startTime),
+		batProvider:     &DefaultBatteryProvider{},
+		hostMemProvider: &DefaultHostMemoryProvider{},
+		retentionAge:    72 * time.Hour,
+		retentionRows:   4320,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -95,15 +107,28 @@ func (c *Collector) CollectOnce(ctx context.Context) (*HealthSample, error) {
 		batStatus = nil
 	}
 
+	var hostTotalMB, hostUsedMB, hostFreeMB *float64
+	if c.hostMemProvider != nil {
+		hTotal, hUsed, hFree, hErr := c.hostMemProvider.GetHostMemory()
+		if hErr == nil {
+			hostTotalMB = hTotal
+			hostUsedMB = hUsed
+			hostFreeMB = hFree
+		}
+	}
+
 	sample := HealthSample{
-		Timestamp:     now,
-		UptimeSeconds: uptime,
-		MemoryAllocMB: allocMB,
-		MemorySysMB:   sysMB,
-		DiskTotalGB:   diskTotal,
-		DiskFreeGB:    diskFree,
-		BatteryLevel:  batLevel,
-		BatteryStatus: batStatus,
+		Timestamp:         now,
+		UptimeSeconds:     uptime,
+		MemoryAllocMB:     allocMB,
+		MemorySysMB:       sysMB,
+		DiskTotalGB:       diskTotal,
+		DiskFreeGB:        diskFree,
+		BatteryLevel:      batLevel,
+		BatteryStatus:     batStatus,
+		HostMemoryTotalMB: hostTotalMB,
+		HostMemoryUsedMB:  hostUsedMB,
+		HostMemoryFreeMB:  hostFreeMB,
 	}
 
 	id, err := c.repo.InsertSample(ctx, sample)
@@ -211,4 +236,20 @@ func (p *DefaultBatteryProvider) GetBattery(ctx context.Context) (*float64, *str
 	}
 
 	return &data.Percentage, &data.Status, nil
+}
+
+type DefaultHostMemoryProvider struct{}
+
+func (p *DefaultHostMemoryProvider) GetHostMemory() (*float64, *float64, *float64, error) {
+	info, err := hostmem.Read()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if info.TotalMB <= 0 {
+		return nil, nil, nil, nil
+	}
+	t := info.TotalMB
+	u := info.UsedMB
+	f := info.AvailableMB
+	return &t, &u, &f, nil
 }

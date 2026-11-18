@@ -9,16 +9,19 @@ import (
 
 // HealthSample represents a snapshot of the device and service health.
 type HealthSample struct {
-	ID            int64     `json:"id"`
-	Timestamp     time.Time `json:"timestamp"`
-	UptimeSeconds int64     `json:"uptime_seconds"`
-	MemoryAllocMB float64   `json:"memory_alloc_mb"`
-	MemorySysMB   float64   `json:"memory_sys_mb"`
-	DiskTotalGB   float64   `json:"disk_total_gb"`
-	DiskFreeGB    float64   `json:"disk_free_gb"`
-	BatteryLevel  *float64  `json:"battery_level,omitempty"`
-	BatteryStatus *string   `json:"battery_status,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID                int64     `json:"id"`
+	Timestamp         time.Time `json:"timestamp"`
+	UptimeSeconds     int64     `json:"uptime_seconds"`
+	MemoryAllocMB     float64   `json:"memory_alloc_mb"`
+	MemorySysMB       float64   `json:"memory_sys_mb"`
+	DiskTotalGB       float64   `json:"disk_total_gb"`
+	DiskFreeGB        float64   `json:"disk_free_gb"`
+	BatteryLevel      *float64  `json:"battery_level,omitempty"`
+	BatteryStatus     *string   `json:"battery_status,omitempty"`
+	HostMemoryTotalMB *float64  `json:"host_memory_total_mb,omitempty"`
+	HostMemoryUsedMB  *float64  `json:"host_memory_used_mb,omitempty"`
+	HostMemoryFreeMB  *float64  `json:"host_memory_free_mb,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 // Repository handles persistence and querying of health samples in SQLite.
@@ -41,8 +44,10 @@ func (r *Repository) InsertSample(ctx context.Context, s HealthSample) (int64, e
 	query := `
 		INSERT INTO health_samples (
 			timestamp, uptime_seconds, memory_alloc_mb, memory_sys_mb,
-			disk_total_gb, disk_free_gb, battery_level, battery_status, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			disk_total_gb, disk_free_gb, battery_level, battery_status,
+			host_memory_total_mb, host_memory_used_mb, host_memory_free_mb,
+			created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := r.db.ExecContext(ctx, query,
@@ -54,6 +59,9 @@ func (r *Repository) InsertSample(ctx context.Context, s HealthSample) (int64, e
 		s.DiskFreeGB,
 		s.BatteryLevel,
 		s.BatteryStatus,
+		s.HostMemoryTotalMB,
+		s.HostMemoryUsedMB,
+		s.HostMemoryFreeMB,
 		time.Now().UTC().Format(time.RFC3339),
 	)
 	if err != nil {
@@ -81,7 +89,9 @@ func (r *Repository) GetRecentSamples(ctx context.Context, limit int, maxAge tim
 		cutoff := time.Now().UTC().Add(-maxAge).Format(time.RFC3339)
 		query = `
 			SELECT id, timestamp, uptime_seconds, memory_alloc_mb, memory_sys_mb,
-			       disk_total_gb, disk_free_gb, battery_level, battery_status, created_at
+			       disk_total_gb, disk_free_gb, battery_level, battery_status,
+			       host_memory_total_mb, host_memory_used_mb, host_memory_free_mb,
+			       created_at
 			FROM health_samples
 			WHERE timestamp >= ?
 			ORDER BY id DESC
@@ -91,7 +101,9 @@ func (r *Repository) GetRecentSamples(ctx context.Context, limit int, maxAge tim
 	} else {
 		query = `
 			SELECT id, timestamp, uptime_seconds, memory_alloc_mb, memory_sys_mb,
-			       disk_total_gb, disk_free_gb, battery_level, battery_status, created_at
+			       disk_total_gb, disk_free_gb, battery_level, battery_status,
+			       host_memory_total_mb, host_memory_used_mb, host_memory_free_mb,
+			       created_at
 			FROM health_samples
 			ORDER BY id DESC
 			LIMIT ?
@@ -119,6 +131,9 @@ func (r *Repository) GetRecentSamples(ctx context.Context, limit int, maxAge tim
 			&s.DiskFreeGB,
 			&s.BatteryLevel,
 			&s.BatteryStatus,
+			&s.HostMemoryTotalMB,
+			&s.HostMemoryUsedMB,
+			&s.HostMemoryFreeMB,
 			&caStr,
 		)
 		if err != nil {

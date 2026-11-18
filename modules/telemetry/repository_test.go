@@ -51,15 +51,21 @@ func TestInsertAndGetRecentSamples(t *testing.T) {
 	// 2. Insert sample with battery
 	batLevel := 75.0
 	batStatus := "DISCHARGING"
+	hTotal := 5700.0
+	hUsed := 2800.0
+	hFree := 2900.0
 	s1 := HealthSample{
-		Timestamp:     time.Now().UTC().Add(-2 * time.Minute),
-		UptimeSeconds: 120,
-		MemoryAllocMB: 1.5,
-		MemorySysMB:   8.0,
-		DiskTotalGB:   100.0,
-		DiskFreeGB:    60.0,
-		BatteryLevel:  &batLevel,
-		BatteryStatus: &batStatus,
+		Timestamp:         time.Now().UTC().Add(-2 * time.Minute),
+		UptimeSeconds:     120,
+		MemoryAllocMB:     1.5,
+		MemorySysMB:       8.0,
+		DiskTotalGB:       100.0,
+		DiskFreeGB:        60.0,
+		BatteryLevel:      &batLevel,
+		BatteryStatus:     &batStatus,
+		HostMemoryTotalMB: &hTotal,
+		HostMemoryUsedMB:  &hUsed,
+		HostMemoryFreeMB:  &hFree,
 	}
 
 	id1, err := repo.InsertSample(ctx, s1)
@@ -108,6 +114,12 @@ func TestInsertAndGetRecentSamples(t *testing.T) {
 	}
 	if samples[1].BatteryLevel == nil || *samples[1].BatteryLevel != 75.0 {
 		t.Errorf("Expected battery level 75.0 on sample 1, got %v", samples[1].BatteryLevel)
+	}
+	if samples[1].HostMemoryTotalMB == nil || *samples[1].HostMemoryTotalMB != 5700.0 {
+		t.Errorf("Expected HostMemoryTotalMB 5700.0 on sample 1, got %v", samples[1].HostMemoryTotalMB)
+	}
+	if samples[0].HostMemoryTotalMB != nil {
+		t.Errorf("Expected nil HostMemoryTotalMB on sample 2, got %v", samples[0].HostMemoryTotalMB)
 	}
 
 	// 5. Test bounds: limit clamping

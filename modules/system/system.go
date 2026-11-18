@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"v11-server/shared/hostmem"
 )
 
 type SystemStatus struct {
@@ -23,6 +25,7 @@ type SystemStatus struct {
 	Arch          string                 `json:"arch"`
 	NumCPU        int                    `json:"num_cpu"`
 	Memory        map[string]interface{} `json:"memory"`
+	HostMemory    *hostmem.Info          `json:"host_memory,omitempty"`
 	Disk          map[string]interface{} `json:"disk"`
 	Timestamp     time.Time              `json:"timestamp"`
 }
@@ -63,6 +66,11 @@ func (m *Module) HandleSystem(c *gin.Context) {
 	uptime := time.Since(m.startTime)
 	diskInfo := getDiskInfo()
 
+	var hostMem *hostmem.Info
+	if hInfo, err := hostmem.Read(); err == nil && hInfo.TotalMB > 0 {
+		hostMem = &hInfo
+	}
+
 	status := SystemStatus{
 		Service:       "v11-pocket-server",
 		UptimeSeconds: int64(uptime.Seconds()),
@@ -79,8 +87,9 @@ func (m *Module) HandleSystem(c *gin.Context) {
 			"heap_alloc_mb":  float64(mem.HeapAlloc) / 1024 / 1024,
 			"heap_sys_mb":    float64(mem.HeapSys) / 1024 / 1024,
 		},
-		Disk:      diskInfo,
-		Timestamp: time.Now().UTC(),
+		HostMemory: hostMem,
+		Disk:       diskInfo,
+		Timestamp:  time.Now().UTC(),
 	}
 
 	c.JSON(http.StatusOK, status)

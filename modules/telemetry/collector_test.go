@@ -126,3 +126,47 @@ func TestCollectorDegradedBattery(t *testing.T) {
 		t.Errorf("Expected nil battery level in alert sample, got %v", alertP.received[0].BatteryLevel)
 	}
 }
+
+type fakeHostMemProvider struct {
+	total float64
+	used  float64
+	free  float64
+	err   error
+}
+
+func (f *fakeHostMemProvider) GetHostMemory() (*float64, *float64, *float64, error) {
+	if f.err != nil {
+		return nil, nil, nil, f.err
+	}
+	return &f.total, &f.used, &f.free, nil
+}
+
+func TestCollectorWithHostMemoryProvider(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	sysP := &fakeSystemProvider{uptime: 100, alloc: 2.0, sys: 8.0, total: 50.0, free: 25.0}
+	batP := &fakeBatteryProvider{}
+	hostMemP := &fakeHostMemProvider{total: 5800.0, used: 2900.0, free: 2900.0}
+
+	collector := NewCollector(repo, time.Now(),
+		WithSystemProvider(sysP),
+		WithBatteryProvider(batP),
+		WithHostMemoryProvider(hostMemP),
+	)
+
+	sample, err := collector.CollectOnce(context.Background())
+	if err != nil {
+		t.Fatalf("CollectOnce failed: %v", err)
+	}
+
+	if sample.HostMemoryTotalMB == nil || *sample.HostMemoryTotalMB != 5800.0 {
+		t.Errorf("Expected HostMemoryTotalMB 5800.0, got %v", sample.HostMemoryTotalMB)
+	}
+	if sample.HostMemoryUsedMB == nil || *sample.HostMemoryUsedMB != 2900.0 {
+		t.Errorf("Expected HostMemoryUsedMB 2900.0, got %v", sample.HostMemoryUsedMB)
+	}
+	if sample.HostMemoryFreeMB == nil || *sample.HostMemoryFreeMB != 2900.0 {
+		t.Errorf("Expected HostMemoryFreeMB 2900.0, got %v", sample.HostMemoryFreeMB)
+	}
+}
