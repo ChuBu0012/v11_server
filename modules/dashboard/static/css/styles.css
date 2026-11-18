@@ -605,6 +605,25 @@ footer { padding: 26px 24px; color: var(--muted); text-align: center; font-size:
   box-shadow: 0 2px 8px rgba(41, 151, 255, 0.35);
 }
 
+.app-action-btn.secondary {
+  min-height: 36px;
+  padding: 7px 13px;
+  color: var(--blue);
+  background: rgba(41, 151, 255, 0.1);
+  border: 1px solid rgba(41, 151, 255, 0.42);
+  text-decoration: none;
+}
+.app-action-btn.secondary:hover {
+  color: #fff;
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.app-action-btn:focus-visible,
+.drawer-fullpage-link:focus-visible {
+  outline: 2px solid var(--blue-focus);
+  outline-offset: 3px;
+}
+
 .app-action-btn:hover { opacity: 0.92; transform: scale(0.98); }
 
 .app-action-link {
@@ -1286,6 +1305,71 @@ body.drawer-locked { overflow: hidden !important; }
   .relay-submit-btn { flex: 1; justify-content: center; }
 }
 
+/* Shared mobile refinements for the dashboard, drawer and standalone Bridge. */
+@media (max-width: 760px) {
+  .app-card-action { flex-wrap: wrap; gap: 9px; }
+  .app-action-btn { min-height: 42px; justify-content: center; }
+  .drawer-header-right { flex-shrink: 0; }
+  .drawer-fullpage-link { font-size: 11px; padding: 6px 8px; white-space: nowrap; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: 24px 14px 20px; }
+  .hero h1 { font-size: clamp(27px, 8vw, 34px); letter-spacing: -0.8px; }
+  .hero-copy { max-width: 34ch; font-size: 14px; line-height: 1.5; }
+  #core-canvas-container { width: 176px; height: 142px; }
+  .section, .dark-band { padding: 22px 14px; }
+  .section-heading { gap: 10px; }
+  .section-heading h2 { font-size: 19px; }
+  .section-note { font-size: 12px; line-height: 1.45; }
+  .metric-grid { gap: 8px; }
+  .metric-grid .card { padding: 12px 11px; border-radius: 14px; }
+  .metric-label { font-size: 10px; letter-spacing: 0.02em; }
+  .metric-value { margin-top: 8px; font-size: 19px; letter-spacing: -0.6px; }
+  .metric-sub { font-size: 11px; line-height: 1.35; }
+  .conditions { grid-template-columns: 1fr; }
+  .chart-card { padding: 14px 13px 10px; }
+  .chart-title { font-size: 13px; }
+  .chart-wrap { height: 172px; }
+  .range-btn { min-width: 42px; min-height: 32px; padding: 0 9px; }
+  .digest-card { padding: 15px; }
+  .digest-tabs { gap: 3px; padding: 3px; }
+  .digest-tab { padding: 8px 10px; font-size: 12px; }
+  .logs { padding: 2px 13px; }
+  .log-row { grid-template-columns: 54px 44px minmax(0, 1fr); gap: 7px; font-size: 11px; }
+  .log-time { font-size: 10px; }
+  .log-level { font-size: 9px; }
+  .app-card { padding: 15px; }
+  .app-card-action { display: grid; grid-template-columns: 1fr 1fr; }
+  .app-action-btn { width: 100%; min-width: 0; padding: 8px 7px; font-size: 11.5px; }
+  .app-action-btn i { font-size: 14px; }
+  .relay-drawer { max-height: 92dvh; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .drawer-header { gap: 7px; padding-bottom: 12px; }
+  .drawer-header-left { gap: 9px; }
+  .drawer-icon-bubble { width: 34px; height: 34px; font-size: 17px; }
+  .drawer-title { font-size: 14px; }
+  .drawer-subtitle { font-size: 10px; }
+  .drawer-header-right { gap: 5px; }
+  .drawer-close-btn { width: 29px; height: 29px; }
+  .relay-drawer .relay-tabs { margin: 12px 0; }
+  .relay-drawer .relay-tab-btn { min-width: 0; padding: 9px 5px; font-size: 11px; gap: 4px; }
+  .relay-drawer #relay-message-input { min-height: 120px; font-size: 14px; }
+  .relay-drawer .drop-zone { padding: 20px 12px; }
+  .drawer-actions { gap: 8px; }
+  .relay-cancel-btn, .relay-submit-btn { min-height: 40px; padding: 8px 13px; font-size: 12px; }
+}
+
+@media (max-width: 380px) {
+  .topbar { padding: 0 10px; }
+  .brand { font-size: 12px; }
+  .sync-badge { max-width: 38vw; overflow: hidden; }
+  .sync-text { overflow: hidden; text-overflow: ellipsis; }
+  .hero-sync-pill { font-size: 11px; }
+  .metric-grid .card { padding: 10px 9px; }
+  .metric-label { font-size: 9px; }
+  .app-card-action { grid-template-columns: 1fr; }
+}
+
 /* Telegram Bridge uses its own explicit tokens so it stays readable in either theme. */
 .tele-bridge-page {
   --bridge-page: var(--parchment);
@@ -1412,21 +1496,22 @@ body.drawer-locked { overflow: hidden !important; }
 .tele-bridge-page .relay-status-banner.error { color: #b42318; }
 
 @media (max-width: 600px) {
-  .tele-bridge-page { padding: 20px 14px 36px; }
-  .tele-nav { gap: 10px; }
-  .tele-back-btn { padding: 8px 11px; font-size: 12px; }
-  .tele-bridge-page .drawer-pin-pill { font-size: 11px; }
-  .tele-card { padding: 24px 20px 20px; border-radius: 20px; }
-  .tele-title-wrap { align-items: flex-start; gap: 14px; margin-bottom: 24px; }
-  .tele-icon-huge { width: 48px; height: 48px; font-size: 23px; }
-  .tele-heading { font-size: 21px; }
-  .tele-subheading { font-size: 13px; }
-  .tele-bridge-page .relay-tab-btn { min-height: 46px; padding: 9px 7px; font-size: 12px; }
-  .tele-bridge-page #relay-message-input { min-height: 160px; }
-  .tele-bridge-page .relay-footer { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
-  .tele-bridge-page .relay-cancel-btn,
-  .tele-bridge-page .relay-submit-btn { justify-content: center; padding: 10px 12px; font-size: 13px; }
-  .tele-footer-hint { margin-top: 18px; padding: 0 10px; font-size: 11px; }
+  .tele-bridge-page { padding: calc(12px + env(safe-area-inset-top)) 10px calc(24px + env(safe-area-inset-bottom)); }
+  .tele-nav { gap: 8px; margin-bottom: 10px; }
+  .tele-back-btn { padding: 7px 9px; font-size: 11px; gap: 5px; }
+  .tele-bridge-page .drawer-pin-pill { padding: 7px 9px; font-size: 11px; gap: 4px; }
+  .tele-card { padding: 16px 14px 14px; border-radius: 16px; }
+  .tele-title-wrap { align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+  .tele-icon-huge { width: 40px; height: 40px; font-size: 19px; border-radius: 12px; }
+  .tele-heading { font-size: 18px; }
+  .tele-subheading { margin-top: 3px; font-size: 11.5px; line-height: 1.4; }
+  .tele-bridge-page .relay-tabs { margin-bottom: 14px; }
+  .tele-bridge-page .relay-tab-btn { min-height: 40px; padding: 7px 5px; font-size: 11px; gap: 4px; }
+  .tele-bridge-page .tab-indicator { width: 5px; height: 5px; margin-left: 0; }
+  .tele-bridge-page #relay-message-input { min-height: 104px; }
+  .tele-bridge-page .relay-footer { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; padding-top: 12px; }
+  .tele-bridge-page .relay-submit-btn { min-height: 38px; justify-content: center; padding: 8px 10px; font-size: 12px; }
+  .tele-footer-hint { margin-top: 12px; padding: 0 8px; font-size: 10px; }
 }
 
 /* Chat-style composer and live upload feedback for the standalone Bridge. */
@@ -1478,7 +1563,7 @@ body.drawer-locked { overflow: hidden !important; }
   transition: opacity 140ms ease, transform 140ms ease;
 }
 .tele-bridge-page .composer-send-btn:hover:not(:disabled) { transform: translateY(-1px); }
-.tele-bridge-page .composer-send-btn:disabled { opacity: 0.48; cursor: not-allowed; box-shadow: none; }
+.tele-bridge-page .composer-send-btn:disabled { opacity: 0.72; cursor: not-allowed; box-shadow: none; }
 .tele-bridge-page .relay-progress-card {
   margin-top: 18px;
   padding: 14px 16px;
@@ -1515,12 +1600,22 @@ body.drawer-locked { overflow: hidden !important; }
 }
 
 @media (max-width: 600px) {
-  .tele-bridge-page .chat-composer { padding: 10px 12px 8px; border-radius: 18px; }
-  .tele-bridge-page .chat-composer #relay-message-input { min-height: 120px; }
-  .tele-bridge-page .chat-composer .textarea-footer { align-items: flex-end; gap: 8px; }
-  .tele-bridge-page .shortcut-tip { font-size: 10px; }
-  .tele-bridge-page .composer-actions { gap: 8px; }
-  .tele-bridge-page .composer-send-btn { min-height: 36px; padding: 7px 11px; font-size: 12px; }
+  .tele-bridge-page .chat-composer { padding: 8px 10px 7px; border-radius: 14px; }
+  .tele-bridge-page .chat-composer #relay-message-input { min-height: 96px; }
+  .tele-bridge-page .chat-composer .textarea-footer { align-items: center; gap: 6px; min-height: 36px; }
+  .tele-bridge-page .shortcut-tip { font-size: 9px; }
+  .tele-bridge-page .shortcut-tip kbd { font-size: 8px; padding: 1px 3px; }
+  .tele-bridge-page .composer-actions { gap: 7px; }
+  .tele-bridge-page .composer-send-btn { min-height: 32px; padding: 6px 9px; font-size: 11px; border-radius: 9px; }
+  .tele-bridge-page .char-count { font-size: 10px; }
+  .tele-bridge-page .relay-progress-card { margin-top: 12px; padding: 11px 12px; }
+}
+
+@media (max-width: 380px) {
+  .tele-nav { gap: 6px; }
+  .tele-back-btn { min-width: 0; padding: 7px 8px; font-size: 10px; }
+  .tele-bridge-page .drawer-pin-pill { min-width: 0; padding: 7px 8px; font-size: 10px; }
+  .tele-bridge-page .relay-tab-btn { font-size: 10px; }
 }
 
 

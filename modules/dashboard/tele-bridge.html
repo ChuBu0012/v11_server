@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Telegram Bridge — Pocket Sentinel</title>
   <meta name="description" content="Forward notes, photos & files directly to your Telegram chat from Pocket Sentinel v11.">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -73,7 +73,7 @@
       </button>
       <button class="relay-tab-btn" :class="{ active: activeTab === 'file' }" @click="activeTab = 'file'" type="button">
         <i class="ri-attachment-2"></i>
-        <span>ไฟล์ &amp; รูปภาพ (File)</span>
+        <span>ไฟล์ / รูปภาพ</span>
         <span class="tab-indicator" x-show="activeTab === 'file'"></span>
       </button>
     </div>
@@ -87,7 +87,7 @@
           <div class="composer-actions">
             <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
             <button class="composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
-              <i class="ri-send-plane-fill"></i><span>ส่งข้อความ</span>
+              <i class="ri-send-plane-fill"></i><span>ส่ง</span>
             </button>
           </div>
         </div>
@@ -107,7 +107,7 @@
         <template x-if="!hasFile">
           <div class="drop-prompt">
             <div class="cloud-icon-bounce"><i class="ri-upload-cloud-2-line"></i></div>
-            <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>คลิกเพื่อเลือกไฟล์</span></p>
+            <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>เลือกไฟล์</span></p>
             <p class="drop-sub-text">รองรับรูปภาพ (พรีวิวในแชท), เอกสาร, PDF, Code ขนาดไม่เกิน 20 MB</p>
             <div class="paste-badge"><i class="ri-clipboard-line"></i> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
           </div>
@@ -165,10 +165,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="relay-footer">
-      <button class="relay-cancel-btn" type="button" @click="window.location.href='/'">
-        กลับหน้าหลัก
-      </button>
+    <div class="relay-footer" x-show="activeTab === 'file'">
       <button class="relay-submit-btn" type="button" x-show="activeTab === 'file'" :disabled="isSending" @click="submit()">
         <span x-show="!isSending"><i class="ri-send-plane-fill"></i> ส่งเข้า Telegram</span>
         <span x-show="isSending"><i class="ri-loader-4-line spin"></i> กำลังส่ง…</span>

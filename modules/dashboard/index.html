@@ -109,7 +109,7 @@
                 <i class="ri-flashlight-line"></i> Quick Drawer
               </button>
               <a href="/tele-bridge" class="app-action-btn secondary" @click.stop>
-                <i class="ri-external-link-line"></i> Open Page
+                <i class="ri-external-link-line"></i> Open full page
               </a>
             </div>
           </article>
@@ -174,7 +174,7 @@
             </button>
             <button class="relay-tab-btn" :class="{ active: activeTab === 'file' }" @click="activeTab = 'file'" type="button">
               <i class="ri-attachment-2"></i>
-              <span>ไฟล์ &amp; รูปภาพ (File)</span>
+              <span>ไฟล์ / รูปภาพ</span>
               <span class="tab-indicator" x-show="activeTab === 'file'"></span>
             </button>
           </div>
@@ -203,7 +203,7 @@
               <template x-if="!hasFile">
                 <div class="drop-prompt">
                   <div class="cloud-icon-bounce"><i class="ri-upload-cloud-2-line"></i></div>
-                  <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>คลิกเพื่อเลือกไฟล์</span></p>
+                  <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>เลือกไฟล์</span></p>
                   <p class="drop-sub-text">รองรับรูปภาพ (พรีวิวในแชท), เอกสาร, PDF, Code ขนาดไม่เกิน 20 MB</p>
                   <div class="paste-badge"><i class="ri-clipboard-line"></i> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
                 </div>
