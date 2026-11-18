@@ -28,6 +28,9 @@ type Config struct {
 
 	// Gemini AI
 	GeminiAPIKey string // ENV: GEMINI_API_KEY
+
+	// Relay
+	RelayPIN string // ENV: RELAY_PIN (default: "1804")
 }
 
 // Load reads configuration from environment variables, applying defaults
@@ -114,6 +117,12 @@ func Load() (*Config, error) {
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
 	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
 
+	if pin := os.Getenv("RELAY_PIN"); pin != "" {
+		cfg.RelayPIN = pin
+	} else {
+		cfg.RelayPIN = "1804"
+	}
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("config validation failed:\n  %s", strings.Join(errs, "\n  "))
 	}
@@ -154,7 +163,7 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
 		token, chatID, c.TelegramTimeout, geminiKey,

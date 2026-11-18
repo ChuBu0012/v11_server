@@ -23,6 +23,7 @@ import (
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
 	"v11-server/modules/logs"
+	"v11-server/modules/relay"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
 	"v11-server/shared/config"
@@ -85,6 +86,7 @@ type App struct {
 	botPoller *bot.Poller
 	botClient *bot.Client
 	digest    *digest.Module
+	relay     *relay.Module
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -205,6 +207,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botPoller: botPoller,
 		botClient: botClient,
 		digest:    digestMod,
+		relay:     relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
 	}
 }
 
@@ -223,6 +226,7 @@ func setupRouter(app *App) *gin.Engine {
 	app.telemetry.RegisterRoutes(r.Group("/api/telemetry"))
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
+	app.relay.RegisterRoutes(r)
 
 	return r
 }

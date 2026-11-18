@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -271,6 +272,144 @@ func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackQueryID string
 	}
 
 	return nil
+}
+
+// SendPhoto sends an image via multipart/form-data to sendPhoto endpoint.
+func (c *Client) SendPhoto(ctx context.Context, chatID int64, filename string, fileReader io.Reader, caption string) (*Message, error) {
+	endpoint := fmt.Sprintf("%s/bot%s/sendPhoto", c.baseURL, c.token)
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	if err := writer.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
+		return nil, fmt.Errorf("write chat_id field failed: %w", err)
+	}
+	if caption != "" {
+		if err := writer.WriteField("caption", caption); err != nil {
+			return nil, fmt.Errorf("write caption field failed: %w", err)
+		}
+		if err := writer.WriteField("parse_mode", "HTML"); err != nil {
+			return nil, fmt.Errorf("write parse_mode field failed: %w", err)
+		}
+	}
+
+	part, err := writer.CreateFormFile("photo", filename)
+	if err != nil {
+		return nil, fmt.Errorf("create form file failed: %w", err)
+	}
+	if _, err := io.Copy(part, fileReader); err != nil {
+		return nil, fmt.Errorf("copy photo content failed: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close multipart writer failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("create request failed: %w", err))
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("sendPhoto failed: %w", err))
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("read response failed: %w", err))
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, c.redactToken(fmt.Errorf("sendPhoto returned %d: %s", resp.StatusCode, string(body)))
+	}
+
+	var apiResp APIResponse
+	if err := json.Unmarshal(body, &apiResp); err != nil {
+		return nil, fmt.Errorf("unmarshal response failed: %w", err)
+	}
+
+	if !apiResp.OK {
+		return nil, c.redactToken(fmt.Errorf("telegram API error (%d): %s", apiResp.ErrorCode, apiResp.Description))
+	}
+
+	var msg Message
+	if err := json.Unmarshal(apiResp.Result, &msg); err != nil {
+		return nil, fmt.Errorf("unmarshal message failed: %w", err)
+	}
+
+	return &msg, nil
+}
+
+// SendDocument sends any file via multipart/form-data to sendDocument endpoint.
+func (c *Client) SendDocument(ctx context.Context, chatID int64, filename string, fileReader io.Reader, caption string) (*Message, error) {
+	endpoint := fmt.Sprintf("%s/bot%s/sendDocument", c.baseURL, c.token)
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	if err := writer.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
+		return nil, fmt.Errorf("write chat_id field failed: %w", err)
+	}
+	if caption != "" {
+		if err := writer.WriteField("caption", caption); err != nil {
+			return nil, fmt.Errorf("write caption field failed: %w", err)
+		}
+		if err := writer.WriteField("parse_mode", "HTML"); err != nil {
+			return nil, fmt.Errorf("write parse_mode field failed: %w", err)
+		}
+	}
+
+	part, err := writer.CreateFormFile("document", filename)
+	if err != nil {
+		return nil, fmt.Errorf("create form file failed: %w", err)
+	}
+	if _, err := io.Copy(part, fileReader); err != nil {
+		return nil, fmt.Errorf("copy document content failed: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close multipart writer failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("create request failed: %w", err))
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("sendDocument failed: %w", err))
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return nil, c.redactToken(fmt.Errorf("read response failed: %w", err))
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, c.redactToken(fmt.Errorf("sendDocument returned %d: %s", resp.StatusCode, string(body)))
+	}
+
+	var apiResp APIResponse
+	if err := json.Unmarshal(body, &apiResp); err != nil {
+		return nil, fmt.Errorf("unmarshal response failed: %w", err)
+	}
+
+	if !apiResp.OK {
+		return nil, c.redactToken(fmt.Errorf("telegram API error (%d): %s", apiResp.ErrorCode, apiResp.Description))
+	}
+
+	var msg Message
+	if err := json.Unmarshal(apiResp.Result, &msg); err != nil {
+		return nil, fmt.Errorf("unmarshal message failed: %w", err)
+	}
+
+	return &msg, nil
 }
 
 // Handler handles incoming updates.

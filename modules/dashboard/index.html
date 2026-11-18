@@ -32,6 +32,7 @@
   <script src="/static/js/components/three-core.js"></script>
   <script src="/static/js/components/digest.js"></script>
   <script src="/static/js/components/events.js"></script>
+  <script src="/static/js/components/relay.js"></script>
 
   <!-- Alpine.js (Lightweight Reactive UI without Node build step) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -79,6 +80,221 @@
         </div>
       </div>
     </section>
+
+    <!-- App Hub & Gateway Launcher -->
+    <div class="wrap" x-data="relayComponent()">
+      <section class="section app-hub-section" aria-labelledby="apps-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="apps-title">App Hub &amp; Gateways</h2>
+            <p class="section-note">Direct access to internal tools and services running on this pocket server</p>
+          </div>
+        </div>
+
+        <div class="app-grid">
+          <!-- Card 1: Telegram Relay Bridge -->
+          <article class="card app-card app-card-featured" @click="open()">
+            <div class="app-card-top">
+              <div class="app-icon-wrap telegram-gradient">
+                <i class="ri-send-plane-2-fill"></i>
+              </div>
+              <span class="app-pill live"><span class="app-live-dot"></span> LIVE GATEWAY</span>
+            </div>
+            <div class="app-card-body">
+              <h3 class="app-card-title">Telegram Bridge</h3>
+              <p class="app-card-desc">Forward text notes, screenshots &amp; files directly to your Telegram chat without signing in on this device.</p>
+            </div>
+            <div class="app-card-action">
+              <button class="app-action-btn primary" type="button" @click.stop="open()">
+                <i class="ri-flashlight-line"></i> Launch Relay
+              </button>
+            </div>
+          </article>
+
+          <!-- Card 2: AI Daily Digest -->
+          <article class="card app-card" onclick="document.getElementById('digest-title')?.scrollIntoView({behavior: 'smooth'})">
+            <div class="app-card-top">
+              <div class="app-icon-wrap ai-gradient">
+                <i class="ri-sparkling-fill"></i>
+              </div>
+              <span class="app-pill">SCHEDULED 13:00</span>
+            </div>
+            <div class="app-card-body">
+              <h3 class="app-card-title">AI Daily Digest</h3>
+              <p class="app-card-desc">Daily summarized briefing of global AI breakthroughs, Thai politics, and daily trivia via Gemini 2.5.</p>
+            </div>
+            <div class="app-card-action">
+              <span class="app-action-link">Open Digest <i class="ri-arrow-right-line"></i></span>
+            </div>
+          </article>
+
+          <!-- Card 3: Live Telemetry Trends -->
+          <article class="card app-card" onclick="document.getElementById('charts-title')?.scrollIntoView({behavior: 'smooth'})">
+            <div class="app-card-top">
+              <div class="app-icon-wrap charts-gradient">
+                <i class="ri-line-chart-fill"></i>
+              </div>
+              <span class="app-pill">REALTIME</span>
+            </div>
+            <div class="app-card-body">
+              <h3 class="app-card-title">Telemetry &amp; Charts</h3>
+              <p class="app-card-desc">24h interactive charts for vivo V11 physical RAM, Go memory budget, internal storage, and battery level.</p>
+            </div>
+            <div class="app-card-action">
+              <span class="app-action-link">View Trends <i class="ri-arrow-right-line"></i></span>
+            </div>
+          </article>
+
+          <!-- Card 4: Event Logs -->
+          <article class="card app-card" onclick="document.getElementById('logs-title')?.scrollIntoView({behavior: 'smooth'})">
+            <div class="app-card-top">
+              <div class="app-icon-wrap logs-gradient">
+                <i class="ri-file-list-3-line"></i>
+              </div>
+              <span class="app-pill">EVENT STREAM</span>
+            </div>
+            <div class="app-card-body">
+              <h3 class="app-card-title">System Event Logs</h3>
+              <p class="app-card-desc">Live audit trail of threshold changes, alert state machine events, and server lifecycle transitions.</p>
+            </div>
+            <div class="app-card-action">
+              <span class="app-action-link">Inspect Logs <i class="ri-arrow-right-line"></i></span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Slide-over Drawer Backdrop & Modal Sheet -->
+        <div class="drawer-backdrop" x-show="isOpen" x-transition.opacity.duration.300ms @click="close()" x-cloak></div>
+
+        <div class="relay-drawer" x-show="isOpen" 
+             x-transition:enter="drawer-enter-active"
+             x-transition:enter-start="drawer-enter-from"
+             x-transition:enter-end="drawer-enter-to"
+             x-transition:leave="drawer-leave-active"
+             x-transition:leave-start="drawer-leave-from"
+             x-transition:leave-end="drawer-leave-to"
+             x-cloak>
+          
+          <div class="drawer-header">
+            <div class="drawer-header-left">
+              <div class="drawer-icon-bubble">
+                <i class="ri-send-plane-2-fill"></i>
+              </div>
+              <div>
+                <h3 class="drawer-title">Telegram Bridge</h3>
+                <p class="drawer-subtitle">Send text, photos &amp; files directly to your Telegram chat</p>
+              </div>
+            </div>
+            <div class="drawer-header-right">
+              <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN is configured' : 'Click to set PIN'">
+                <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
+                <span x-text="isUnlocked ? 'PIN Set' : 'Need PIN'"></span>
+              </button>
+              <button class="drawer-close-btn" type="button" @click="close()" aria-label="Close drawer">
+                <i class="ri-close-line"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- PIN Setup Box -->
+          <div class="pin-setup-box" x-show="showPinModal" x-transition x-cloak>
+            <div class="pin-setup-row">
+              <label for="relay-pin-input"><i class="ri-key-2-line"></i> รหัส PIN สำหรับ Relay:</label>
+              <div class="pin-input-group">
+                <input type="password" id="relay-pin-input" x-model="tempPin" placeholder="เช่น 1804" maxlength="12" @keydown.enter="savePin()">
+                <button type="button" class="pin-save-btn" @click="savePin()">บันทึก</button>
+                <button type="button" class="pin-cancel-btn" @click="showPinModal = false" x-show="pin">ยกเลิก</button>
+              </div>
+            </div>
+            <p class="pin-hint">รหัสนี้ตั้งค่าใน <code>.env</code> (ค่าเริ่มต้นคือ <code>1804</code>) เบราว์เซอร์จะจำรหัสนี้บนอุปกรณ์นี้ให้โดยอัตโนมัติ</p>
+          </div>
+
+          <!-- Segmented Tab Controls -->
+          <div class="relay-tabs" role="tablist">
+            <button class="relay-tab-btn" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'" type="button">
+              <i class="ri-chat-3-line"></i> ข้อความ (Text)
+            </button>
+            <button class="relay-tab-btn" :class="{ active: activeTab === 'file' }" @click="activeTab = 'file'" type="button">
+              <i class="ri-attachment-2"></i> ไฟล์ &amp; รูปภาพ (File)
+            </button>
+          </div>
+
+          <!-- Tab 1: Text Message -->
+          <div class="relay-tab-content" x-show="activeTab === 'text'">
+            <div class="field-wrap">
+              <textarea id="relay-message-input" x-model="messageText" rows="5" placeholder="พิมพ์ข้อความที่ต้องการส่งเข้า Telegram ที่นี่... (กด ⌘+Enter เพื่อส่ง)" maxlength="4000"></textarea>
+              <div class="textarea-footer">
+                <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>
+                <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: File & Photo Upload -->
+          <div class="relay-tab-content" x-show="activeTab === 'file'">
+            <!-- Drop Zone -->
+            <div class="drop-zone" 
+                 :class="{ 'dragging': isDragging, 'has-file': selectedFile }" 
+                 @dragover="handleDragOver($event)" 
+                 @dragleave="handleDragLeave($event)" 
+                 @drop="handleDrop($event)"
+                 @click="if(!selectedFile) document.getElementById('relay-file-input').click()">
+              
+              <template x-if="!selectedFile">
+                <div class="drop-prompt">
+                  <div class="cloud-icon-bounce"><i class="ri-upload-cloud-2-line"></i></div>
+                  <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>คลิกเพื่อเลือกไฟล์</span></p>
+                  <p class="drop-sub-text">รองรับรูปภาพ (พรีวิวในแชท), เอกสาร, PDF, Code ขนาดไม่เกิน 20 MB</p>
+                  <div class="paste-badge"><i class="ri-clipboard-line"></i> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
+                </div>
+              </template>
+
+              <!-- Selected File Card -->
+              <template x-if="selectedFile">
+                <div class="file-chip-card" @click.stop>
+                  <template x-if="filePreviewUrl">
+                    <img :src="filePreviewUrl" class="file-thumb" alt="Preview">
+                  </template>
+                  <template x-if="!filePreviewUrl">
+                    <div class="file-icon-placeholder"><i class="ri-file-text-line"></i></div>
+                  </template>
+                  <div class="file-chip-info">
+                    <div class="file-chip-name" x-text="fileName"></div>
+                    <div class="file-chip-meta" x-text="fileSizeFormatted + ' · ' + (isImageFile ? 'รูปภาพ' : 'เอกสาร')"></div>
+                  </div>
+                  <button type="button" class="file-chip-remove" @click="removeFile()" title="ลบไฟล์">
+                    <i class="ri-close-line"></i>
+                  </button>
+                </div>
+              </template>
+
+              <input type="file" id="relay-file-input" style="display:none;" @change="handleFileSelect($event)">
+            </div>
+
+            <!-- Optional Caption -->
+            <div class="field-wrap mt-12" x-show="selectedFile">
+              <input type="text" class="caption-input" x-model="captionText" placeholder="คำบรรยายประกอบไฟล์ (Caption - ไม่บังคับ)" maxlength="1000">
+            </div>
+          </div>
+
+          <!-- Status / Error Notification -->
+          <div class="relay-status-banner" x-show="statusText" :class="statusType" x-text="statusText" x-cloak></div>
+
+          <!-- Actions Footer -->
+          <div class="drawer-actions">
+            <button type="button" class="relay-cancel-btn" @click="close()">ยกเลิก</button>
+            <button type="button" class="relay-submit-btn" @click="submit()" :disabled="isSending">
+              <template x-if="!isSending">
+                <span><i class="ri-send-plane-fill"></i> ส่งเข้า Telegram</span>
+              </template>
+              <template x-if="isSending">
+                <span><i class="ri-loader-4-line spin"></i> กำลังส่ง...</span>
+              </template>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <!-- At a Glance: Hardware & Runtime Metrics -->
     <div class="wrap" x-data="telemetryComponent()">
