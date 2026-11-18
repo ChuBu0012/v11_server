@@ -7,6 +7,7 @@
   - SQLite: Pure-Go driver (`modernc.org/sqlite`) ห้ามใช้ CGO เพื่อป้องกันปัญหา build บน Android Kernel 4.4
   - Process Manager: PM2 (`ecosystem.config.js` คุม `go-server` และ `ngrok-tunnel`)
   - Public Ingress: `ngrok` (รันผ่าน `run-ngrok.sh` ด้วย termux-chroot)
+  - Active Public Endpoint: `https://spindle-said-hemstitch.ngrok-free.dev`
   - Port: `8080` (`http://localhost:8080`)
   - Memory Budget: < 300MB RAM (ปกติรันอยู่ที่ ~12–20MB)
 
@@ -36,4 +37,16 @@
 - **Prompt Injection Defense:** สกัดกั้นคำสั่งอันตราย (`rm -rf`, DAN mode, system hijack) ด้วย multi-layer validation ใน `modules/bot/guard.go`
 - **Dynamic Reasoning Effort:** รองรับการกำหนด effort ผ่าน syntax `/task [low|medium|high|max] <คำสั่ง>` หรือ `--effort=<level>`
 - **Progress Heartbeats:** ขณะ agy ประมวลผล ระบบจะอัปเดตข้อความ ACK เดิมด้วย `editMessageText` ทุก 15 วินาที พร้อมแจ้งเวลาและ RAM ป้องกันการสแปมแชท
+
+## 6. Telegram Relay & Gateway API
+- **Active Endpoint:** `https://spindle-said-hemstitch.ngrok-free.dev`
+- **Unified Relay Endpoint:** `POST /api/relay/send`
+- **Auth (PIN Protection):** ต้องส่ง PIN ผ่าน Header `X-Relay-PIN: 1804`, Query `?pin=1804`, หรือ `Authorization: Bearer 1804` (Default PIN คือ `1804` ตั้งค่าผ่าน `RELAY_PIN` ใน `.env`)
+- **Auto Detection:**
+  - รูปภาพ (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`) ส่งเป็น Telegram Photo พร้อมพรีวิวในแชท
+  - ไฟล์เอกสารทั่วไป (PDF, zip, text, code) ส่งเป็น Telegram Document พร้อมชื่อไฟล์เดิม
+  - ข้อความส่งเป็น HTML/text
+- **Max Upload Limit:** 20 MB
+- **Web UI & App Hub:** เข้าถึงได้ผ่านหน้า Dashboard (`/`) ในโซน App Hub & Gateways หรือเปิดตรงผ่าน `/?app=relay` หรือ `/relay` รองรับการกด `⌘+V` / `Ctrl+V` เพื่อวางภาพจากคลิปบอร์ดส่งเข้า Telegram ได้ทันที
+
 
