@@ -1,7 +1,8 @@
 package dashboard
 
 import (
-	_ "embed"
+	"embed"
+	"io/fs"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,9 @@ var icon512PNG []byte
 //go:embed icon.svg
 var iconSVG []byte
 
+//go:embed static/*
+var staticFS embed.FS
+
 // Module handles serving the Pocket Sentinel status dashboard and PWA assets.
 type Module struct{}
 
@@ -36,11 +40,17 @@ func New() *Module {
 // RegisterRoutes mounts the dashboard and PWA endpoints on the root engine.
 func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/", m.HandleDashboard)
+	r.HEAD("/", m.HandleDashboard)
 	r.GET("/manifest.json", m.HandleManifest)
 	r.GET("/sw.js", m.HandleServiceWorker)
 	r.GET("/icon-192.png", m.HandleIcon192)
 	r.GET("/icon-512.png", m.HandleIcon512)
 	r.GET("/icon.svg", m.HandleIconSVG)
+
+	subFS, err := fs.Sub(staticFS, "static")
+	if err == nil {
+		r.StaticFS("/static", http.FS(subFS))
+	}
 }
 
 // HandleDashboard serves the single-page responsive dashboard.

@@ -1,11 +1,18 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v1';
+const CACHE_NAME = 'sentinel-shell-v2';
 const SHELL_ASSETS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon.svg'
+  '/icon.svg',
+  '/static/css/styles.css',
+  '/static/js/app.js',
+  '/static/js/components/telemetry.js',
+  '/static/js/components/charts.js',
+  '/static/js/components/three-core.js',
+  '/static/js/components/digest.js',
+  '/static/js/components/events.js'
 ];
 
 self.addEventListener('install', (event) => {

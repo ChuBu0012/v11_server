@@ -95,3 +95,33 @@ func TestPWARoutes(t *testing.T) {
 		}
 	}
 }
+
+func TestStaticRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	staticFiles := []string{
+		"/static/css/styles.css",
+		"/static/js/app.js",
+		"/static/js/components/telemetry.js",
+		"/static/js/components/charts.js",
+		"/static/js/components/three-core.js",
+		"/static/js/components/digest.js",
+		"/static/js/components/events.js",
+	}
+
+	for _, path := range staticFiles {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200 for %s, got %d", path, rr.Code)
+		}
+		if rr.Body.Len() == 0 {
+			t.Errorf("Expected non-empty body for %s", path)
+		}
+	}
+}
