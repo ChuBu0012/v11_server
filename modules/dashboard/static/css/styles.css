@@ -792,35 +792,80 @@ body.drawer-locked { overflow: hidden !important; }
 }
 .pin-hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
 
-/* Segmented Tabs */
+/* Segmented Tabs with High-Contrast Active State */
 .relay-tabs {
   display: flex;
-  background: rgba(120, 120, 128, 0.14);
-  padding: 3px;
-  border-radius: 11px;
-  margin: 16px 0 14px;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 4px;
+  border-radius: 12px;
+  margin: 16px 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 4px;
 }
 .relay-tab-btn {
   flex: 1;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 10px 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  border-radius: 8px;
-  color: var(--muted);
-  border: 0;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: all 0.18s;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  user-select: none;
+}
+.relay-tab-btn:hover:not(.active) {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.05);
 }
 .relay-tab-btn.active {
-  background: var(--bg);
-  color: var(--text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, rgba(36, 161, 222, 0.28) 0%, rgba(0, 136, 204, 0.18) 100%);
+  color: #ffffff;
   font-weight: 600;
+  border-color: rgba(36, 161, 222, 0.6);
+  box-shadow: 0 2px 12px rgba(36, 161, 222, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.relay-tab-btn i {
+  font-size: 16px;
+  transition: transform 0.2s;
+}
+.relay-tab-btn.active i {
+  color: #38bdf8;
+  transform: scale(1.1);
+}
+.tab-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  margin-left: 2px;
+}
+.drawer-fullpage-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.drawer-fullpage-link:hover {
+  background: rgba(36, 161, 222, 0.2);
+  border-color: rgba(36, 161, 222, 0.4);
+  color: #38bdf8;
 }
 
 /* Fields & Textarea */
@@ -1110,4 +1155,123 @@ body.drawer-locked { overflow: hidden !important; }
     transform: translateY(100%);
   }
 }
+
+/* =============================================================================
+   Dedicated Page: /tele-bridge
+   ============================================================================= */
+.tele-bridge-page {
+  min-height: 100vh;
+  background: var(--bg);
+  background-image: 
+    radial-gradient(ellipse at 50% -20%, rgba(36, 161, 222, 0.18), transparent 70%),
+    radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.08), transparent 50%);
+  display: flex;
+  flex-direction: column;
+  padding: 32px 16px 48px;
+  box-sizing: border-box;
+}
+
+.tele-nav {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tele-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 980px;
+  background: rgba(120, 120, 128, 0.12);
+  border: 1px solid var(--hairline);
+  transition: all 0.2s;
+}
+
+.tele-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tele-card {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 32px 28px;
+  box-sizing: border-box;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.tele-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tele-icon-huge {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2AABEE 0%, #229ED9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 26px;
+  box-shadow: 0 8px 24px rgba(36, 161, 222, 0.35);
+  flex-shrink: 0;
+}
+
+.tele-heading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.tele-subheading {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.tele-footer-hint {
+  max-width: 680px;
+  width: 100%;
+  margin: 24px auto 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .tele-bridge-page {
+    padding: 16px 12px 32px;
+  }
+  .tele-card {
+    padding: 22px 16px;
+    border-radius: 20px;
+  }
+  .tele-heading {
+    font-size: 19px;
+  }
+}
+
 

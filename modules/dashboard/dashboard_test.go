@@ -125,3 +125,30 @@ func TestStaticRoutes(t *testing.T) {
 		}
 	}
 }
+
+func TestTeleBridgeEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	paths := []string{"/tele-bridge", "/tele-brige", "/relay"}
+	for _, p := range paths {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Fatalf("Expected 200 for %s, got %d", p, rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "Telegram Bridge") {
+			t.Errorf("Expected body of %s to contain 'Telegram Bridge'", p)
+		}
+		if !strings.Contains(body, "relayComponent") {
+			t.Errorf("Expected body of %s to contain 'relayComponent'", p)
+		}
+	}
+}

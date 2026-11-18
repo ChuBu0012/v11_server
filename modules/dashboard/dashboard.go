@@ -11,6 +11,9 @@ import (
 //go:embed index.html
 var indexHTML []byte
 
+//go:embed tele-bridge.html
+var teleBridgeHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -47,6 +50,14 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/icon-512.png", m.HandleIcon512)
 	r.GET("/icon.svg", m.HandleIconSVG)
 
+	// Dedicated Telegram Bridge Pages
+	r.GET("/tele-bridge", m.HandleTeleBridge)
+	r.HEAD("/tele-bridge", m.HandleTeleBridge)
+	r.GET("/tele-brige", m.HandleTeleBridge)
+	r.HEAD("/tele-brige", m.HandleTeleBridge)
+	r.GET("/relay", m.HandleTeleBridge)
+	r.HEAD("/relay", m.HandleTeleBridge)
+
 	subFS, err := fs.Sub(staticFS, "static")
 	if err == nil {
 		r.StaticFS("/static", http.FS(subFS))
@@ -56,6 +67,11 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 // HandleDashboard serves the single-page responsive dashboard.
 func (m *Module) HandleDashboard(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+}
+
+// HandleTeleBridge serves the dedicated standalone Telegram Bridge interface.
+func (m *Module) HandleTeleBridge(c *gin.Context) {
+	c.Data(http.StatusOK, "text/html; charset=utf-8", teleBridgeHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.

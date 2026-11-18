@@ -23,6 +23,7 @@ type mockSender struct {
 	sentDocName   string
 	sentCaption   string
 	shouldError   bool
+	photoFails    bool
 }
 
 func (m *mockSender) SendMessage(ctx context.Context, chatID int64, text string, replyMarkup *bot.InlineKeyboardMarkup) (*bot.Message, error) {
@@ -36,6 +37,9 @@ func (m *mockSender) SendMessage(ctx context.Context, chatID int64, text string,
 func (m *mockSender) SendPhoto(ctx context.Context, chatID int64, filename string, r io.Reader, caption string) (*bot.Message, error) {
 	if m.shouldError {
 		return nil, fmt.Errorf("mock photo error")
+	}
+	if m.photoFails {
+		return nil, fmt.Errorf("telegram API error (400): Bad Request: PHOTO_SAVE_FILE_INVALID")
 	}
 	m.sentPhotoName = filename
 	m.sentCaption = caption
@@ -184,5 +188,59 @@ func TestRelay_Status(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &res)
 	if res.Service != "pocket-sentinel-relay" || !res.Configured {
 		t.Errorf("unexpected status response: %+v", res)
+	}
+}
+
+func TestRelay_PhotoFallbackToDocument(t *testing.T) {
+	sender := &mockSender{photoFails: true} // Simulate Telegram rejecting SendPhoto (e.g. dimensions > 10,000 px)
+	r := setupTestRelay(sender, "1804")
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	_ = writer.WriteField("caption", "High-res Poster A2")
+	part, _ := writer.CreateFormFile("file", "Final_Poster_A2.png")
+	_, _ = part.Write([]byte("fake large poster png bytes"))
+	_ = writer.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, "/api/relay/send", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Relay-PIN", "1804")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK after fallback, got %d: %s", w.Code, w.Body.String())
+	}
+	// Verify that SendDocument received the file after SendPhoto failed
+	if sender.sentDocName != "Final_Poster_A2.png" {
+		t.Errorf("expected doc name 'Final_Poster_A2.png' after fallback, got '%s'", sender.sentDocName)
+	}
+	if sender.sentCaption != "High-res Poster A2" {
+		t.Errorf("expected caption 'High-res Poster A2', got '%s'", sender.sentCaption)
+	}
+}
+
+func TestRelay_UploadLimit(t *testing.T) {
+	sender := &mockSender{}
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	mod := New(sender, "123456", "1804")
+	mod.maxUploadBytes = 100 // Set tiny limit: 100 bytes
+	mod.RegisterRoutes(r)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, _ := writer.CreateFormFile("file", "large.txt")
+	_, _ = part.Write(bytes.Repeat([]byte("A"), 500)) // 500 bytes > 100 bytes
+	_ = writer.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, "/api/relay/send", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Relay-PIN", "1804")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 Request Entity Too Large, got %d: %s", w.Code, w.Body.String())
 	}
 }

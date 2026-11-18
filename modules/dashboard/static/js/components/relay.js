@@ -2,19 +2,24 @@
 // Pocket Sentinel — Telegram Relay & App Hub Component
 // =============================================================================
 
+// Architecture Guardrail (frontend-proxy-guard):
+// Keep browser File object in module-level scope to avoid Alpine Proxy prototype corruption.
+let pendingRelayFile = null;
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('relayComponent', () => ({
-    isOpen: false,
+    isOpen: window.location.pathname.includes('tele-br') || window.location.pathname === '/relay',
+    isStandalonePage: window.location.pathname.includes('tele-br') || window.location.pathname === '/relay',
     activeTab: 'text', // 'text' | 'file'
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     isUnlocked: Boolean(localStorage.getItem('sentinel-relay-pin')),
     tempPin: '',
     showPinModal: false,
 
-    // Form fields
+    // Form fields (Primitive state only — NO File instances in proxy)
     messageText: '',
     captionText: '',
-    selectedFile: null,
+    hasFile: false,
     filePreviewUrl: null,
     fileName: '',
     fileSizeFormatted: '',
@@ -24,18 +29,23 @@ document.addEventListener('alpine:init', () => {
     isDragging: false,
     isSending: false,
     statusText: '',
-    statusType: '', // 'success' | 'error' | ''
+    statusType: '', // 'success' | 'error' | 'info' | ''
 
     init() {
-      // 1. Auto-open if query parameter has ?app=relay
+      // 1. Auto-open drawer on main dashboard if query parameter has ?app=relay
       const params = new URLSearchParams(window.location.search);
       if (params.get('app') === 'relay') {
         this.open();
       }
 
+      // If standalone page and no PIN configured, prompt setup
+      if (this.isStandalonePage && !this.pin) {
+        this.showPinModal = true;
+      }
+
       // 2. Global paste listener for instant clipboard screenshot capture
       window.addEventListener('paste', (e) => {
-        if (!this.isOpen) return;
+        if (!this.isOpen && !this.isStandalonePage) return;
         const items = e.clipboardData?.items;
         if (!items) return;
 
@@ -56,11 +66,11 @@ document.addEventListener('alpine:init', () => {
 
       // 3. Global keyboard shortcut (Cmd+Enter or Ctrl+Enter to send)
       window.addEventListener('keydown', (e) => {
-        if (this.isOpen && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        if ((this.isOpen || this.isStandalonePage) && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault();
           this.submit();
         }
-        if (this.isOpen && e.key === 'Escape') {
+        if (this.isOpen && !this.isStandalonePage && e.key === 'Escape') {
           this.close();
         }
       });
@@ -73,7 +83,9 @@ document.addEventListener('alpine:init', () => {
 
     open() {
       this.isOpen = true;
-      document.body.classList.add('drawer-locked');
+      if (!this.isStandalonePage) {
+        document.body.classList.add('drawer-locked');
+      }
       if (!this.pin) {
         this.showPinModal = true;
       }
@@ -84,6 +96,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     close() {
+      if (this.isStandalonePage) return;
       this.isOpen = false;
       document.body.classList.remove('drawer-locked');
       this.statusText = '';
@@ -138,11 +151,13 @@ document.addEventListener('alpine:init', () => {
     setFile(file, name) {
       // Size check: 20 MB cap
       if (file.size > 20 * 1024 * 1024) {
-        this.showNotice('❌ ขนาดไฟล์เกิน 20 MB (เพดานสูงสุดที่รองรับ)', 'error');
+        this.showNotice('❌ ขนาดไฟล์เกิน 20 MB (เพดานสูงสุดที่เซิร์ฟเวอร์อนุญาต)', 'error');
         return;
       }
 
-      this.selectedFile = file;
+      // Store in outer unproxied reference
+      pendingRelayFile = file;
+      this.hasFile = true;
       this.fileName = name || file.name || 'unnamed_file';
       this.fileSizeFormatted = this.formatBytes(file.size);
 
@@ -160,7 +175,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     removeFile() {
-      this.selectedFile = null;
+      pendingRelayFile = null;
+      this.hasFile = false;
       this.filePreviewUrl = null;
       this.fileName = '';
       this.fileSizeFormatted = '';
@@ -186,7 +202,7 @@ document.addEventListener('alpine:init', () => {
             this.statusText = '';
             this.statusType = '';
           }
-        }, 3000);
+        }, 3500);
       }
     },
 
@@ -195,7 +211,7 @@ document.addEventListener('alpine:init', () => {
 
       if (!this.pin) {
         this.showPinModal = true;
-        this.showNotice('กรุณาใส่ PIN เพื่อส่งข้อความ', 'error');
+        this.showNotice('กรุณาตั้งค่าหรือกรอกรหัส PIN ก่อนส่ง', 'error');
         return;
       }
 
@@ -220,19 +236,38 @@ document.addEventListener('alpine:init', () => {
             body: JSON.stringify({ message: text })
           });
 
-          const data = await resp.json();
-          if (!resp.ok || !data.success) {
-            throw new Error(data.error || `HTTP ${resp.status}`);
+          let data = null;
+          const cType = resp.headers.get('content-type') || '';
+          if (cType.includes('application/json')) {
+            try {
+              data = await resp.json();
+            } catch (_) {
+              data = null;
+            }
+          }
+
+          if (!resp.ok || !data?.success) {
+            let errMsg = data?.error;
+            if (!errMsg) {
+              if (resp.status === 502 || resp.status === 504) {
+                errMsg = 'เกตเวย์ขัดข้องหรือหมดเวลา (Gateway Timeout / ERR_NGROK_3004)';
+              } else {
+                errMsg = `เซิร์ฟเวอร์ตอบกลับรหัสข้อผิดพลาด HTTP ${resp.status}`;
+              }
+            }
+            throw new Error(errMsg);
           }
 
           this.showNotice('✨ ส่งข้อความเข้า Telegram สำเร็จแล้ว!', 'success');
           this.messageText = '';
-          setTimeout(() => {
-            if (this.isOpen) this.close();
-          }, 1400);
+          if (!this.isStandalonePage) {
+            setTimeout(() => {
+              if (this.isOpen) this.close();
+            }, 1400);
+          }
         } catch (err) {
           if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาเปลี่ยนรหัส PIN', 'error');
+            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN (ค่าเริ่มต้นคือ 1804)', 'error');
             this.showPinModal = true;
           } else {
             this.showNotice(`❌ ส่งไม่สำเร็จ: ${err.message}`, 'error');
@@ -243,17 +278,17 @@ document.addEventListener('alpine:init', () => {
 
       } else {
         // File / Photo upload
-        if (!this.selectedFile) {
+        if (!pendingRelayFile || !this.hasFile) {
           this.showNotice('กรุณาเลือกไฟล์หรือวางรูปภาพก่อน', 'error');
           return;
         }
 
         this.isSending = true;
-        this.statusText = `กำลังอัปโหลด ${this.fileName} (${this.fileSizeFormatted})…`;
+        this.statusText = `กำลังอัปโหลด ${this.fileName} (${this.fileSizeFormatted}) ไปยัง Telegram…`;
         this.statusType = 'info';
 
         const formData = new FormData();
-        formData.append('file', this.selectedFile, this.fileName);
+        formData.append('file', pendingRelayFile, this.fileName);
         if (this.captionText.trim()) {
           formData.append('caption', this.captionText.trim());
         }
@@ -267,21 +302,42 @@ document.addEventListener('alpine:init', () => {
             body: formData
           });
 
-          const data = await resp.json();
-          if (!resp.ok || !data.success) {
-            throw new Error(data.error || `HTTP ${resp.status}`);
+          let data = null;
+          const cType = resp.headers.get('content-type') || '';
+          if (cType.includes('application/json')) {
+            try {
+              data = await resp.json();
+            } catch (_) {
+              data = null;
+            }
+          }
+
+          if (!resp.ok || !data?.success) {
+            let errMsg = data?.error;
+            if (!errMsg) {
+              if (resp.status === 502 || resp.status === 504) {
+                errMsg = 'เซิร์ฟเวอร์ส่งไฟล์ไม่สำเร็จหรือหมดเวลา (ERR_NGROK_3004 / Gateway Timeout)';
+              } else if (resp.status === 413) {
+                errMsg = 'ขนาดไฟล์เกินเพดานสูงสุดที่เซิร์ฟเวอร์อนุญาต (20 MB)';
+              } else {
+                errMsg = `เซิร์ฟเวอร์ตอบกลับรหัสข้อผิดพลาด HTTP ${resp.status}`;
+              }
+            }
+            throw new Error(errMsg);
           }
 
           const fileTypeStr = data.type === 'photo' ? 'รูปภาพ' : 'ไฟล์เอกสาร';
           this.showNotice(`✨ ส่ง${fileTypeStr}เข้า Telegram สำเร็จแล้ว!`, 'success');
           this.removeFile();
           this.captionText = '';
-          setTimeout(() => {
-            if (this.isOpen) this.close();
-          }, 1400);
+          if (!this.isStandalonePage) {
+            setTimeout(() => {
+              if (this.isOpen) this.close();
+            }, 1400);
+          }
         } catch (err) {
           if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN', 'error');
+            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN (ค่าเริ่มต้นคือ 1804)', 'error');
             this.showPinModal = true;
           } else {
             this.showNotice(`❌ อัปโหลดไม่สำเร็จ: ${err.message}`, 'error');

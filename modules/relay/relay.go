@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,11 +89,6 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	// Status endpoint (no pin required to check if server has relay enabled)
 	r.GET("/api/relay/status", m.handleStatus)
 
-	// Standalone redirect to dashboard drawer
-	r.GET("/relay", func(c *gin.Context) {
-		c.Redirect(http.StatusTemporaryRedirect, "/?app=relay")
-	})
-
 	// Protected Relay Endpoints
 	api := r.Group("/api/relay", m.RequirePIN())
 	{
@@ -165,7 +161,7 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 		return
 	}
 
-	// Limit request body
+	// Limit request body before parsing
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes)
 
 	file, header, err := c.Request.FormFile("file")
@@ -177,6 +173,14 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 		}
 	}
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{
+				"error":   fmt.Sprintf("File size exceeds maximum allowed limit of %d MB", m.maxUploadBytes/(1024*1024)),
+				"success": false,
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file/photo field in multipart form", "success": false})
 		return
 	}
@@ -190,7 +194,8 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 		caption = htmlEscape(caption)
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	// Allow up to 60s for large file transfers (up to 20MB)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
 
 	contentType := header.Header.Get("Content-Type")
@@ -201,6 +206,18 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 
 	if isImg {
 		sentMsg, sendErr = m.sender.SendPhoto(ctx, m.chatID, header.Filename, file, caption)
+		if sendErr != nil {
+			// Telegram Bot API sendPhoto fails if dimensions exceed 10,000 px or aspect ratio > 20.
+			// Automatically fallback to SendDocument so high-res artwork/posters always succeed.
+			if seeker, ok := file.(io.ReadSeeker); ok {
+				if _, seekErr := seeker.Seek(0, io.SeekStart); seekErr == nil {
+					sentMsg, sendErr = m.sender.SendDocument(ctx, m.chatID, header.Filename, file, caption)
+					if sendErr == nil {
+						isImg = false
+					}
+				}
+			}
+		}
 	} else {
 		sentMsg, sendErr = m.sender.SendDocument(ctx, m.chatID, header.Filename, file, caption)
 	}
@@ -229,18 +246,29 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 func (m *Module) handleSend(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
-		// Check if file is present
-		if _, _, err := c.Request.FormFile("file"); err == nil {
-			m.handleFileUpload(c)
-			return
+		// Limit request body immediately before any multipart parsing
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes)
+
+		// Parse multipart form (max 32 MB buffer; triggers MaxBytesReader if body > maxUploadBytes)
+		if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				c.JSON(http.StatusRequestEntityTooLarge, gin.H{
+					"error":   fmt.Sprintf("Request entity exceeds limit of %d MB", m.maxUploadBytes/(1024*1024)),
+					"success": false,
+				})
+				return
+			}
 		}
-		if _, _, err := c.Request.FormFile("photo"); err == nil {
-			m.handleFileUpload(c)
-			return
-		}
-		if _, _, err := c.Request.FormFile("image"); err == nil {
-			m.handleFileUpload(c)
-			return
+
+		// Check if file is present in multipart form
+		if c.Request.MultipartForm != nil && c.Request.MultipartForm.File != nil {
+			if len(c.Request.MultipartForm.File["file"]) > 0 ||
+				len(c.Request.MultipartForm.File["photo"]) > 0 ||
+				len(c.Request.MultipartForm.File["image"]) > 0 {
+				m.handleFileUpload(c)
+				return
+			}
 		}
 	}
 
