@@ -206,6 +206,18 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    async readRelayResponse(resp) {
+      const contentType = resp.headers.get('content-type') || '';
+      const body = await resp.text();
+      if (contentType.includes('application/json')) {
+        try { return JSON.parse(body); } catch (_) { /* report the response below */ }
+      }
+      if (/ERR_NGROK_|ngrok gateway error/i.test(body) || contentType.includes('text/html')) {
+        throw new Error('เกตเวย์ ngrok ตอบกลับหน้า HTML แทน API (ERR_NGROK_3004) กรุณารอสักครู่แล้วลองใหม่');
+      }
+      throw new Error(`เซิร์ฟเวอร์ตอบกลับข้อมูลที่อ่านไม่ได้ (HTTP ${resp.status})`);
+    },
+
     async submit() {
       if (this.isSending) return;
 
@@ -236,15 +248,7 @@ document.addEventListener('alpine:init', () => {
             body: JSON.stringify({ message: text })
           });
 
-          let data = null;
-          const cType = resp.headers.get('content-type') || '';
-          if (cType.includes('application/json')) {
-            try {
-              data = await resp.json();
-            } catch (_) {
-              data = null;
-            }
-          }
+          const data = await this.readRelayResponse(resp);
 
           if (!resp.ok || !data?.success) {
             let errMsg = data?.error;
@@ -302,15 +306,7 @@ document.addEventListener('alpine:init', () => {
             body: formData
           });
 
-          let data = null;
-          const cType = resp.headers.get('content-type') || '';
-          if (cType.includes('application/json')) {
-            try {
-              data = await resp.json();
-            } catch (_) {
-              data = null;
-            }
-          }
+          const data = await this.readRelayResponse(resp);
 
           if (!resp.ok || !data?.success) {
             let errMsg = data?.error;

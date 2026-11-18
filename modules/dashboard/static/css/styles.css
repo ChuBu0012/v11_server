@@ -493,7 +493,7 @@ footer { padding: 26px 24px; color: var(--muted); text-align: center; font-size:
    App Hub & Gateway Launcher Cards
    ============================================================================= */
 .app-hub-section { padding-top: 10px; }
-.app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 6px; }
+.app-grid { display: grid; grid-template-columns: minmax(0, 520px); gap: 14px; margin-top: 6px; }
 
 .app-card {
   display: flex;
@@ -639,14 +639,14 @@ body.drawer-locked { overflow: hidden !important; }
   left: 50%;
   transform: translate(-50%, -50%);
   width: 92%;
-  max-width: 580px;
-  max-height: 90vh;
+  max-width: 640px;
+  max-height: min(92vh, 820px);
   overflow-y: auto;
   background: var(--card-bg);
   border: 1px solid var(--hairline);
   border-radius: 20px;
   box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  padding: 24px;
+  padding: 28px;
   z-index: 999;
 }
 
@@ -685,7 +685,8 @@ body.drawer-locked { overflow: hidden !important; }
 .drawer-header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  min-width: 0;
 }
 
 .drawer-icon-bubble {
@@ -702,7 +703,7 @@ body.drawer-locked { overflow: hidden !important; }
 }
 
 .drawer-title { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; }
-.drawer-subtitle { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+.drawer-subtitle { font-size: 12px; color: var(--muted); margin: 4px 0 0; line-height: 1.45; }
 
 .drawer-header-right {
   display: flex;
@@ -798,13 +799,13 @@ body.drawer-locked { overflow: hidden !important; }
   background: rgba(15, 23, 42, 0.7);
   padding: 4px;
   border-radius: 12px;
-  margin: 16px 0 16px;
+  margin: 20px 0 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   gap: 4px;
 }
 .relay-tab-btn {
   flex: 1;
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 13.5px;
   font-weight: 500;
   border-radius: 9px;
@@ -1069,6 +1070,8 @@ body.drawer-locked { overflow: hidden !important; }
   display: flex;
   align-items: center;
   gap: 6px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .relay-status-banner.info {
   background: rgba(41, 151, 255, 0.12);
@@ -1143,8 +1146,14 @@ body.drawer-locked { overflow: hidden !important; }
     max-width: 100%;
     max-height: 88vh;
     border-radius: 20px 20px 0 0;
-    padding: 20px 18px;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
   }
+  .drawer-header { align-items: flex-start; gap: 10px; }
+  .drawer-header-right { gap: 6px; }
+  .drawer-fullpage-link { font-size: 0; padding: 7px; }
+  .drawer-fullpage-link i { font-size: 16px; }
+  .drawer-pin-pill { padding: 6px 8px; }
+  .relay-tab-btn { padding: 11px 8px; font-size: 12px; gap: 5px; }
   .drawer-enter-from {
     transform: translateY(100%);
   }
@@ -1202,14 +1211,14 @@ body.drawer-locked { overflow: hidden !important; }
 }
 
 .tele-card {
-  max-width: 680px;
+  max-width: 760px;
   width: 100%;
   margin: 0 auto;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 24px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding: 32px 28px;
+  padding: 36px;
   box-sizing: border-box;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1272,6 +1281,9 @@ body.drawer-locked { overflow: hidden !important; }
   .tele-heading {
     font-size: 19px;
   }
+  .tele-title-wrap { align-items: flex-start; gap: 12px; }
+  .relay-footer, .drawer-actions { flex-wrap: wrap; }
+  .relay-submit-btn { flex: 1; justify-content: center; }
 }
 
 

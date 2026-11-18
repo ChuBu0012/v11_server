@@ -162,7 +162,9 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 	}
 
 	// Limit request body before parsing
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes)
+	// Multipart boundaries, headers and captions count toward the HTTP body but
+	// not toward Telegram's per-file upload limit.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes+(1<<20))
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -185,6 +187,10 @@ func (m *Module) handleFileUpload(c *gin.Context) {
 		return
 	}
 	defer file.Close()
+	if header.Size > m.maxUploadBytes {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": fmt.Sprintf("File size exceeds maximum allowed limit of %d MB", m.maxUploadBytes/(1024*1024)), "success": false})
+		return
+	}
 
 	caption := strings.TrimSpace(c.Request.FormValue("caption"))
 	if caption == "" {
@@ -247,7 +253,7 @@ func (m *Module) handleSend(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		// Limit request body immediately before any multipart parsing
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes)
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, m.maxUploadBytes+(1<<20))
 
 		// Parse multipart form (max 32 MB buffer; triggers MaxBytesReader if body > maxUploadBytes)
 		if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
@@ -257,6 +263,9 @@ func (m *Module) handleSend(c *gin.Context) {
 					"error":   fmt.Sprintf("Request entity exceeds limit of %d MB", m.maxUploadBytes/(1024*1024)),
 					"success": false,
 				})
+				return
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart upload", "success": false})
 				return
 			}
 		}
