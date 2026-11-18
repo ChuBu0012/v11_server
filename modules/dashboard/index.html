@@ -86,19 +86,26 @@
     button { font: inherit; }
     .topbar {
       height: 52px;
-      padding: 0 max(24px, calc((100vw - 1120px) / 2));
-      background: #000;
+      padding: 0 max(20px, calc((100vw - 1120px) / 2));
+      background: rgba(12, 13, 16, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 100;
       border-bottom: 1px solid var(--hairline-dark);
     }
-    .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
-    .brand-sub { font-size: 11px; opacity: 0.65; font-weight: 500; padding: 2px 6px; background: rgba(255,255,255,0.12); border-radius: 6px; }
+    [data-theme="light"] .topbar {
+      background: rgba(255, 255, 255, 0.90);
+      color: var(--ink);
+    }
+    .brand { display: inline-flex; align-items: center; gap: 9px; font-size: 14.5px; font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; }
+    .brand-name { display: inline-block; }
+    .brand-sub { font-size: 11px; opacity: 0.65; font-weight: 600; padding: 2px 6px; background: var(--bg-hover); border: 1px solid var(--hairline); border-radius: 6px; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34c759; flex: 0 0 auto; box-shadow: 0 0 6px rgba(52, 199, 89, 0.6); }
     .status-dot.warning { background: #ff9f0a; box-shadow: 0 0 6px rgba(255, 159, 10, 0.6); }
     .status-dot.error { background: #ff453a; box-shadow: 0 0 6px rgba(255, 69, 58, 0.6); }
@@ -106,46 +113,98 @@
     .topbar-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
-    .top-meta { color: #a1a1a6; font-size: 12px; text-align: right; }
-    
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      background: var(--pearl);
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    [data-theme="light"] .sync-badge {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--muted);
+    }
+    .sync-dot {
+      width: 6.5px;
+      height: 6.5px;
+      border-radius: 50%;
+      background: #34c759;
+      box-shadow: 0 0 6px rgba(52, 199, 89, 0.7);
+      flex-shrink: 0;
+    }
+    .sync-dot.live {
+      animation: pulseSyncDot 2.2s infinite ease-in-out;
+    }
+    @keyframes pulseSyncDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+    .sync-dot.stale {
+      background: #ff9f0a;
+      box-shadow: 0 0 6px rgba(255, 159, 10, 0.7);
+      animation: none;
+    }
+    .sync-dot.error {
+      background: #ff453a;
+      box-shadow: 0 0 6px rgba(255, 69, 58, 0.7);
+      animation: none;
+    }
+    .sync-text {
+      font-variant-numeric: tabular-nums;
+    }
+
     .theme-toggle {
       width: 34px;
       height: 34px;
       padding: 0;
-      border: 1px solid var(--hairline-dark);
+      border: 1px solid var(--hairline);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
+      background: var(--pearl);
+      color: var(--ink);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 15px;
-      transition: background 0.15s, transform 0.15s;
+      font-size: 14px;
+      transition: background 0.15s, transform 0.15s, border-color 0.15s;
     }
-    .theme-toggle:hover { background: rgba(255, 255, 255, 0.18); transform: scale(1.05); }
+    .theme-toggle:hover { background: var(--bg-hover); transform: scale(1.05); }
     .theme-toggle:active { transform: scale(0.95); }
 
-    .pwa-install-btn {
-      min-height: 32px;
-      padding: 0 12px;
-      border: 1px solid var(--blue);
-      border-radius: 999px;
-      color: #fff;
-      background: var(--blue);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
+    .hero-sync-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      transition: transform 0.15s, opacity 0.15s;
+      gap: 7px;
+      padding: 7px 15px;
+      background: var(--pearl);
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
     }
-    .pwa-install-btn:hover { opacity: 0.9; transform: scale(1.02); }
-    .pwa-install-btn:active { transform: scale(0.96); }
-    .pwa-install-btn[hidden] { display: none !important; }
+    .hero-sync-pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 6px var(--blue);
+      flex-shrink: 0;
+    }
 
     .hero {
       background: var(--canvas);
@@ -352,7 +411,7 @@
       .hero { padding: 30px 18px 24px; }
       .hero-row { align-items: center; flex-direction: column-reverse; gap: 16px; text-align: center; }
       .hero-left { width: 100%; display: flex; flex-direction: column; align-items: center; }
-      .hero-actions { width: 100%; justify-content: center; margin-top: 16px; }
+      .hero-actions { width: 100%; justify-content: center; margin-top: 16px; gap: 10px; }
       .hero-visual { width: 100%; flex: 0 0 auto; }
       #core-canvas-container { width: 220px; height: 180px; }
       .actions { width: 100%; justify-content: space-between; }
@@ -363,12 +422,21 @@
       .chart-card.wide { grid-column: auto; }
       .chart-wrap { height: 190px; }
     }
-    @media (max-width: 420px) {
+    @media (max-width: 480px) {
+      .topbar { padding: 0 14px; height: 50px; }
+      .brand { gap: 8px; font-size: 13.5px; }
+      .brand-sub { display: none; }
+      .topbar-actions { gap: 8px; }
+      .sync-badge { padding: 4px 9px; font-size: 11px; gap: 5px; }
+      .sync-dot { width: 5.5px; height: 5.5px; }
+      .theme-toggle { width: 32px; height: 32px; font-size: 13px; }
+      .hero-actions { flex-direction: column; width: 100%; gap: 10px; }
+      .hero-sync-pill { width: 100%; justify-content: center; font-size: 12px; }
+      .refresh { width: 100%; }
       .metric-grid { grid-template-columns: 1fr 1fr; }
       .metric-value { font-size: 21px; }
       .section-heading { align-items: start; flex-direction: column; }
       .log-row { grid-template-columns: 64px 52px minmax(0, 1fr); gap: 8px; }
-      .top-meta { max-width: 45%; }
     }
   </style>
 </head>
@@ -376,17 +444,17 @@
   <header class="topbar">
     <div class="brand">
       <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-      <span>Pocket Sentinel</span>
+      <span class="brand-name">Pocket Sentinel</span>
       <span class="brand-sub">v11</span>
     </div>
     <div class="topbar-actions">
-      <button class="pwa-install-btn" id="pwa-install-btn" type="button" title="Install App on Home Screen" hidden>
-        📲 Install
-      </button>
+      <div class="sync-badge" id="last-updated" title="Telemetry sync status" aria-live="polite">
+        <span class="sync-dot live" id="sync-dot"></span>
+        <span class="sync-text" id="last-updated-text">Connecting…</span>
+      </div>
       <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
         <span id="theme-icon">🌙</span>
       </button>
-      <div class="top-meta" id="last-updated" aria-live="polite">Connecting…</div>
     </div>
   </header>
 
@@ -398,7 +466,7 @@
           <h1 id="hero-title">Checking your server</h1>
           <p class="hero-copy" id="hero-copy">Loading the latest device and service status.</p>
           <div class="hero-actions">
-            <span class="top-meta" id="sample-time">Waiting for first sample</span>
+            <div class="hero-sync-pill" id="sample-time">Waiting for first sample</div>
             <button class="refresh" id="refresh-button" type="button">↻&nbsp; Refresh</button>
           </div>
         </div>
@@ -583,7 +651,7 @@
     applyTheme(getSavedTheme());
 
     // =========================================================================
-    // PWA Service Worker & Install Prompt
+    // PWA Service Worker
     // =========================================================================
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -592,30 +660,6 @@
         });
       });
     }
-
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const btn = $('pwa-install-btn');
-      if (btn) btn.hidden = false;
-    });
-
-    $('pwa-install-btn')?.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        const btn = $('pwa-install-btn');
-        if (btn) btn.hidden = true;
-      }
-      deferredPrompt = null;
-    });
-
-    window.addEventListener('appinstalled', () => {
-      const btn = $('pwa-install-btn');
-      if (btn) btn.hidden = true;
-    });
 
     // =========================================================================
     // UI Formatters & Helpers
@@ -667,7 +711,29 @@
         setText('hero-copy', active.length ? `${active.length} condition${active.length === 1 ? '' : 's'} need attention.` : 'Your pocket server and device telemetry are up to date.');
         if (active.length) dot.classList.add('warning');
       }
-      setText('last-updated', lastCollected && !Number.isNaN(lastCollected.getTime()) ? `Updated ${lastCollected.toLocaleString()}` : 'No collection yet');
+      const syncBadge = $('last-updated');
+      const syncDot = $('sync-dot');
+      const syncText = $('last-updated-text');
+      if (syncDot) syncDot.className = 'sync-dot';
+
+      if (!lastCollected || Number.isNaN(lastCollected.getTime())) {
+        if (syncText) syncText.textContent = 'Connecting…';
+        if (syncDot) syncDot.classList.add('stale');
+        if (syncBadge) syncBadge.title = 'No telemetry collection recorded yet';
+      } else if (collectorError) {
+        if (syncText) syncText.textContent = 'Sync Error';
+        if (syncDot) syncDot.classList.add('error');
+        if (syncBadge) syncBadge.title = `Collection error: ${data.last_error}`;
+      } else if (stale) {
+        if (syncText) syncText.textContent = `Delayed · ${formatTime(lastCollected)}`;
+        if (syncDot) syncDot.classList.add('stale');
+        if (syncBadge) syncBadge.title = `Delayed: last update was ${lastCollected.toLocaleString()}`;
+      } else {
+        if (syncText) syncText.textContent = formatTime(lastCollected);
+        if (syncDot) syncDot.classList.add('live');
+        if (syncBadge) syncBadge.title = `Last synced: ${lastCollected.toLocaleString()}`;
+      }
+
       setText('sample-time', sample ? `Sampled ${formatTime(sample.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Waiting for first sample');
 
       if (sample) {
@@ -911,7 +977,11 @@
         else {
           setText('hero-title', 'Unable to load server status');
           setText('hero-copy', current.reason.message || 'The status endpoint did not respond.');
-          $('status-dot').classList.add('error');
+          $('status-dot')?.classList.add('error');
+          const syncDot = $('sync-dot');
+          const syncText = $('last-updated-text');
+          if (syncDot) syncDot.className = 'sync-dot error';
+          if (syncText) syncText.textContent = 'Offline';
         }
         if (history.status === 'fulfilled') {
           state.samples = Array.isArray(history.value) ? history.value.slice().reverse() : [];
