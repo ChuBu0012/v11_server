@@ -81,15 +81,19 @@ func (m *Module) report(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "OwnTracks JSON ไม่ถูกต้อง"})
 		return
 	}
+	if report.Type != "location" {
+		c.Data(http.StatusOK, "application/json; charset=utf-8", []byte("[]"))
+		return
+	}
 	battery := -1
 	if report.Battery != nil {
 		battery = *report.Battery
 	}
 	recordedAt := time.Unix(report.Timestamp, 0).UTC()
-	if report.Type != "location" || report.Timestamp <= 0 || recordedAt.After(time.Now().UTC().Add(maximumFutureLocationSkew)) || !ValidCoordinates(report.Latitude, report.Longitude) ||
+	if report.Timestamp <= 0 || recordedAt.After(time.Now().UTC().Add(maximumFutureLocationSkew)) || !ValidCoordinates(report.Latitude, report.Longitude) ||
 		!finite(report.Accuracy) || report.Accuracy <= 0 || battery < -1 || battery > 100 ||
-		report.BatteryStatus < 0 || report.BatteryStatus > 3 || !finite(report.Speed) || report.Speed < 0 ||
-		!finite(report.Altitude) || !finite(report.Course) || report.Course < 0 || report.Course >= 360 {
+		report.BatteryStatus < 0 || report.BatteryStatus > 3 || !finite(report.Speed) ||
+		!finite(report.Altitude) || !finite(report.Course) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "พิกัดหรือข้อมูล OwnTracks ไม่ถูกต้อง"})
 		return
 	}
