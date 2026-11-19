@@ -34,11 +34,12 @@
       flex-direction: column;
     }
     .watchtower-shell {
-      max-width: 980px;
+      max-width: 1120px;
       margin: 0 auto;
       padding: 24px 16px 60px;
       width: 100%;
     }
+    .watchtower-page .watchtower-shell { padding-top: 30px; }
     .v11-perspective-badge {
       display: inline-flex;
       align-items: center;
@@ -75,15 +76,15 @@
     }
     .summary-pills-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
     .stat-pill {
       background: var(--card);
       border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 14px 16px;
+      border-radius: 16px;
+      padding: 17px 18px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -100,6 +101,10 @@
       font-weight: 700;
       color: var(--ink);
     }
+    .stat-pill:first-child { border-top:2px solid var(--blue); }
+    .stat-pill:nth-child(2) { border-top:2px solid var(--green); }
+    .stat-pill:nth-child(3) { border-top:2px solid var(--red); }
+    .stat-pill:nth-child(4) { border-top:2px solid var(--muted); }
     .outage-banner {
       background: rgba(255, 69, 58, 0.15);
       border: 1px solid var(--red);
@@ -116,7 +121,7 @@
     .watcher-card {
       background: var(--card);
       border: 1px solid var(--border-subtle);
-      border-radius: 16px;
+      border-radius: 20px;
       padding: 20px;
       margin-bottom: 16px;
       transition: border-color 0.2s, box-shadow 0.2s;
@@ -213,6 +218,13 @@
       gap: 8px;
       flex-wrap: wrap;
       margin-top: 14px;
+    }
+    @media(max-width:640px) {
+      .summary-pills-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+      .stat-pill { padding:13px 14px; }
+      .watchtower-page .watchtower-shell { padding:22px 12px 48px; }
+      .watchtower-title { font-size:24px; }
+      .watcher-card { padding:16px; }
     }
     .btn-action {
       border: 1px solid var(--border-subtle);
@@ -324,12 +336,21 @@
     </div>
   </header>
 
+  <nav class="sentinel-nav" aria-label="เมนูหลัก">
+    <div class="sentinel-nav-inner">
+      <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link active" href="/watchtower" aria-current="page"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+    </div>
+  </nav>
+
   <main class="watchtower-shell">
     
     <!-- Prominent V11 Local Observer Perspective Badge -->
     <div class="v11-perspective-badge">
       <i class="ri-map-pin-user-line"></i>
-      <span>📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11</span>
+      <span>Local observer · vivo V11 · Termux ARM64</span>
     </div>
 
     <div class="watchtower-header-row">

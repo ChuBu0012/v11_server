@@ -18,6 +18,14 @@
     <a class="brand schedule-brand" href="/" aria-label="Back to Pocket Sentinel dashboard"><span class="status-dot"></span><span class="brand-name">Pocket Sentinel</span><span class="brand-sub">v11</span></a>
     <div class="schedule-top-actions"><span class="timezone-chip"><i class="ri-time-line" aria-hidden="true"></i> เวลาไทย</span><button class="schedule-pin-button" id="pin-open" type="button"><i class="ri-lock-line" aria-hidden="true"></i><span id="pin-state">ตั้งค่า PIN</span></button></div>
   </header>
+  <nav class="sentinel-nav" aria-label="เมนูหลัก">
+    <div class="sentinel-nav-inner">
+      <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+      <a class="sentinel-nav-link active" href="/schedule" aria-current="page"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+    </div>
+  </nav>
   <main class="schedule-shell">
     <section class="schedule-title-row">
       <div><p class="eyebrow">A LITTLE MORE ROOM TO BREATHE</p><h1>ตารางของฉัน</h1><p class="schedule-subtitle">เตือนสิ่งสำคัญแบบพอดี ๆ แล้วกลับไปใช้ชีวิตต่อ</p><p id="telegram-status" class="telegram-status" role="status"></p></div>
@@ -112,11 +120,11 @@
     <section class="schedule-next" aria-labelledby="schedule-next-title">
       <div class="next-date-mark"><span id="next-weekday">—</span><strong id="next-day">—</strong></div>
       <div class="schedule-next-copy"><p class="eyebrow">UP NEXT</p><h2 id="schedule-next-title">กำลังโหลดตาราง…</h2><p id="schedule-next-description">รายการถัดไปจะอยู่ตรงนี้</p></div>
-      <button class="next-navigate" id="jump-today" type="button" aria-label="ไปที่วันนี้"><i class="ri-arrow-right-up-line" aria-hidden="true"></i></button>
+      <span class="next-navigate" aria-hidden="true"><i class="ri-calendar-check-line"></i></span>
     </section>
 
     <section class="calendar-panel" aria-label="ปฏิทินส่วนตัว">
-      <div class="calendar-toolbar"><div class="calendar-month-control"><button id="previous-month" class="icon-button" type="button" aria-label="เดือนก่อน"><i class="ri-arrow-left-s-line" aria-hidden="true"></i></button><h2 id="month-label">—</h2><button id="next-month" class="icon-button" type="button" aria-label="เดือนถัดไป"><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button></div><div class="calendar-view-control"><button class="view-switch selected" id="month-view-button" type="button" aria-pressed="true">เดือน</button><button class="view-switch" id="agenda-view-button" type="button" aria-pressed="false">รายการ</button></div></div>
+      <div class="calendar-toolbar"><div class="calendar-month-control"><button id="previous-month" class="icon-button" type="button" aria-label="เดือนก่อน"><i class="ri-arrow-left-s-line" aria-hidden="true"></i></button><h2 id="month-label">—</h2><button id="next-month" class="icon-button" type="button" aria-label="เดือนถัดไป"><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button><button id="jump-today" class="schedule-secondary calendar-today" type="button">วันนี้</button></div><div class="calendar-view-control"><button class="view-switch selected" id="month-view-button" type="button" aria-pressed="true">เดือน</button><button class="view-switch" id="agenda-view-button" type="button" aria-pressed="false">รายการ</button></div></div>
       <div class="weekday-row" aria-hidden="true"><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span><span>อา.</span></div>
       <div class="month-grid" id="month-grid" role="grid" aria-label="วันในเดือน"></div>
       <div class="agenda-list" id="agenda-list" hidden></div>

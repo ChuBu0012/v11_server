@@ -58,6 +58,15 @@
     </div>
   </header>
 
+  <nav class="sentinel-nav" aria-label="เมนูหลัก">
+    <div class="sentinel-nav-inner">
+      <a class="sentinel-nav-link active" href="/" aria-current="page"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+    </div>
+  </nav>
+
   <main>
     <!-- Hero Status Section -->
     <section class="hero">
@@ -101,7 +110,7 @@
     </section>
 
     <!-- App Hub & Gateway Launcher -->
-    <div class="wrap" x-data="relayComponent()">
+    <div class="wrap overview-quick-actions" x-data="relayComponent()">
       <section class="section app-hub-section" aria-labelledby="apps-title">
         <div class="section-heading">
           <div>
@@ -554,8 +563,8 @@
         <div class="section-heading">
           <div>
             <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(41, 151, 255, 0.12); border: 1px solid rgba(41, 151, 255, 0.35); color: var(--blue); font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;">
-              <i class="ri-map-pin-user-line"></i>
-              <span>📍 vivo V11 Local Observer (Termux ARM64) - มุมมองจาก V11</span>
+              <i class="ri-map-pin-user-line" aria-hidden="true"></i>
+              <span>Local observer · vivo V11</span>
             </div>
             <h2 id="watchtower-summary-title">Personal Watchtower</h2>
             <p class="section-note">เฝ้าระวังบริการสาธารณะและบันทึกความพร้อมใช้งานจากมุมมอง vivo V11</p>
