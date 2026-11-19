@@ -117,7 +117,7 @@ func TestLocationLiveEndpointIsTokenGuardedAndOmitsCredentials(t *testing.T) {
 }
 
 func TestLocationManagementAPIsRequirePIN(t *testing.T) {
-	router, _, _, viewer := newLocationTestRouter(t)
+	router, module, _, viewer := newLocationTestRouter(t)
 	post := func(pin string, method, path, body string) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
@@ -159,5 +159,8 @@ func TestLocationManagementAPIsRequirePIN(t *testing.T) {
 	}
 	if page := post("", http.MethodGet, "/live/"+viewer, ""); page.Code != http.StatusOK || page.Body.String() != "viewer page" {
 		t.Fatalf("viewer page response = %d %q", page.Code, page.Body.String())
+	}
+	if module.ViewerToken() != viewer {
+		t.Fatalf("ViewerToken() = %q, want %q", module.ViewerToken(), viewer)
 	}
 }

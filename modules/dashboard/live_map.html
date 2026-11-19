@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="th">
+<html lang="th" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -9,13 +9,25 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Sentinel">
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('sentinel-theme');
+        const theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1220' : '#f4f6fa');
+      } catch (_) {}
+    })();
+  </script>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=24">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/live-map.css?v=26">
+  <link rel="stylesheet" href="/static/css/live-map.css?v=27">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js?v=26"></script>
+  <script defer src="/static/js/components/live-map.js?v=27"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="live-map-body">
@@ -30,11 +42,25 @@
         <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชตำแหน่ง" title="รีเฟรช">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
         </button>
+        <button class="icon-button theme-toggle-btn" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
+          <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'" aria-hidden="true"></i>
+        </button>
         <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
           📍 + เพิ่มสถานที่
         </button>
       </div>
     </header>
+
+    <nav class="sentinel-nav" aria-label="เมนูหลัก">
+      <div class="sentinel-nav-inner">
+        <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+        <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
+        <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+        <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+        <a class="sentinel-nav-link active" href="#" aria-current="page"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
+        <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+      </div>
+    </nav>
 
     <section class="live-summary" aria-live="polite">
       <div class="summary-status">

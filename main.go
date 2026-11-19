@@ -368,6 +368,22 @@ func setupRouter(app *App) *gin.Engine {
 	if app.locationModule != nil {
 		app.locationModule.RegisterRoutes(r)
 		r.Match([]string{"GET", "HEAD"}, "/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
+		r.Match([]string{"GET", "HEAD"}, "/live", func(c *gin.Context) {
+			token := app.locationModule.ViewerToken()
+			if token == "" {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+			c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
+		})
+		r.Match([]string{"GET", "HEAD"}, "/map", func(c *gin.Context) {
+			token := app.locationModule.ViewerToken()
+			if token == "" {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+			c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
+		})
 	}
 	r.POST("/api/monitor/insight", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)

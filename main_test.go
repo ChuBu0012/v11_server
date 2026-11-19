@@ -99,6 +99,23 @@ func TestLocationViewerRouteIsTokenProtected(t *testing.T) {
 	}
 }
 
+func TestLiveAndMapRedirects(t *testing.T) {
+	app, router, cleanup := setupTestApp(t)
+	defer cleanup()
+	_, viewerToken := app.locationStore.Tokens()
+
+	for _, path := range []string{"/live", "/map"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusTemporaryRedirect {
+			t.Errorf("%s status = %d, want 307", path, rec.Code)
+		}
+		if loc := rec.Header().Get("Location"); loc != "/live/"+viewerToken {
+			t.Errorf("%s redirect location = %q, want %q", path, loc, "/live/"+viewerToken)
+		}
+	}
+}
+
 func TestLiveViewerRequestPathRedactsToken(t *testing.T) {
 	if got := redactedRequestPath("/live/private-viewer-token"); got != "/live/[token]" {
 		t.Fatalf("redacted request path = %q", got)

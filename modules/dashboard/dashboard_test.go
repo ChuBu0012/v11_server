@@ -46,6 +46,12 @@ func TestDashboardEndpoint(t *testing.T) {
 	if !strings.Contains(body, "watchtowerSummaryComponent") {
 		t.Errorf("Expected dashboard body to contain 'watchtowerSummaryComponent'")
 	}
+	if !strings.Contains(body, "href=\"/live\"") {
+		t.Errorf("Expected dashboard body to contain nav link to '/live'")
+	}
+	if !strings.Contains(body, "Live Location &amp; Rendezvous") {
+		t.Errorf("Expected dashboard body to contain 'Live Location & Rendezvous' card")
+	}
 
 	// Secret scan: Ensure no bot tokens or sensitive placeholders leaked into HTML
 	forbidden := []string{"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "NGROK_AUTHTOKEN", "BEGIN PRIVATE KEY"}
@@ -65,7 +71,7 @@ func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("live map status = %d", response.Code)
 	}
-	for _, want := range []string{"id=\"live-map-canvas\"", "live-map.css", "live-map.js", "viewport-fit=cover"} {
+	for _, want := range []string{"id=\"live-map-canvas\"", "live-map.css", "live-map.js", "viewport-fit=cover", "theme-toggle-btn", "sentinel-nav"} {
 		if !strings.Contains(response.Body.String(), want) {
 			t.Errorf("embedded live map page missing %q", want)
 		}

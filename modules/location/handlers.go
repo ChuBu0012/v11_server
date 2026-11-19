@@ -28,6 +28,15 @@ func NewModule(store *Store, service *Service, pin string) *Module {
 	return &Module{store: store, service: service, pin: pin}
 }
 
+// ViewerToken returns the active viewer token string.
+func (m *Module) ViewerToken() string {
+	if m == nil || m.store == nil {
+		return ""
+	}
+	_, viewer := m.store.Tokens()
+	return viewer
+}
+
 func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.POST("/api/location/report", m.report)
 	r.GET("/api/location/live", m.live)

@@ -247,12 +247,28 @@ document.addEventListener('alpine:init', () => {
     geofenceError: '',
     showLogs: true,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
+    theme: localStorage.getItem('sentinel-theme') || 'dark',
     settingsMessage: '',
     savingZone: false,
     settings: { notify_colocation: true, notify_geofence: true, notify_battery: true },
     newZone: { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true },
 
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.theme);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', this.theme === 'dark' ? '#0b1220' : '#f4f6fa');
+      try { localStorage.setItem('sentinel-theme', this.theme); } catch (_) {}
+      window.dispatchEvent(new CustomEvent('sentinel:theme-changed', { detail: { theme: this.theme } }));
+    },
+
     init() {
+      window.addEventListener('sentinel:theme-changed', (e) => {
+        if (e.detail && e.detail.theme && e.detail.theme !== this.theme) {
+          this.theme = e.detail.theme;
+          document.documentElement.setAttribute('data-theme', this.theme);
+        }
+      });
       if (!window.L) {
         this.mapError = 'โหลดแผนที่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต';
       } else {

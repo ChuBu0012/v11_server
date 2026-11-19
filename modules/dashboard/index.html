@@ -65,6 +65,7 @@
       <a class="sentinel-nav-link" :class="{ active: $store.sentinel.activeTab === 'monitor' }" href="/?tab=monitor" @click.prevent="$store.sentinel.setTab('monitor')" :aria-current="$store.sentinel.activeTab === 'monitor' ? 'page' : null"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
       <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
       <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link" href="/live"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
       <a class="sentinel-nav-link" :class="{ active: $store.sentinel.activeTab === 'telegram' }" href="/?tab=telegram" @click.prevent="$store.sentinel.setTab('telegram')" :aria-current="$store.sentinel.activeTab === 'telegram' ? 'page' : null"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
     </div>
   </nav>
@@ -413,6 +414,47 @@
             <a href="/watchtower" class="app-action-btn secondary" style="font-size: 12px;">
               <i class="ri-arrow-right-line"></i> Manage Watchers &amp; 7-Day History
             </a>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <!-- Location & Rendezvous Preview Card -->
+    <div class="wrap">
+      <section class="section" aria-labelledby="location-summary-title" style="padding-top: 10px;">
+        <div class="section-heading">
+          <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 217, 169, 0.12); border: 1px solid rgba(56, 217, 169, 0.35); color: var(--green); font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;">
+              <i class="ri-map-pin-2-line" aria-hidden="true"></i>
+              <span>Live Location &amp; Rendezvous</span>
+            </div>
+            <h2 id="location-summary-title">Location &amp; Rendezvous</h2>
+            <p class="section-note">ติดตามพิกัดและระยะห่างระหว่าง Chubu และ Furturia แบบเรียลไทม์</p>
+          </div>
+          <div class="actions">
+            <a href="/live" class="app-action-btn primary" style="text-decoration: none;">
+              <i class="ri-map-2-line"></i> เปิดแผนที่สด
+            </a>
+          </div>
+        </div>
+
+        <article class="card" style="padding: 18px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="display: flex; align-items: center;">
+                <img src="/static/img/avatar-chubu.png" alt="Chubu" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--card); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 2;">
+                <img src="/static/img/avatar-furturia.png" alt="Furturia" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--card); box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin-left: -14px; z-index: 1;">
+              </div>
+              <div>
+                <strong style="font-size: 15px; color: var(--ink); display: block;">Chubu &amp; Furturia</strong>
+                <span style="font-size: 12px; color: var(--muted);">ระบบติดตามพิกัดสองทางพร้อม Geofences และแจ้งเตือนอัตโนมัติ</span>
+              </div>
+            </div>
+            <div>
+              <a href="/live" class="app-action-btn secondary" style="font-size: 12px; text-decoration: none;">
+                <i class="ri-arrow-right-line"></i> ไปยังหน้าแผนที่ &amp; Geofences
+              </a>
+            </div>
           </div>
         </article>
       </section>
