@@ -13,13 +13,13 @@
   <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=24">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/live-map.css?v=24">
+  <link rel="stylesheet" href="/static/css/live-map.css?v=25">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js?v=24"></script>
+  <script defer src="/static/js/components/live-map.js?v=25"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="live-map-body">
-  <main class="live-map-app" x-data="liveMap" x-init="init()">
+  <main class="live-map-app" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
     <header class="live-map-header">
       <a class="live-brand" href="/" aria-label="Pocket Sentinel">
         <span class="live-brand-mark">PS</span>
@@ -45,67 +45,14 @@
       <div class="summary-updated"><span class="summary-kicker">อัปเดตล่าสุด</span><strong x-text="updatedText"></strong></div>
     </section>
 
-    <section class="map-shell" aria-label="แผนที่ตำแหน่ง">
-      <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
-      
-      <!-- Interactive On-Map Geofence Creator Card -->
-      <div class="map-picker-card" x-show="pickingLocation" x-transition.opacity x-cloak>
-        <div class="picker-card-header">
-          <div class="picker-card-title">
-            <span class="picker-pin-icon">🎯</span>
-            <div>
-              <strong>ปักหมุดสถานที่ใหม่</strong>
-              <small>คลิกบนแผนที่หรือลากหมุด 🎯 เพื่อเลือกจุด</small>
-            </div>
-          </div>
-          <button type="button" class="picker-close-btn" @click="cancelMapPicker()" aria-label="ยกเลิก">✕</button>
+    <div class="map-picker-layout" :class="{'is-picker-open': pickingLocation}">
+      <section class="map-shell" aria-label="แผนที่ตำแหน่ง">
+        <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
+        <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
+        <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
+          <strong>เลื่อนแผนที่ให้จุดอยู่ใต้เป้า</strong>
+          <span x-text="newZone.latitude == null ? 'เลือกตำแหน่งอุปกรณ์หรือเลื่อนแผนที่' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></span>
         </div>
-
-        <form class="picker-card-form" @submit.prevent="createGeofence()">
-          <div class="picker-field">
-            <input type="text" x-model="newZone.name" class="picker-name-input" placeholder="พิมพ์ชื่อสถานที่ (เช่น หอพัก, มหาวิทยาลัย, บ้าน)" maxlength="80" required autofocus>
-          </div>
-
-          <div class="picker-radius-control">
-            <div class="picker-radius-head">
-              <span>รัศมี:</span>
-              <strong x-text="`${newZone.radius_meters} ม.`"></strong>
-            </div>
-            <div class="picker-radius-pills">
-              <template x-for="r in [50, 100, 150, 250, 500]" :key="r">
-                <button type="button" class="radius-pill" :class="{'is-active': newZone.radius_meters === r}" @click="setRadius(r)" x-text="`${r} ม.`"></button>
-              </template>
-            </div>
-          </div>
-
-          <div class="picker-toggles-row">
-            <label class="picker-toggle-item">
-              <input type="checkbox" x-model="newZone.notify_enter">
-              <span>🔔 แจ้งเมื่อถึง</span>
-            </label>
-            <label class="picker-toggle-item">
-              <input type="checkbox" x-model="newZone.notify_exit">
-              <span>🚗 แจ้งเมื่อออก</span>
-            </label>
-          </div>
-
-          <template x-if="!pin">
-            <div class="picker-pin-row">
-              <input type="password" x-model="pin" inputmode="numeric" class="picker-pin-input" placeholder="กรอก Relay PIN (เช่น 1804)" required>
-            </div>
-          </template>
-
-          <div class="picker-actions-row">
-            <button type="submit" class="picker-submit-btn" :disabled="savingZone || !newZone.name || !newZone.latitude">
-              <span x-text="savingZone ? 'กำลังบันทึก...' : '💾 บันทึกสถานที่นี้'"></span>
-            </button>
-            <button type="button" class="picker-dismiss-btn" @click="cancelMapPicker()">ยกเลิก</button>
-          </div>
-          <div class="picker-coords-hint" x-show="newZone.latitude">
-            <span x-text="`พิกัด: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></span>
-          </div>
-        </form>
-      </div>
 
       <div class="map-loading" x-show="!mapReady" x-cloak>
         <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
@@ -119,7 +66,90 @@
         <span class="legend-item"><img src="/static/img/avatar-chubu.png?v=22" alt="Chubu" class="legend-avatar"> Chubu</span>
         <span class="legend-item"><img src="/static/img/avatar-furturia.png?v=22" alt="Furturia" class="legend-avatar"> Furturia</span>
       </div>
-    </section>
+      </section>
+
+      <aside class="place-picker-panel" x-show="pickingLocation" x-transition.opacity x-cloak role="dialog" aria-modal="false" aria-labelledby="picker-title">
+        <div class="picker-panel-heading">
+          <div>
+            <span class="picker-eyebrow" x-text="`ขั้นตอน ${pickerStep} จาก 3`"></span>
+            <h2 id="picker-title" tabindex="-1" x-text="pickerStepTitle"></h2>
+          </div>
+          <button type="button" class="picker-close-btn" @click="cancelMapPicker()" aria-label="ปิดการเพิ่มสถานที่">ปิด</button>
+        </div>
+        <ol class="picker-step-list" aria-label="ขั้นตอนเพิ่มสถานที่">
+          <template x-for="(label, index) in ['เลือกจุด', 'ตั้งชื่อและรัศมี', 'เลือกการแจ้งเตือน']" :key="label">
+            <li :class="{'is-current': pickerStep === index + 1, 'is-complete': pickerStep > index + 1}" :aria-current="pickerStep === index + 1 ? 'step' : null">
+              <span x-text="index + 1"></span><small x-text="label"></small>
+            </li>
+          </template>
+        </ol>
+
+        <form class="picker-panel-form" @submit.prevent="pickerStep < 3 ? nextPickerStep() : createGeofence()">
+          <section class="picker-step-content" x-show="pickerStep === 1" aria-labelledby="picker-location-title">
+            <h3 id="picker-location-title">จุดนี้อยู่ตรงไหน?</h3>
+            <p>เลื่อนแผนที่ให้ตำแหน่งอยู่ใต้เป้ากลาง วงสีเขียวคือพื้นที่แจ้งเตือน</p>
+            <div class="picker-device-shortcuts">
+              <button type="button" class="device-shortcut" @click="useDeviceLocation('me')" :disabled="!me" :aria-label="me ? `ใช้ตำแหน่งล่าสุดของ Chubu ${deviceAge(me)}` : 'ยังไม่มีตำแหน่งของ Chubu'">
+                <img src="/static/img/avatar-chubu.png?v=22" alt="" aria-hidden="true"><span><strong>ใช้ Chubu</strong><small x-text="me ? deviceAge(me) : 'ยังไม่มีตำแหน่งล่าสุด'"></small></span>
+              </button>
+              <button type="button" class="device-shortcut" @click="useDeviceLocation('friend')" :disabled="!friend" :aria-label="friend ? `ใช้ตำแหน่งล่าสุดของ Furturia ${deviceAge(friend)}` : 'ยังไม่มีตำแหน่งของ Furturia'">
+                <img src="/static/img/avatar-furturia.png?v=22" alt="" aria-hidden="true"><span><strong>ใช้ Furturia</strong><small x-text="friend ? deviceAge(friend) : 'ยังไม่มีตำแหน่งล่าสุด'"></small></span>
+              </button>
+            </div>
+            <p class="picker-coordinate-readout" x-show="newZone.latitude != null" x-text="`พิกัดที่เลือก: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></p>
+            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
+          </section>
+
+          <section class="picker-step-content" x-show="pickerStep === 2" aria-labelledby="picker-details-title" x-cloak>
+            <h3 id="picker-details-title">จำสถานที่นี้ด้วยชื่ออะไร?</h3>
+            <label class="picker-field-label" for="place-name">ชื่อสถานที่</label>
+            <input id="place-name" type="text" x-model.trim="newZone.name" class="picker-name-input" placeholder="เช่น บ้าน, ที่ทำงาน, โรงเรียน" maxlength="80" autocomplete="off" required>
+            <div class="picker-radius-section">
+              <div class="picker-radius-heading">
+                <label class="picker-field-label" for="place-radius-slider">รัศมีแจ้งเตือน</label>
+                <strong x-text="`${newZone.radius_meters} เมตร`"></strong>
+              </div>
+              <input id="place-radius-slider" class="radius-range" type="range" min="50" max="2000" step="25" x-model.number="radiusSlider" @input="applyRadiusSlider()" :aria-valuetext="`${radiusSlider} เมตร`" aria-describedby="radius-help">
+              <div class="radius-range-labels"><span>50 ม.</span><span>2,000 ม.</span></div>
+              <p id="radius-help">แถบเลื่อนปรับ 50–2,000 ม.; ช่องระบุเองปรับได้ 25–100,000 ม.</p>
+              <div class="radius-exact-row">
+                <label class="picker-field-label" for="place-radius-exact">ระบุเอง</label>
+                <div class="radius-number-wrap"><input id="place-radius-exact" type="number" min="25" max="100000" step="1" x-model.number="newZone.radius_meters" @input="applyExactRadius()" @blur="normalizeExactRadius()" inputmode="numeric"><span>เมตร</span></div>
+              </div>
+              <div class="picker-radius-presets" aria-label="ค่ารัศมีที่ใช้บ่อย">
+                <template x-for="r in [50, 100, 250, 500, 1000]" :key="r">
+                  <button type="button" class="radius-pill" :class="{'is-active': newZone.radius_meters === r}" @click="setRadius(r)" x-text="`${r} ม.`"></button>
+                </template>
+              </div>
+            </div>
+            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
+          </section>
+
+          <section class="picker-step-content" x-show="pickerStep === 3" aria-labelledby="picker-alerts-title" x-cloak>
+            <h3 id="picker-alerts-title">อยากรับแจ้งเตือนอะไร?</h3>
+            <p>เลือกได้ทั้งสองแบบ และเปลี่ยนใจภายหลังได้</p>
+            <div class="picker-alert-options">
+              <label class="picker-alert-option"><span><strong>เมื่อมาถึง</strong><small>แจ้งเมื่อเข้าในรัศมีนี้</small></span><input type="checkbox" x-model="newZone.notify_enter" aria-label="แจ้งเมื่อมาถึง"></label>
+              <label class="picker-alert-option"><span><strong>เมื่อออกไป</strong><small>แจ้งเมื่อออกนอกพื้นที่</small></span><input type="checkbox" x-model="newZone.notify_exit" aria-label="แจ้งเมื่อออกไป"></label>
+            </div>
+            <div class="picker-summary-card">
+              <strong x-text="newZone.name || 'ยังไม่ได้ตั้งชื่อสถานที่'"></strong>
+              <span x-text="`${newZone.radius_meters} เมตร · ${newZone.notify_enter ? 'แจ้งเมื่อมาถึง' : ''}${newZone.notify_enter && newZone.notify_exit ? ' และ ' : ''}${newZone.notify_exit ? 'แจ้งเมื่อออกไป' : ''}`"></span>
+              <small x-text="newZone.latitude == null ? '' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></small>
+            </div>
+            <label class="picker-field-label" for="place-pin" x-show="!pin">Relay PIN</label>
+            <input id="place-pin" type="password" x-show="!pin" x-model="pin" inputmode="numeric" autocomplete="current-password" class="picker-pin-input" placeholder="กรอก PIN เพื่อบันทึก">
+            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
+          </section>
+
+          <div class="picker-panel-footer">
+            <button type="button" class="picker-cancel-action" @click="cancelMapPicker()">ยกเลิก</button>
+            <button type="button" class="picker-back-action" x-show="pickerStep > 1" @click="previousPickerStep()">ย้อนกลับ</button>
+            <button type="submit" class="picker-next-action" :disabled="savingZone" x-text="pickerStep < 3 ? 'ถัดไป' : (savingZone ? 'กำลังบันทึก…' : 'บันทึกสถานที่')"></button>
+          </div>
+        </form>
+      </aside>
+    </div>
 
     <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
       <article class="device-card device-card-me">
@@ -203,19 +233,20 @@
           <template x-if="geofences.length === 0">
             <p class="empty-state-text">ยังไม่มีสถานที่ที่บันทึกไว้ กดปุ่ม "ปักหมุดเพิ่มสถานที่" เพื่อเริ่มสร้าง</p>
           </template>
+          <p class="geofence-error" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
           <ul class="geofence-inline-list">
-            <template x-for="zone in geofences" :key="zone.id">
+            <template x-for="zone in orderedGeofences" :key="zone.id">
               <li class="geofence-inline-item">
-                <div class="geofence-info">
-                  <div class="geofence-name-row">
-                    <span class="geofence-icon">📍</span>
-                    <strong x-text="zone.name"></strong>
-                  </div>
-                  <small x-text="`รัศมี ${zone.radius_meters} ม. · ${zone.notify_enter ? 'แจ้งเมื่อถึง ' : ''}${zone.notify_exit ? 'แจ้งเมื่อออก' : ''}`"></small>
-                </div>
-                <button type="button" class="delete-zone-btn" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">
-                  ลบ
+                <button type="button" class="geofence-focus-card" @click="focusGeofence(zone)" :aria-label="`ดู ${zone.name} บนแผนที่`">
+                  <span class="geofence-card-pin" aria-hidden="true">⌖</span>
+                  <span class="geofence-info">
+                    <span class="geofence-name-row"><strong x-text="zone.name"></strong><span class="geofence-radius-badge" x-text="`${zone.radius_meters} ม.`"></span></span>
+                    <small x-text="`${zone.notify_enter ? 'ถึง: เปิด' : 'ถึง: ปิด'} · ${zone.notify_exit ? 'ออก: เปิด' : 'ออก: ปิด'}`"></small>
+                    <small class="geofence-coordinates" x-text="`${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}`"></small>
+                  </span>
+                  <span class="geofence-focus-label">ดูแผนที่</span>
                 </button>
+                <button type="button" class="delete-zone-btn" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button>
               </li>
             </template>
           </ul>

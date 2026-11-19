@@ -7,10 +7,15 @@ const liveMapState = {
   geofenceLayer: null,
   trailLayer: null,
   pickerLayer: null,
-  pickerMarker: null,
   pickerCircle: null,
+  pickerOpener: null,
   pollTimer: null,
 };
+
+const PICKER_RADIUS_MIN = 25;
+const PICKER_RADIUS_MAX = 100000;
+const PICKER_SLIDER_MIN = 50;
+const PICKER_SLIDER_MAX = 2000;
 
 const locationViewerToken = () => decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
 
@@ -236,6 +241,10 @@ document.addEventListener('alpine:init', () => {
     updatedAt: null,
     showTrail: false,
     pickingLocation: false,
+    pickerStep: 1,
+    pickerError: '',
+    radiusSlider: 150,
+    geofenceError: '',
     showLogs: true,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     settingsMessage: '',
@@ -268,11 +277,11 @@ document.addEventListener('alpine:init', () => {
         liveMapState.trailLayer = L.layerGroup().addTo(liveMapState.map);
         liveMapState.pickerLayer = L.layerGroup().addTo(liveMapState.map);
 
-        // Map click for geofence picker
-        liveMapState.map.on('click', (e) => {
+        // While choosing a place, the center reticle stays fixed and the
+        // selected coordinate follows the map after each pan/zoom.
+        liveMapState.map.on('moveend', () => {
           if (!this.pickingLocation) return;
-          this.newZone.latitude = parseFloat(e.latlng.lat.toFixed(6));
-          this.newZone.longitude = parseFloat(e.latlng.lng.toFixed(6));
+          this.setPickerCoordinates(liveMapState.map.getCenter());
           this.renderPickerPreview();
         });
 
@@ -366,6 +375,10 @@ document.addEventListener('alpine:init', () => {
       return [...meLogs, ...friendLogs].sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()).slice(0, 15);
     },
 
+    get orderedGeofences() {
+      return [...this.geofences].sort((a, b) => String(a.name).localeCompare(String(b.name), 'th', { numeric: true, sensitivity: 'base' }));
+    },
+
     formatTimeDetail(dateStr) {
       if (!dateStr) return '';
       const d = new Date(dateStr);
@@ -386,25 +399,37 @@ document.addEventListener('alpine:init', () => {
       updateLeafletLayers({ me: this.me, friend: this.friend, geofences: this.geofences, breadcrumbs: this.breadcrumbs, distance_meters: this.distanceMeters, is_colocated: this.isColocated }, this.showTrail);
     },
 
-    // Map Picker Handlers (Direct on Map, No Sidebar)
+    get pickerStepTitle() {
+      return ['เลือกตำแหน่ง', 'ตั้งชื่อและรัศมี', 'การแจ้งเตือน'][this.pickerStep - 1] || 'เพิ่มสถานที่';
+    },
+
+    // Guided map-first place picker.
     startMapPicker() {
+      if (this.pickingLocation) return;
+      liveMapState.pickerOpener = document.activeElement;
+      this.newZone = { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true };
+      this.radiusSlider = 150;
+      this.pickerStep = 1;
+      this.pickerError = '';
+      this.geofenceError = '';
       this.pickingLocation = true;
       const mapEl = document.getElementById('live-map-canvas');
       if (mapEl) {
-        mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mapEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
       const container = liveMapState.map?.getContainer();
       if (container) container.classList.add('map-picking-cursor');
 
-      // If no lat/lng yet, set default from current user or map center
-      if (!this.newZone.latitude) {
-        const center = liveMapState.map?.getCenter() || { lat: 13.6516, lng: 100.4939 };
-        const baseLat = this.me?.latitude || center.lat;
-        const baseLng = this.me?.longitude || center.lng;
-        this.newZone.latitude = parseFloat(baseLat.toFixed(6));
-        this.newZone.longitude = parseFloat(baseLng.toFixed(6));
-      }
+      const center = this.me
+        ? { lat: this.me.latitude, lng: this.me.longitude }
+        : liveMapState.map?.getCenter() || { lat: 13.6516, lng: 100.4939 };
+      this.setPickerCoordinates(center);
+      liveMapState.map?.setView(center, this.me ? 16 : liveMapState.map.getZoom());
       this.renderPickerPreview();
+      this.$nextTick(() => {
+        liveMapState.map?.invalidateSize({ pan: false });
+        document.getElementById('picker-title')?.focus();
+      });
     },
 
     toggleMapPicker() {
@@ -415,8 +440,56 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    setPickerCoordinates(latLng) {
+      if (!latLng || !Number.isFinite(latLng.lat) || !Number.isFinite(latLng.lng)) return;
+      this.newZone.latitude = Number(latLng.lat.toFixed(6));
+      this.newZone.longitude = Number(latLng.lng.toFixed(6));
+    },
+
+    useDeviceLocation(device) {
+      const point = device === 'friend' ? this.friend : this.me;
+      if (!point || !liveMapState.map) return;
+      const center = { lat: point.latitude, lng: point.longitude };
+      this.setPickerCoordinates(center);
+      liveMapState.map.setView(center, 17);
+      this.renderPickerPreview();
+      this.pickerError = '';
+    },
+
+    nextPickerStep() {
+      this.pickerError = '';
+      if (this.pickerStep === 1 && (!Number.isFinite(this.newZone.latitude) || !Number.isFinite(this.newZone.longitude))) {
+        this.pickerError = 'เลือกตำแหน่งจากแผนที่หรือเลือกอุปกรณ์ก่อน';
+        return;
+      }
+      if (this.pickerStep === 2) {
+        if (!this.newZone.name?.trim()) {
+          this.pickerError = 'ใส่ชื่อสถานที่เพื่อให้จำได้ง่าย';
+          document.getElementById('place-name')?.focus();
+          return;
+        }
+        if (!Number.isFinite(Number(this.newZone.radius_meters)) || Number(this.newZone.radius_meters) < PICKER_RADIUS_MIN || Number(this.newZone.radius_meters) > PICKER_RADIUS_MAX) {
+          this.pickerError = `รัศมีต้องอยู่ระหว่าง ${PICKER_RADIUS_MIN} ถึง ${PICKER_RADIUS_MAX} เมตร`;
+          document.getElementById('place-radius-exact')?.focus();
+          return;
+        }
+        this.newZone.name = this.newZone.name.trim();
+      }
+      if (this.pickerStep < 3) {
+        this.pickerStep += 1;
+        this.$nextTick(() => {
+          if (this.pickerStep === 2) document.getElementById('place-name')?.focus();
+        });
+      }
+    },
+
+    previousPickerStep() {
+      this.pickerError = '';
+      this.pickerStep = Math.max(1, this.pickerStep - 1);
+    },
+
     renderPickerPreview() {
-      if (!liveMapState.map || !this.newZone.latitude) return;
+      if (!liveMapState.map || !Number.isFinite(this.newZone.latitude) || !Number.isFinite(this.newZone.longitude)) return;
       liveMapState.pickerLayer.clearLayers();
 
       const pos = [this.newZone.latitude, this.newZone.longitude];
@@ -431,47 +504,60 @@ document.addEventListener('alpine:init', () => {
         fillOpacity: 0.16,
       }).addTo(liveMapState.pickerLayer);
 
-      // Draggable Target Pin
-      const pinIcon = L.divIcon({
-        className: 'picker-pin-marker',
-        html: `<div class="picker-target-pin">🎯</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-      });
-
-      liveMapState.pickerMarker = L.marker(pos, {
-        icon: pinIcon,
-        draggable: true,
-      }).addTo(liveMapState.pickerLayer);
-
-      liveMapState.pickerMarker.on('drag', (e) => {
-        const latLng = e.target.getLatLng();
-        this.newZone.latitude = parseFloat(latLng.lat.toFixed(6));
-        this.newZone.longitude = parseFloat(latLng.lng.toFixed(6));
-        if (liveMapState.pickerCircle) {
-          liveMapState.pickerCircle.setLatLng(latLng);
-        }
-      });
     },
 
     updatePickerRadius() {
-      if (liveMapState.pickerCircle) {
-        liveMapState.pickerCircle.setRadius(this.newZone.radius_meters);
-      }
+      const radius = Number(this.newZone.radius_meters);
+      if (liveMapState.pickerCircle && Number.isFinite(radius) && radius >= PICKER_RADIUS_MIN && radius <= PICKER_RADIUS_MAX) liveMapState.pickerCircle.setRadius(radius);
     },
 
     setRadius(r) {
       this.newZone.radius_meters = r;
+      this.radiusSlider = Math.max(PICKER_SLIDER_MIN, Math.min(PICKER_SLIDER_MAX, r));
       this.updatePickerRadius();
+    },
+
+    applyRadiusSlider() {
+      this.newZone.radius_meters = Number(this.radiusSlider);
+      this.pickerError = '';
+      this.updatePickerRadius();
+    },
+
+    applyExactRadius() {
+      const radius = Number(this.newZone.radius_meters);
+      if (!Number.isFinite(radius)) return;
+      this.radiusSlider = Math.max(PICKER_SLIDER_MIN, Math.min(PICKER_SLIDER_MAX, radius));
+      this.pickerError = '';
+      this.updatePickerRadius();
+    },
+
+    normalizeExactRadius() {
+      if (this.newZone.radius_meters === '' || this.newZone.radius_meters == null) return;
+      const radius = Number(this.newZone.radius_meters);
+      if (!Number.isFinite(radius) || radius < PICKER_RADIUS_MIN || radius > PICKER_RADIUS_MAX) {
+        this.pickerError = `ใส่รัศมีระหว่าง ${PICKER_RADIUS_MIN} ถึง ${PICKER_RADIUS_MAX} เมตร`;
+        return;
+      }
+      this.pickerError = '';
+      this.newZone.radius_meters = Math.round(radius);
+      this.applyExactRadius();
     },
 
     cancelMapPicker() {
       this.pickingLocation = false;
+      this.pickerStep = 1;
+      this.pickerError = '';
       const container = liveMapState.map?.getContainer();
       if (container) container.classList.remove('map-picking-cursor');
       if (liveMapState.pickerLayer) {
         liveMapState.pickerLayer.clearLayers();
       }
+      this.$nextTick(() => {
+        liveMapState.map?.invalidateSize({ pan: false });
+        liveMapState.pickerOpener?.focus?.();
+        liveMapState.pickerOpener = null;
+      });
+      this.radiusSlider = 150;
       this.newZone = { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true };
     },
 
@@ -504,16 +590,13 @@ document.addEventListener('alpine:init', () => {
 
     async createGeofence() {
       const pin = this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
-      if (!pin) {
-        alert('กรุณากรอก Relay PIN ก่อนบันทึกสถานที่');
-        return;
-      }
-      if (!this.newZone.name || !this.newZone.latitude) {
-        alert('กรุณาระบุชื่อสถานที่และจิ้มตำแหน่งบนแผนที่');
+      if (!this.newZone.name?.trim() || !Number.isFinite(this.newZone.latitude) || !Number.isFinite(this.newZone.longitude) ||
+          !Number.isFinite(Number(this.newZone.radius_meters)) || Number(this.newZone.radius_meters) < PICKER_RADIUS_MIN || Number(this.newZone.radius_meters) > PICKER_RADIUS_MAX) {
+        this.pickerError = 'ตรวจชื่อสถานที่ ตำแหน่ง และรัศมีก่อนบันทึก';
         return;
       }
       this.savingZone = true;
-      this.settingsMessage = '';
+      this.pickerError = '';
       try {
         const response = await fetch('/api/location/geofences', {
           method: 'POST',
@@ -526,24 +609,34 @@ document.addEventListener('alpine:init', () => {
         }
         this.pin = pin;
         localStorage.setItem('sentinel-relay-pin', pin);
-        this.settingsMessage = '✅ บันทึกสถานที่สำเร็จ!';
+        this.settingsMessage = 'บันทึกสถานที่สำเร็จ';
         this.cancelMapPicker();
         await this.refresh();
         setTimeout(() => { this.settingsMessage = ''; }, 3500);
       } catch (error) {
-        alert(error?.message || 'เพิ่มสถานที่ไม่สำเร็จ');
+        this.pickerError = error?.message || 'เพิ่มสถานที่ไม่สำเร็จ';
       } finally {
         this.savingZone = false;
       }
     },
 
+    focusGeofence(zone) {
+      if (!zone || !liveMapState.map) return;
+      if (this.pickingLocation) this.cancelMapPicker();
+      const bounds = L.circle([zone.latitude, zone.longitude], { radius: zone.radius_meters }).getBounds();
+      liveMapState.map.fitBounds(bounds.pad(0.2), { maxZoom: 18, animate: true });
+      this.geofenceError = '';
+      document.getElementById('live-map-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+
     async deleteGeofence(id) {
       const pin = this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
       if (!pin) {
-        alert('กรุณากรอก Relay PIN ก่อนลบสถานที่');
+        this.geofenceError = 'กรุณากรอก Relay PIN ก่อนลบสถานที่';
         return;
       }
       if (!window.confirm('คุณต้องการลบสถานที่นี้ใช่หรือไม่?')) return;
+      this.geofenceError = '';
       try {
         const response = await fetch(`/api/location/geofences/${encodeURIComponent(id)}`, {
           method: 'DELETE',
@@ -556,7 +649,7 @@ document.addEventListener('alpine:init', () => {
         await this.refresh();
         setTimeout(() => { this.settingsMessage = ''; }, 3000);
       } catch (error) {
-        alert(error?.message || 'ลบไม่สำเร็จ');
+        this.geofenceError = error?.message || 'ลบไม่สำเร็จ';
       }
     },
   }));
