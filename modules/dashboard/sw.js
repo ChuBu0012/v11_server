@@ -1,5 +1,5 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v17';
+const CACHE_NAME = 'sentinel-shell-v18';
 const SHELL_ASSETS = [
   '/',
   '/tele-bridge',

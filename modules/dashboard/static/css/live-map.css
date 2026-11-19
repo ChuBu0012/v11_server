@@ -36,6 +36,9 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 .summary-updated strong { color: #cad7eb; font-size: 12px; font-weight: 500; }
 .map-shell { position: relative; height: clamp(330px, 48vh, 520px); min-height: 310px; overflow: hidden; border: 1px solid var(--map-line); border-radius: 20px; background: #111a29; box-shadow: 0 20px 70px rgba(0,0,0,.22); }
 #live-map-canvas { width: 100%; height: 100%; background: #111a29; }
+.leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
 .map-loading { position: absolute; z-index: 500; inset: 0; display: flex; align-items: center; justify-content: center; gap: 11px; background: rgba(11,18,32,.78); color: #c9d7ea; font-size: 13px; pointer-events: none; }
 .loading-orbit { width: 18px; height: 18px; border: 2px solid rgba(67,167,255,.2); border-top-color: var(--map-blue); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
