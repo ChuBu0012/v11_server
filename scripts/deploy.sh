@@ -11,6 +11,12 @@
 
 set -euo pipefail
 
+# If running natively inside Termux on vivo V11, delegate directly to on-device deploy
+if [ -d "/data/data/com.termux" ] || [ -n "${TERMUX_VERSION:-}" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  exec "${SCRIPT_DIR}/deploy-v11.sh" "$@"
+fi
+
 REMOTE_HOST="v11"
 REMOTE_DIR="/data/data/com.termux/files/home/go-app"
 SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
@@ -113,7 +119,7 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "REMOTE_DIR='${REMOTE_DIR}' bash -s" << 'E
   # Restart go-server. If go-server is not running or restart fails, start it explicitly.
   NGROK_PID=$(pm2 pid ngrok-tunnel 2>/dev/null || true)
   if [ -n "$NGROK_PID" ] && [ "$NGROK_PID" != "0" ]; then
-    pm2 restart go-server --update-env > /dev/null || pm2 start ecosystem.config.js --only go-server --update-env > /dev/null
+    pm2 restart ecosystem.config.js --only go-server --update-env > /dev/null || pm2 restart go-server --update-env > /dev/null
   else
     pkill -9 -x ngrok 2>/dev/null || true
     pkill -9 -x proot 2>/dev/null || true
@@ -159,6 +165,10 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" '
   echo ""
   echo "=== PM2 Processes ==="
   pm2 ls
+
+  echo ""
+  echo "=== PM2 Logs: go-server (last 20 lines) ==="
+  pm2 logs go-server --lines 20 --nostream
 
   echo ""
   echo "=== Public ngrok Endpoint ==="

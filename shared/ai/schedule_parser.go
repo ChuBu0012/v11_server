@@ -161,6 +161,10 @@ func ParseSchedulePrompt(ctx context.Context, client *Client, prompt string, use
 	loc := getBangkokLocation()
 	now := time.Now().In(loc)
 
+	// Normalize common Thai dot-time notation (e.g. "11.59" -> "11:59")
+	reDotTime := regexp.MustCompile(`\b([01]?\d|2[0-3])\.([0-5]\d)\b`)
+	normalizedPrompt := reDotTime.ReplaceAllString(prompt, "$1:$2")
+
 	systemPrompt := fmt.Sprintf(`You are Pocket Sentinel's schedule parsing AI.
 Current reference time: %s (Timezone: %s).
 
@@ -168,10 +172,10 @@ Your task: Parse user schedule/reminder requests in Thai or English into strict 
 
 CRITICAL RULES:
 1. AMBIGUITY DETECTION: If the user provides an ambiguous, vague, or incomplete date/time (e.g. "พรุ่งนี้ตอนสายๆ", "meeting sometime tomorrow", "เตือนกินยา"), you MUST NOT guess or invent a random time. Set "needs_clarification": true and formulate a polite "question" in the user's language asking for the exact time.
-2. SPECIFIC DATE & TIME: If the user specifies an exact or clearly deducible time (e.g. "พรุ่งนี้ 9 โมงเช้า", "every Monday at 14:00", "tomorrow 15:30"), calculate the exact RFC3339 timestamp with %s (+07:00 offset). Ensure the date is in the future.
+2. SPECIFIC DATE & TIME: If the user specifies an exact or clearly deducible time (e.g. "วันนี้ 11:59", "พรุ่งนี้ 9 โมงเช้า", "11.59", "every Monday at 14:00", "tomorrow 15:30"), calculate the exact RFC3339 timestamp with %s (+07:00 offset). In Thai, "11.59" or "11:59" means 11:59.
 3. RECURRENCE: Must be strictly "once" or "weekly". Default is "once".
-4. OFFSETS: Array of integer minutes before event for alerts. Allowed values: 0, 5, 10, 30. Default: [0].
-5. TITLE: Concise summary (max 120 characters).
+4. OFFSETS: Array of integer minutes before event for alerts. Allowed values: 0, 5, 10, 30. Example: "ก่อน 5, 10 และเมื่อถึงเวลา" means [0, 5, 10]. Default: [0].
+5. TITLE: Concise summary (max 120 characters). Strip conversational request suffixes such as "ช่วยแก้ไขด้วย", "ช่วยเตือนด้วย", "นะครับ", "หน่อยครับ" from the title.
 6. DETAILS: Additional context or notes from the prompt (max 1500 characters).
 
 OUTPUT FORMAT: Return ONLY a valid JSON object matching one of these two structures without markdown code blocks:
@@ -194,7 +198,7 @@ Case B (Clear time):
   }
 }`, now.Format(time.RFC3339), tz, tz)
 
-	userPrompt := fmt.Sprintf("User schedule prompt:\n\"%s\"", prompt)
+	userPrompt := fmt.Sprintf("User schedule prompt:\n\"%s\"", normalizedPrompt)
 
 	rawResp, err := client.Generate(ctx, systemPrompt, userPrompt)
 	if err != nil {
