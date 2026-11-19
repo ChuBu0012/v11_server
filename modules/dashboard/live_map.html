@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1220">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pocket Sentinel">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
   <link rel="stylesheet" href="/static/css/live-map.css">
@@ -40,7 +46,23 @@
     </section>
 
     <section class="map-shell" aria-label="แผนที่ตำแหน่ง">
-      <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของคุณและเพื่อน"></div>
+      <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
+      
+      <!-- Interactive Map Picker Banner -->
+      <div class="map-picker-banner" x-show="pickingLocation" x-transition.opacity x-cloak>
+        <div class="picker-status">
+          <span class="picker-icon">🎯</span>
+          <div>
+            <strong>โหมดเลือกจุดบนแผนที่</strong>
+            <small x-text="newZone.latitude ? `พิกัด: ${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)} (รัศมี ${newZone.radius_meters} ม.)` : 'คลิกบนแผนที่เพื่อวางหมุดสถานที่'"></small>
+          </div>
+        </div>
+        <div class="picker-actions">
+          <button type="button" class="picker-done-btn" @click="finishMapPicker()">ใช้จุดนี้</button>
+          <button type="button" class="picker-cancel-btn" @click="cancelMapPicker()">ยกเลิก</button>
+        </div>
+      </div>
+
       <div class="map-loading" x-show="!mapReady" x-cloak>
         <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
       </div>
@@ -49,13 +71,18 @@
         <button type="button" class="map-control" :class="{'is-selected': showTrail}" @click="toggleTrail()" title="แสดงเส้นทาง 24 ชั่วโมง">⌁</button>
       </div>
       <div class="map-legend">
-        <span><i class="legend-dot legend-me"></i> คุณ</span><span><i class="legend-dot legend-friend"></i> เพื่อน</span>
+        <span class="legend-item"><img src="/static/img/avatar-chubu.png" alt="Chubu" class="legend-avatar"> Chubu</span>
+        <span class="legend-item"><img src="/static/img/avatar-furturia.png" alt="Furturia" class="legend-avatar"> Furturia</span>
       </div>
     </section>
 
     <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
       <article class="device-card device-card-me">
-        <div class="device-card-heading"><span class="device-avatar">คุณ</span><div><strong>ตำแหน่งของคุณ</strong><small x-text="deviceAge(me)"></small></div><span class="device-color"></span></div>
+        <div class="device-card-heading">
+          <img class="device-avatar-img" src="/static/img/avatar-chubu.png" alt="Chubu">
+          <div><strong>Chubu</strong><small x-text="deviceAge(me)"></small></div>
+          <span class="device-color"></span>
+        </div>
         <div class="device-metrics">
           <div><span>แบตเตอรี่</span><strong x-text="batteryText(me)"></strong></div>
           <div><span>ความเร็ว</span><strong x-text="speedText(me)"></strong></div>
@@ -63,7 +90,11 @@
         </div>
       </article>
       <article class="device-card device-card-friend">
-        <div class="device-card-heading"><span class="device-avatar">เพื่อน</span><div><strong>ตำแหน่งของเพื่อน</strong><small x-text="deviceAge(friend)"></small></div><span class="device-color"></span></div>
+        <div class="device-card-heading">
+          <img class="device-avatar-img" src="/static/img/avatar-furturia.png" alt="Furturia">
+          <div><strong>Furturia</strong><small x-text="deviceAge(friend)"></small></div>
+          <span class="device-color"></span>
+        </div>
         <div class="device-metrics">
           <div><span>แบตเตอรี่</span><strong x-text="batteryText(friend)"></strong></div>
           <div><span>ความเร็ว</span><strong x-text="speedText(friend)"></strong></div>
@@ -79,23 +110,110 @@
       <div class="drawer-heading"><div><span class="summary-kicker">สำหรับเจ้าของระบบ</span><h2>ตั้งค่า Tracker</h2></div><button class="icon-button" type="button" @click="settingsOpen = false" aria-label="ปิด">×</button></div>
       <label class="settings-pin-label">Relay PIN<input type="password" x-model="pin" inputmode="numeric" autocomplete="current-password" placeholder="กรอก PIN เพื่อจัดการ"></label>
       <div class="settings-actions"><button type="button" class="secondary-button" @click="loadManagement()">โหลดการตั้งค่า</button><span class="settings-message" x-text="settingsMessage"></span></div>
+      
+      <!-- iOS-style Notification Toggles -->
       <section class="settings-section">
         <h3>การแจ้งเตือน Discord</h3>
-        <label class="toggle-row"><span>พบกัน / แยกย้าย</span><input type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()"></label>
-        <label class="toggle-row"><span>เข้า / ออกจากสถานที่</span><input type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()"></label>
-        <label class="toggle-row"><span>แบตเตอรี่ต่ำ</span><input type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
-        <p class="settings-note">พบกัน ≤ 80 ม. · แยกย้าย ≥ 250 ม. · พักแจ้งซ้ำ 5 นาที<br>แบตเตอรี่ ≤ 15% และไม่ได้ชาร์จ แจ้งซ้ำทุก 2 ชม.</p>
+        <div class="toggle-group">
+          <label class="toggle-switch-card">
+            <div class="toggle-info">
+              <strong>พบกัน / แยกย้าย</strong>
+              <small>แจ้งเตือนเมื่ออยู่ด้วยกัน (≤ 80 ม.) หรือแยกย้าย (≥ 250 ม.)</small>
+            </div>
+            <span class="toggle-switch">
+              <input type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()">
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-switch-card">
+            <div class="toggle-info">
+              <strong>เข้า / ออกจากสถานที่</strong>
+              <small>แจ้งเตือนเมื่อถึงหรือออกจาก Geofence</small>
+            </div>
+            <span class="toggle-switch">
+              <input type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()">
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-switch-card">
+            <div class="toggle-info">
+              <strong>แบตเตอรี่ต่ำ</strong>
+              <small>แจ้งเตือนเมื่อแบตเตอรี่ ≤ 15% และไม่ได้เสียบชาร์จ</small>
+            </div>
+            <span class="toggle-switch">
+              <input type="checkbox" x-model="settings.notify_battery" @change="saveSettings()">
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
+        <p class="settings-note">ระบบใช้ Hysteresis และ Cooldown 5 นาที ป้องกันการแจ้งเตือนรบกวน</p>
       </section>
+
+      <!-- Geofence with Interactive Map Picker -->
       <section class="settings-section">
-        <h3>สถานที่ (Geofence)</h3>
+        <div class="section-title-row">
+          <h3>สถานที่ (Geofence)</h3>
+          <button type="button" class="pick-map-trigger" :class="{'is-active': pickingLocation}" @click="toggleMapPicker()">
+            <span x-text="pickingLocation ? '✕ กำลังเลือกบนแผนที่' : '📍 จิ้มเลือกบนแผนที่'"></span>
+          </button>
+        </div>
         <form class="geofence-form" @submit.prevent="createGeofence()">
-          <label>ชื่อสถานที่<input type="text" x-model="newZone.name" maxlength="80" placeholder="เช่น บ้านเพื่อน" required></label>
-          <div class="form-grid"><label>ละติจูด<input type="number" step="any" x-model.number="newZone.latitude" placeholder="13.7462" required></label><label>ลองจิจูด<input type="number" step="any" x-model.number="newZone.longitude" placeholder="100.5348" required></label></div>
-          <label>รัศมี (เมตร)<input type="number" min="1" max="100000" x-model.number="newZone.radius_meters" required></label>
-          <div class="zone-options"><label><input type="checkbox" x-model="newZone.notify_enter"> แจ้งเมื่อมาถึง</label><label><input type="checkbox" x-model="newZone.notify_exit"> แจ้งเมื่อออก</label></div>
-          <button class="primary-button" type="submit" :disabled="savingZone">เพิ่มสถานที่</button>
+          <label>ชื่อสถานที่
+            <input type="text" x-model="newZone.name" maxlength="80" placeholder="เช่น มหาวิทยาลัย, บ้าน, หอพัก" required>
+          </label>
+          <div class="form-grid">
+            <label>ละติจูด
+              <input type="number" step="any" x-model.number="newZone.latitude" placeholder="เช่น 13.6515" required>
+            </label>
+            <label>ลองจิจูด
+              <input type="number" step="any" x-model.number="newZone.longitude" placeholder="เช่น 100.4939" required>
+            </label>
+          </div>
+          <div class="radius-control-block">
+            <div class="radius-label-row">
+              <span>รัศมีตรวจจับ</span>
+              <strong x-text="`${newZone.radius_meters} เมตร`"></strong>
+            </div>
+            <input type="range" min="30" max="1000" step="10" x-model.number="newZone.radius_meters" @input="updatePickerRadius()" class="radius-slider">
+            <div class="radius-pills">
+              <template x-for="r in [50, 100, 150, 300, 500]" :key="r">
+                <button type="button" class="radius-pill" :class="{'is-active': newZone.radius_meters === r}" @click="setRadius(r)" x-text="`${r} ม.`"></button>
+              </template>
+            </div>
+          </div>
+          <div class="toggle-group compact">
+            <label class="toggle-switch-card compact">
+              <div class="toggle-info">
+                <span>แจ้งเมื่อมาถึง</span>
+              </div>
+              <span class="toggle-switch">
+                <input type="checkbox" x-model="newZone.notify_enter">
+                <span class="slider"></span>
+              </span>
+            </label>
+            <label class="toggle-switch-card compact">
+              <div class="toggle-info">
+                <span>แจ้งเมื่อออก</span>
+              </div>
+              <span class="toggle-switch">
+                <input type="checkbox" x-model="newZone.notify_exit">
+                <span class="slider"></span>
+              </span>
+            </label>
+          </div>
+          <button class="primary-button" type="submit" :disabled="savingZone">บันทึกสถานที่</button>
         </form>
-        <ul class="geofence-list"><template x-for="zone in managedGeofences" :key="zone.id"><li><div><strong x-text="zone.name"></strong><small x-text="`${zone.radius_meters} ม. · ${zone.latitude.toFixed(4)}, ${zone.longitude.toFixed(4)}`"></small></div><button type="button" class="delete-zone" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button></li></template></ul>
+        <ul class="geofence-list">
+          <template x-for="zone in managedGeofences" :key="zone.id">
+            <li>
+              <div>
+                <strong x-text="zone.name"></strong>
+                <small x-text="`${zone.radius_meters} ม. · ${zone.latitude.toFixed(4)}, ${zone.longitude.toFixed(4)}`"></small>
+              </div>
+              <button type="button" class="delete-zone" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button>
+            </li>
+          </template>
+        </ul>
       </section>
       <p class="settings-footnote">การแก้ไขต้องใช้ Relay PIN จาก `.env`. อย่าแชร์ PIN หรือแผนที่ให้บุคคลอื่น</p>
     </aside>

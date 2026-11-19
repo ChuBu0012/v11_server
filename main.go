@@ -171,6 +171,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
+	var botRouter *bot.Router
 	var reminderService *reminders.Service
 	var reminderTelegramReady bool
 	if cfg.TelegramEnabled() {
@@ -232,7 +233,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		agentRunner := bot.NewAgentRunner(runnerOpts...)
 		routerOpts = append(routerOpts, bot.WithAgentRunner(agentRunner))
 
-		botRouter := bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
+		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
 	}
 	if reminderStore != nil && reminderService == nil {
@@ -290,6 +291,19 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationNotifier := location.NewDiscordNotifier(os.Getenv("DISCORD_WEBHOOK_URL"), 8*time.Second)
 		locationService = location.NewService(locationStore, locationNotifier)
 		locationModule = location.NewModule(locationStore, locationService, cfg.RelayPIN)
+		if botRouter != nil {
+			_, viewerToken := locationStore.Tokens()
+			liveURL := "https://spindle-said-hemstitch.ngrok-free.dev/live/" + viewerToken
+			botRouter.SetLocationFunc(func(ctx context.Context) (string, *bot.InlineKeyboardMarkup, error) {
+				latest, err := locationStore.LatestPoints(ctx)
+				if err != nil {
+					return "", nil, err
+				}
+				me := latest[location.DeviceMe]
+				friend := latest[location.DeviceFriend]
+				return formatTelegramLocationStatus(me, friend, liveURL)
+			})
+		}
 		locationRetention = worker.New("location-retention", 24*time.Hour, func(ctx context.Context) error {
 			deleted, err := locationStore.PruneOld(ctx, time.Now().UTC().Add(-7*24*time.Hour))
 			if err == nil && deleted > 0 {
@@ -353,7 +367,7 @@ func setupRouter(app *App) *gin.Engine {
 	}
 	if app.locationModule != nil {
 		app.locationModule.RegisterRoutes(r)
-		r.GET("/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
+		r.Match([]string{"GET", "HEAD"}, "/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
 	}
 	r.POST("/api/monitor/insight", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)

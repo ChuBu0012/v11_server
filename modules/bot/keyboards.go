@@ -51,7 +51,7 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 	return &InlineKeyboardMarkup{
 		InlineKeyboard: [][]InlineKeyboardButton{
 			{{Text: "🔄 สถานะ", CallbackData: "status_refresh"}, {Text: "🏓 Ping", CallbackData: "ping_check"}},
-			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}},
+			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}, copyCommand("🗺️ ดูพิกัด /live", "/live")},
 			{
 				copyCommand("📋 เช็คเครื่อง", "/task [low] ตรวจสอบ RAM, พื้นที่ disk และสถานะ PM2 go-server"),
 				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ ngrok-tunnel"),

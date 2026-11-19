@@ -32,10 +32,23 @@ type Router struct {
 	digestFunc      func(ctx context.Context) (string, error)
 	callbackHandler func(ctx context.Context, callback *CallbackQuery) error
 
-	runner      *AgentRunner
-	guard       *PromptGuard
-	scrubber    *OutputScrubber
-	ramProvider func() float64
+	runner       *AgentRunner
+	guard        *PromptGuard
+	scrubber     *OutputScrubber
+	ramProvider  func() float64
+	locationFunc func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
+}
+
+// WithLocationFunc sets the callback for on-demand location status and Live Map URL.
+func WithLocationFunc(f func(ctx context.Context) (string, *InlineKeyboardMarkup, error)) RouterOption {
+	return func(r *Router) {
+		r.locationFunc = f
+	}
+}
+
+// SetLocationFunc dynamically assigns the location handler after router construction.
+func (r *Router) SetLocationFunc(f func(ctx context.Context) (string, *InlineKeyboardMarkup, error)) {
+	r.locationFunc = f
 }
 
 // WithCallbackHandler registers an application callback handler after owner authorization.
@@ -260,6 +273,8 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 	case "/start", "/help":
 		helpHTML := "🛡️ <b>Pocket Sentinel</b>\n" +
 			"<i>เลือกปุ่มเพื่อดูสถานะ ควบคุมไฟฉาย หรือคัดลอกคำสั่งตัวอย่าง</i>\n\n" +
+			"<b>📍 แผนที่และพิกัดสด</b>\n" +
+			"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n\n" +
 			"<b>📊 ดูสถานะ</b>\n" +
 			"<code>/status</code> สุขภาพเครื่องและ Tunnel\n" +
 			"<code>/ping</code> ตรวจการตอบสนอง\n" +
@@ -272,6 +287,19 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/reboot</code> รีสตาร์ต Go server\n\n" +
 			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
 		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
+		return err
+
+	case "/live", "/map":
+		if r.locationFunc == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Live Map ไม่ได้ถูกเปิดใช้งาน</b>\nระบบ Location Tracker ยังไม่ได้เริ่มต้นทำงาน", keyboard)
+			return err
+		}
+		msgHTML, mapKeyboard, err := r.locationFunc(ctx)
+		if err != nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ <b>โหลดข้อมูลตำแหน่งไม่สำเร็จ:</b> "+html.EscapeString(err.Error()), keyboard)
+			return err
+		}
+		_, err = r.sendMessage(ctx, chatID, msgHTML, mapKeyboard)
 		return err
 
 	case "/task":

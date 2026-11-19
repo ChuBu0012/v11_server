@@ -17,7 +17,7 @@ func TestFormatDiscordEventMeeting(t *testing.T) {
 		Partner:        &LocationPoint{DeviceID: DeviceFriend, Latitude: 13.7464, Longitude: 100.5349, Battery: 62, BatteryStatus: 1},
 		DistanceMeters: 35, OccurredAt: time.Date(2026, 11, 19, 7, 15, 20, 0, time.UTC),
 	})
-	for _, want := range []string{"🤝 **พบกันแล้ว!**", "• **สถานที่:** พิกัด", "`35 ม.`", "13.7463, 100.5349", "14:15:20 ICT", "คุณ 85% ⚡ · เพื่อน 62%"} {
+	for _, want := range []string{"🤝 **Chubu และ Furturia อยู่ที่นี่ด้วยกันแล้ว**", "`35 ม.`", "13.7463, 100.5349", "14:15:20 ICT", "Chubu 85% ⚡ · Furturia 62%"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("meeting message missing %q:\n%s", want, got)
 		}
@@ -84,8 +84,8 @@ func TestFormatDiscordEventEscapesPlaceMentionsAndMarkdown(t *testing.T) {
 	if strings.Contains(got, "@everyone") {
 		t.Fatalf("message contains live Discord mention: %s", got)
 	}
-	if !strings.Contains(got, "\\*\\*secret\\*\\*") || !strings.Contains(got, "👥") {
-		t.Fatalf("message did not escape user text or name the friend: %s", got)
+	if !strings.Contains(got, "\\*\\*secret\\*\\*") || !strings.Contains(got, "Furturia มาถึง") {
+		t.Fatalf("message did not escape user text or name Furturia: %s", got)
 	}
 	if len(got) >= 1950 {
 		t.Fatalf("message is too long: %d chars", len(got))
@@ -94,14 +94,14 @@ func TestFormatDiscordEventEscapesPlaceMentionsAndMarkdown(t *testing.T) {
 
 func TestFormatDiscordEventSeparationAndBattery(t *testing.T) {
 	separation := FormatDiscordEvent(NotificationEvent{Kind: EventSeparate, DistanceMeters: 310, OccurredAt: time.Now()})
-	if !strings.Contains(separation, "👋 **แยกย้ายกันแล้ว**") || !strings.Contains(separation, "310 ม.") {
+	if !strings.Contains(separation, "👋 **Chubu และ Furturia แยกย้ายกันแล้ว**") || !strings.Contains(separation, "310 ม.") {
 		t.Errorf("unexpected separation message: %s", separation)
 	}
 	battery := FormatDiscordEvent(NotificationEvent{
 		Kind: EventBatteryCritical, DeviceID: DeviceFriend,
 		Point: LocationPoint{Battery: 12, BatteryStatus: 1}, OccurredAt: time.Now(),
 	})
-	if !strings.Contains(battery, "🪫 **แจ้งเตือนแบตเตอรี่ต่ำ**") || !strings.Contains(battery, "12%") || !strings.Contains(battery, "ยังไม่ได้เสียบชาร์จ") {
+	if !strings.Contains(battery, "🪫 **แบตเตอรี่ของ Furturia ต่ำ") || !strings.Contains(battery, "12%") || !strings.Contains(battery, "ยังไม่ได้เสียบชาร์จ") {
 		t.Errorf("unexpected battery message: %s", battery)
 	}
 }
@@ -112,7 +112,7 @@ func TestFormatDiscordEventGeofenceExit(t *testing.T) {
 		Point: LocationPoint{Speed: 42}, Geofence: Geofence{Name: "ที่ทำงาน"},
 		OccurredAt: time.Date(2026, 11, 19, 10, 15, 0, 0, time.UTC),
 	})
-	for _, want := range []string{"🟠 **ออกจากสถานที่**", "👤 คุณ", "ที่ทำงาน", "42 km/h", "17:15:00 ICT"} {
+	for _, want := range []string{"🚗 **Chubu ออกจาก ที่ทำงาน แล้ว**", "42 km/h", "17:15:00 ICT"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("exit message missing %q: %s", want, got)
 		}

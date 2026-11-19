@@ -99,45 +99,45 @@ func FormatDiscordEvent(event NotificationEvent) string {
 	timestamp := event.OccurredAt.In(bangkokZone).Format("15:04:05 ICT")
 	switch event.Kind {
 	case EventMeet:
-		place := meetingPlace(event)
 		me := event.Point
 		friend := LocationPoint{}
 		if event.Partner != nil {
 			friend = *event.Partner
 		}
-		return fmt.Sprintf("🤝 **พบกันแล้ว!**\n"+
-			"• **สถานที่:** %s\n"+
+		header := "🤝 **Chubu และ Furturia อยู่ที่นี่ด้วยกันแล้ว**"
+		if event.HasGeofence {
+			header = fmt.Sprintf("🤝 **Chubu และ Furturia อยู่ที่ %s ด้วยกันแล้ว**", escapeDiscordText(event.Geofence.Name))
+		}
+		return fmt.Sprintf("%s\n"+
 			"• **ระยะห่าง:** `%s`\n"+
 			"• **พิกัด:** `%s`\n"+
 			"• **เวลา:** %s\n"+
-			"• **แบตเตอรี่:** คุณ %s · เพื่อน %s",
-			place, FormatDistance(event.DistanceMeters), midpointCoordinates(me, friend), timestamp,
+			"• **แบตเตอรี่:** Chubu %s · Furturia %s",
+			header, FormatDistance(event.DistanceMeters), midpointCoordinates(me, friend), timestamp,
 			formatBattery(me), formatBattery(friend))
 	case EventSeparate:
-		return fmt.Sprintf("👋 **แยกย้ายกันแล้ว**\n"+
+		return fmt.Sprintf("👋 **Chubu และ Furturia แยกย้ายกันแล้ว**\n"+
 			"• **ระยะห่างล่าสุด:** `%s`\n"+
 			"• **เวลา:** %s", FormatDistance(event.DistanceMeters), timestamp)
 	case EventGeofenceEnter:
-		return fmt.Sprintf("🟢 **ถึงที่หมายแล้ว**\n"+
-			"• **บุคคล:** %s\n"+
-			"• **สถานที่:** %s (%s)\n"+
+		name := pureDeviceName(event.DeviceID)
+		return fmt.Sprintf("📍 **%s มาถึง %s แล้ว**\n"+
 			"• **เวลา:** %s\n"+
 			"• **แบตเตอรี่:** %s",
-			deviceName(event.DeviceID), escapeDiscordText(event.Geofence.Name),
-			FormatDistance(event.Geofence.Radius), timestamp, formatBattery(event.Point))
+			name, escapeDiscordText(event.Geofence.Name), timestamp, formatBattery(event.Point))
 	case EventGeofenceExit:
-		return fmt.Sprintf("🟠 **ออกจากสถานที่**\n"+
-			"• **บุคคล:** %s\n"+
-			"• **สถานที่:** %s\n"+
+		name := pureDeviceName(event.DeviceID)
+		return fmt.Sprintf("🚗 **%s ออกจาก %s แล้ว**\n"+
 			"• **ความเร็ว:** %.0f km/h\n"+
-			"• **เวลา:** %s",
-			deviceName(event.DeviceID), escapeDiscordText(event.Geofence.Name), event.Point.Speed, timestamp)
+			"• **เวลา:** %s\n"+
+			"• **แบตเตอรี่:** %s",
+			name, escapeDiscordText(event.Geofence.Name), event.Point.Speed, timestamp, formatBattery(event.Point))
 	case EventBatteryCritical:
-		return fmt.Sprintf("🪫 **แจ้งเตือนแบตเตอรี่ต่ำ**\n"+
-			"• **บุคคล:** %s\n"+
-			"• **ระดับแบตเตอรี่:** `%d%%` (%s)\n"+
+		name := pureDeviceName(event.DeviceID)
+		return fmt.Sprintf("🪫 **แบตเตอรี่ของ %s ต่ำ (`%d%%`)**\n"+
+			"• **สถานะ:** %s\n"+
 			"• **เวลา:** %s",
-			deviceName(event.DeviceID), event.Point.Battery, chargingStatus(event.Point.BatteryStatus), timestamp)
+			name, event.Point.Battery, chargingStatus(event.Point.BatteryStatus), timestamp)
 	default:
 		return "📍 **Pocket Sentinel:** มีเหตุการณ์ตำแหน่งใหม่"
 	}
@@ -157,11 +157,18 @@ func midpointCoordinates(me, friend LocationPoint) string {
 	return fmt.Sprintf("%.4f, %.4f", (me.Latitude+friend.Latitude)/2, (me.Longitude+friend.Longitude)/2)
 }
 
+func pureDeviceName(device string) string {
+	if device == DeviceMe {
+		return "Chubu"
+	}
+	return "Furturia"
+}
+
 func deviceName(device string) string {
 	if device == DeviceMe {
-		return "👤 คุณ"
+		return "👤 Chubu"
 	}
-	return "👥 เพื่อน"
+	return "👥 Furturia"
 }
 
 func formatBattery(point LocationPoint) string {
