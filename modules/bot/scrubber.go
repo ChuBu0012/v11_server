@@ -123,18 +123,46 @@ func (s *OutputScrubber) EscapeHTML(text string) string {
 	return r
 }
 
+// ExtractSummary extracts an optional structured summary section from agent execution output.
+// It looks for markdown headers like '### สรุปการดำเนินงาน', '### สรุปการทำงาน', or 'สรุปการทำงาน:'.
+func (s *OutputScrubber) ExtractSummary(text string) (string, string) {
+	re := regexp.MustCompile(`(?i)(?:^|\n)(?:###?\s*(?:สรุปการดำเนินงาน|สรุปการทำงาน|สรุปผลการทำงาน|สรุปผล|summary)[\s:]*|สรุปการทำงาน:?\s*\n)([\s\S]*)$`)
+	loc := re.FindStringSubmatchIndex(text)
+	if loc != nil && len(loc) >= 4 {
+		summaryPart := strings.TrimSpace(text[loc[2]:loc[3]])
+		mainPart := strings.TrimSpace(text[:loc[0]])
+		if summaryPart != "" {
+			return summaryPart, mainPart
+		}
+	}
+	return "", text
+}
+
 // FormatResult formats a TaskResult with status emoji, duration, RAM usage, and a sanitized log block.
 func (s *OutputScrubber) FormatResult(result TaskResult, ramMB float64) string {
 	scrubbed := s.Scrub(result.Output)
-	truncated := s.Truncate(scrubbed, MaxTelegramOutputLength)
+	summary, remaining := s.ExtractSummary(scrubbed)
+
+	displayLog := remaining
+	if strings.TrimSpace(displayLog) == "" {
+		displayLog = scrubbed
+	}
+
+	truncated := s.Truncate(displayLog, MaxTelegramOutputLength)
 	sanitized := s.EscapeHTML(truncated)
 
 	durationStr := formatDuration(result.Duration)
 	ramStr := fmt.Sprintf("%.1fMB", ramMB)
 
+	var summaryBlock string
+	if summary != "" {
+		sanitizedSummary := s.EscapeHTML(s.Truncate(summary, 1000))
+		summaryBlock = fmt.Sprintf("\n\n📝 <b>สรุปการทำงาน:</b>\n%s", sanitizedSummary)
+	}
+
 	if result.Success {
-		return fmt.Sprintf("✅ งานเสร็จสมบูรณ์!\n⏱ ใช้เวลา: %s | 💾 RAM ปัจจุบัน: %s\n\n📋 ผลลัพธ์:\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
-			durationStr, ramStr, sanitized)
+		return fmt.Sprintf("✅ งานเสร็จสมบูรณ์!\n⏱ ใช้เวลา: %s | 💾 RAM ปัจจุบัน: %s%s\n\n📋 ผลลัพธ์:\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
+			durationStr, ramStr, summaryBlock, sanitized)
 	}
 
 	scrubbedErr := s.Scrub(result.ErrorMessage)
@@ -143,8 +171,8 @@ func (s *OutputScrubber) FormatResult(result TaskResult, ramMB float64) string {
 	if errMsg == "" {
 		errMsg = "Unknown error"
 	}
-	return fmt.Sprintf("❌ งานล้มเหลว (Timeout / Error)!\n⏱ ใช้เวลา: %s\n\n⚠️ รายละเอียด: %s\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
-		durationStr, errMsg, sanitized)
+	return fmt.Sprintf("❌ งานล้มเหลว (Timeout / Error)!\n⏱ ใช้เวลา: %s\n\n⚠️ รายละเอียด: %s%s\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
+		durationStr, errMsg, summaryBlock, sanitized)
 }
 
 func formatDuration(d time.Duration) string {

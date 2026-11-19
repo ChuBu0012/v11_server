@@ -42,25 +42,69 @@ function formatRelativeShort(dateStr) {
 const singleAvatarIcon = (kind) => {
   const isMe = kind === 'me';
   const name = isMe ? 'Chubu' : 'Furturia';
-  const avatarSrc = isMe ? '/static/img/avatar-chubu.png?v=22' : '/static/img/avatar-furturia.png?v=22';
+  const avatarSrc = isMe ? '/static/img/avatar-chubu.png?v=28' : '/static/img/avatar-furturia.png?v=28';
   const themeClass = isMe ? 'marker-chubu' : 'marker-furturia';
   return L.divIcon({
     className: `single-avatar-marker ${themeClass}`,
     html: `
-      <div class="avatar-marker-pin">
+      <div class="avatar-marker-pin" title="${name}">
         <div class="avatar-halo"></div>
         <div class="avatar-frame">
           <img src="${avatarSrc}" alt="${name}" />
         </div>
-        <span class="avatar-tag">${name}</span>
         <div class="avatar-pointer"></div>
       </div>
     `,
-    iconSize: [46, 62],
-    iconAnchor: [23, 62],
-    popupAnchor: [0, -60],
+    iconSize: [44, 52],
+    iconAnchor: [22, 50],
+    popupAnchor: [0, -48],
   });
 };
+
+function renderUserPopup(device, point) {
+  if (!point) return '';
+  const isMe = device === 'me';
+  const name = isMe ? 'Chubu' : 'Furturia';
+  const avatarSrc = isMe ? '/static/img/avatar-chubu.png?v=28' : '/static/img/avatar-furturia.png?v=28';
+  const relTime = formatRelativeShort(point.recorded_at);
+  const ageMs = Date.now() - new Date(point.recorded_at).getTime();
+  const isLive = ageMs < 5 * 60 * 1000;
+  const isStale = ageMs >= 5 * 60 * 1000 && ageMs < 60 * 60 * 1000;
+  const statusLabel = isLive ? 'ออนไลน์' : (isStale ? 'สัญญาณนิ่ง' : 'ออฟไลน์');
+  const statusClass = isLive ? 'live' : (isStale ? 'stale' : 'offline');
+  const speedText = point.speed < 1 ? 'หยุดนิ่ง' : `${Math.round(point.speed)} km/h`;
+  const batt = Math.max(0, Math.min(100, point.battery_level || 0));
+  const isCharging = point.battery_status === 2 || point.battery_status === 3;
+  const battClass = batt > 25 ? 'batt-good' : (batt > 15 ? 'batt-mid' : 'batt-low');
+
+  return `
+    <div class="custom-profile-card">
+      <div class="cpc-header">
+        <img src="${avatarSrc}" alt="${name}" class="cpc-avatar">
+        <div class="cpc-info">
+          <strong class="cpc-name">${name}</strong>
+          <span class="cpc-time">${relTime || 'ล่าสุด'}</span>
+        </div>
+        <span class="cpc-status-badge ${statusClass}">● ${statusLabel}</span>
+      </div>
+      <div class="cpc-metrics-grid">
+        <div class="cpc-metric">
+          <span class="cpc-metric-lbl">แบตเตอรี่</span>
+          <strong class="cpc-metric-val ${battClass}">${batt}% ${isCharging ? '⚡' : ''}</strong>
+          <div class="cpc-batt-bar"><div class="cpc-batt-fill ${battClass}" style="width: ${batt}%"></div></div>
+        </div>
+        <div class="cpc-metric">
+          <span class="cpc-metric-lbl">ความเร็ว</span>
+          <strong class="cpc-metric-val">${speedText}</strong>
+        </div>
+        <div class="cpc-metric">
+          <span class="cpc-metric-lbl">ความแม่นยำ</span>
+          <strong class="cpc-metric-val">±${Math.round(point.accuracy || 0)} ม.</strong>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 // Life360-style Dual Avatar Co-Location Speech Bubble Pin
 const colocatedSpeechBubbleIcon = (title, subtext) => {
@@ -81,10 +125,10 @@ const colocatedSpeechBubbleIcon = (title, subtext) => {
         </div>
         <div class="bubble-avatars-cluster">
           <div class="cluster-avatar chubu">
-            <img src="/static/img/avatar-chubu.png?v=22" alt="Chubu" />
+            <img src="/static/img/avatar-chubu.png?v=28" alt="Chubu" />
           </div>
           <div class="cluster-avatar furturia">
-            <img src="/static/img/avatar-furturia.png?v=22" alt="Furturia" />
+            <img src="/static/img/avatar-furturia.png?v=28" alt="Furturia" />
           </div>
         </div>
         <div class="bubble-tip"></div>
@@ -186,6 +230,7 @@ function updateLeafletLayers(data, showTrail) {
         liveMapState.markers[device].setLatLng(latLng);
         liveMapState.markers[device].setIcon(singleAvatarIcon(device));
       }
+      liveMapState.markers[device].bindPopup(renderUserPopup(device, point), { className: 'custom-profile-popup', minWidth: 230 });
     }
 
     // Polyline connector
@@ -202,16 +247,24 @@ function updateLeafletLayers(data, showTrail) {
     }
   }
 
-  // Geofences
+  // Geofences with subtle translucent modern styling
   liveMapState.geofenceLayer.clearLayers();
   for (const zone of data.geofences || []) {
-    L.circle([zone.latitude, zone.longitude], {
+    const circle = L.circle([zone.latitude, zone.longitude], {
       radius: zone.radius_meters,
-      color: '#fbbf24',
+      color: '#10b981',
       weight: 1.5,
-      fillColor: '#fbbf24',
+      dashArray: '4 5',
+      fillColor: '#10b981',
       fillOpacity: 0.08,
     }).addTo(liveMapState.geofenceLayer);
+    circle.bindPopup(`
+      <div style="font-family: inherit; font-size: 11px; padding: 2px;">
+        <strong style="display:block; font-size: 13px; color: #10b981; margin-bottom: 2px;">📍 ${zone.name}</strong>
+        <div>รัศมี: <b>${zone.radius_meters} เมตร</b></div>
+        <div style="color: #64748b; font-size: 10px; margin-top: 2px;">${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}</div>
+      </div>
+    `, { className: 'custom-profile-popup' });
   }
 
   // Breadcrumb Trail
@@ -247,9 +300,13 @@ document.addEventListener('alpine:init', () => {
     geofenceError: '',
     showLogs: true,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
+    showPin: false,
+    pinSavedNotice: false,
     theme: localStorage.getItem('sentinel-theme') || 'dark',
     settingsMessage: '',
     savingZone: false,
+    expandedGeofenceId: null,
+    placeSuggestions: ['🏠 บ้าน', '💼 ที่ทำงาน', '🏫 มหาวิทยาลัย', '🏋️ ฟิตเนส', '☕ ร้านกาแฟ', '🏬 ห้างสรรพสินค้า'],
     settings: { notify_colocation: true, notify_geofence: true, notify_battery: true },
     newZone: { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true },
 
@@ -260,6 +317,58 @@ document.addEventListener('alpine:init', () => {
       if (meta) meta.setAttribute('content', this.theme === 'dark' ? '#0b1220' : '#f4f6fa');
       try { localStorage.setItem('sentinel-theme', this.theme); } catch (_) {}
       window.dispatchEvent(new CustomEvent('sentinel:theme-changed', { detail: { theme: this.theme } }));
+    },
+
+    savePinExplicit() {
+      if (!this.pin) return;
+      try {
+        localStorage.setItem('sentinel-relay-pin', this.pin);
+        this.pinSavedNotice = true;
+        setTimeout(() => { this.pinSavedNotice = false; }, 2500);
+      } catch (_) {}
+    },
+
+    toggleGeofenceDetails(id) {
+      this.expandedGeofenceId = this.expandedGeofenceId === id ? null : id;
+    },
+
+    setPlaceSuggestion(suggestion) {
+      const cleaned = suggestion.replace(/^[^\w\u0E00-\u0E7F]+\s*/, '').trim();
+      this.newZone.name = cleaned;
+      this.pickerError = '';
+      this.$nextTick(() => document.getElementById('place-name')?.focus());
+    },
+
+    zoomIn() {
+      liveMapState.map?.zoomIn();
+    },
+
+    zoomOut() {
+      liveMapState.map?.zoomOut();
+    },
+
+    connectionStatus(point) {
+      if (!point || !point.recorded_at) return { label: 'ออฟไลน์', class: 'offline', dot: 'offline' };
+      const ageMs = Date.now() - new Date(point.recorded_at).getTime();
+      if (ageMs < 5 * 60 * 1000) return { label: 'ออนไลน์', class: 'live', dot: 'live' };
+      if (ageMs < 30 * 60 * 1000) return { label: 'พักชั่วคราว', class: 'stale', dot: 'stale' };
+      return { label: 'สัญญาณหาย', class: 'offline', dot: 'offline' };
+    },
+
+    batteryPercent(point) {
+      if (!point || point.battery_level == null || point.battery_level < 0) return 0;
+      return Math.max(0, Math.min(100, point.battery_level));
+    },
+
+    batteryBarClass(point) {
+      const p = this.batteryPercent(point);
+      if (p > 25) return 'is-good';
+      if (p > 15) return 'is-mid';
+      return 'is-low';
+    },
+
+    isCharging(point) {
+      return point ? (point.battery_status === 2 || point.battery_status === 3) : false;
     },
 
     init() {
@@ -273,7 +382,6 @@ document.addEventListener('alpine:init', () => {
         this.mapError = 'โหลดแผนที่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต';
       } else {
         liveMapState.map = L.map('live-map-canvas', { zoomControl: false, preferCanvas: true }).setView([13.6516, 100.4939], 15);
-        L.control.zoom({ position: 'bottomright' }).addTo(liveMapState.map);
 
         // Google Maps Clean Roadmap tiles with Esri fallback
         const baseLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -416,7 +524,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     get pickerStepTitle() {
-      return ['เลือกตำแหน่ง', 'ตั้งชื่อและรัศมี', 'การแจ้งเตือน'][this.pickerStep - 1] || 'เพิ่มสถานที่';
+      return ['เลือกตำแหน่งและปรับรัศมี', 'ตั้งชื่อสถานที่', 'การแจ้งเตือนและบันทึก'][this.pickerStep - 1] || 'เพิ่มสถานที่';
     },
 
     // Guided map-first place picker.
@@ -474,28 +582,31 @@ document.addEventListener('alpine:init', () => {
 
     nextPickerStep() {
       this.pickerError = '';
-      if (this.pickerStep === 1 && (!Number.isFinite(this.newZone.latitude) || !Number.isFinite(this.newZone.longitude))) {
-        this.pickerError = 'เลือกตำแหน่งจากแผนที่หรือเลือกอุปกรณ์ก่อน';
+      if (this.pickerStep === 1) {
+        if (!Number.isFinite(this.newZone.latitude) || !Number.isFinite(this.newZone.longitude)) {
+          this.pickerError = 'กรุณาเลื่อนแผนที่ให้จุดศูนย์กลางอยู่ใต้เป้า หรือเลือกตำแหน่งอุปกรณ์';
+          return;
+        }
+        const radius = Number(this.newZone.radius_meters);
+        if (!Number.isFinite(radius) || radius < PICKER_RADIUS_MIN || radius > PICKER_RADIUS_MAX) {
+          this.pickerError = `รัศมีต้องอยู่ระหว่าง ${PICKER_RADIUS_MIN} ถึง ${PICKER_RADIUS_MAX} เมตร`;
+          return;
+        }
+        this.pickerStep = 2;
+        this.$nextTick(() => {
+          document.getElementById('place-name')?.focus();
+        });
         return;
       }
       if (this.pickerStep === 2) {
         if (!this.newZone.name?.trim()) {
-          this.pickerError = 'ใส่ชื่อสถานที่เพื่อให้จำได้ง่าย';
+          this.pickerError = 'กรุณาระบุชื่อสถานที่เพื่อให้จำได้ง่าย';
           document.getElementById('place-name')?.focus();
           return;
         }
-        if (!Number.isFinite(Number(this.newZone.radius_meters)) || Number(this.newZone.radius_meters) < PICKER_RADIUS_MIN || Number(this.newZone.radius_meters) > PICKER_RADIUS_MAX) {
-          this.pickerError = `รัศมีต้องอยู่ระหว่าง ${PICKER_RADIUS_MIN} ถึง ${PICKER_RADIUS_MAX} เมตร`;
-          document.getElementById('place-radius-exact')?.focus();
-          return;
-        }
         this.newZone.name = this.newZone.name.trim();
-      }
-      if (this.pickerStep < 3) {
-        this.pickerStep += 1;
-        this.$nextTick(() => {
-          if (this.pickerStep === 2) document.getElementById('place-name')?.focus();
-        });
+        this.pickerStep = 3;
+        return;
       }
     },
 

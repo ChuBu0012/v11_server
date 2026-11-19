@@ -371,3 +371,34 @@ func TestScrubber_AdversarialStressTest(t *testing.T) {
 		t.Errorf("expected TruncationNotice in formatted error, got: %s", formattedLongErr)
 	}
 }
+
+func TestScrubber_FormatResult_WithSummary(t *testing.T) {
+	s := NewOutputScrubber()
+
+	res := TaskResult{
+		Success:  true,
+		Duration: 30 * time.Second,
+		Output: `Executing health check...
+Disk: 45% used
+Memory: 18MB
+
+### สรุปการดำเนินงาน
+- ตรวจสอบพื้นที่ดิสก์เรียบร้อย อยู่ที่ 45%
+- อัปเดตการทำงานของระบบและเคลียร์แคชสำเร็จ`,
+	}
+
+	formatted := s.FormatResult(res, 18.5)
+
+	if !strings.Contains(formatted, "📝 <b>สรุปการทำงาน:</b>") {
+		t.Fatalf("expected summary header, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "ตรวจสอบพื้นที่ดิสก์เรียบร้อย อยู่ที่ 45%") {
+		t.Fatalf("expected bullet point 1 in summary, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "อัปเดตการทำงานของระบบและเคลียร์แคชสำเร็จ") {
+		t.Fatalf("expected bullet point 2 in summary, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "Executing health check...") {
+		t.Fatalf("expected remaining logs in pre block, got: %s", formatted)
+	}
+}

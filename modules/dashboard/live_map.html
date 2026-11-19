@@ -21,36 +21,45 @@
     })();
   </script>
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=24">
+  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=28">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/live-map.css?v=27">
+  <link rel="stylesheet" href="/static/css/live-map.css?v=28">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js?v=27"></script>
+  <script defer src="/static/js/components/live-map.js?v=28"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="live-map-body">
   <main class="live-map-app" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
+    <!-- Header: Compact 56px Modern Utility Header -->
     <header class="live-map-header">
       <a class="live-brand" href="/" aria-label="Pocket Sentinel">
         <span class="live-brand-mark">PS</span>
-        <span><strong>Pocket Sentinel</strong><small>Location &amp; Rendezvous</small></span>
+        <div class="live-brand-text">
+          <strong>Pocket Sentinel</strong>
+          <small>Rendezvous</small>
+        </div>
       </a>
       <div class="live-header-actions">
-        <span class="connection-pill" :class="{'is-live': connected}" x-text="connected ? '● กำลังอัปเดต' : '○ รอการเชื่อมต่อ'"></span>
-        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชตำแหน่ง" title="รีเฟรช">
+        <span class="connection-pill" :class="{'is-live': connected}">
+          <span class="pulse-indicator"></span>
+          <span x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
+        </span>
+        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
         </button>
         <button class="icon-button theme-toggle-btn" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
           <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'" aria-hidden="true"></i>
         </button>
         <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
-          📍 + เพิ่มสถานที่
+          <i class="ri-add-line" aria-hidden="true"></i>
+          <span>เพิ่มสถานที่</span>
         </button>
       </div>
     </header>
 
+    <!-- Sub-Nav Bar -->
     <nav class="sentinel-nav" aria-label="เมนูหลัก">
       <div class="sentinel-nav-inner">
         <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
@@ -62,169 +71,321 @@
       </div>
     </nav>
 
+    <!-- Tracking Overview (Hero Status Banner) -->
     <section class="live-summary" aria-live="polite">
-      <div class="summary-status">
-        <span class="summary-kicker">สถานะระยะห่าง</span>
-        <strong x-text="proximityText"></strong>
-        <span class="summary-distance" x-text="distanceText"></span>
+      <div class="summary-left">
+        <span class="status-badge" :class="isColocated ? 'is-colocated' : 'is-separated'">
+          <span class="status-badge-dot"></span>
+          <span x-text="proximityText"></span>
+        </span>
+        <span class="summary-distance-chip" x-show="distanceText" x-text="distanceText"></span>
       </div>
-      <div class="summary-updated"><span class="summary-kicker">อัปเดตล่าสุด</span><strong x-text="updatedText"></strong></div>
+      <div class="summary-right">
+        <span class="summary-time"><i class="ri-time-line" aria-hidden="true"></i> <span x-text="updatedText"></span></span>
+      </div>
     </section>
 
+    <!-- Map & Place Picker Container -->
     <div class="map-picker-layout" :class="{'is-picker-open': pickingLocation}">
-      <section class="map-shell" aria-label="แผนที่ตำแหน่ง">
+      <section class="map-shell" aria-label="แผนที่แสดงตำแหน่ง">
         <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
+        
+        <!-- Picker Reticle & Floating Guidance -->
         <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
         <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
-          <strong>เลื่อนแผนที่ให้จุดอยู่ใต้เป้า</strong>
+          <strong>เลื่อนแผนที่ให้จุดศูนย์กลางอยู่ใต้เป้า</strong>
           <span x-text="newZone.latitude == null ? 'เลือกตำแหน่งอุปกรณ์หรือเลื่อนแผนที่' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></span>
         </div>
 
-      <div class="map-loading" x-show="!mapReady" x-cloak>
-        <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
-      </div>
-      <div class="map-controls">
-        <button type="button" class="map-control" :class="{'is-selected': pickingLocation}" @click="toggleMapPicker()" title="ปักหมุดเพิ่มสถานที่">📍</button>
-        <button type="button" class="map-control" @click="centerOnDevices()" title="จัดตำแหน่งแผนที่">⌖</button>
-        <button type="button" class="map-control" :class="{'is-selected': showTrail}" @click="toggleTrail()" title="แสดงเส้นทาง 24 ชั่วโมง">⌁</button>
-      </div>
-      <div class="map-legend">
-        <span class="legend-item"><img src="/static/img/avatar-chubu.png?v=22" alt="Chubu" class="legend-avatar"> Chubu</span>
-        <span class="legend-item"><img src="/static/img/avatar-furturia.png?v=22" alt="Furturia" class="legend-avatar"> Furturia</span>
-      </div>
+        <div class="map-loading" x-show="!mapReady" x-cloak>
+          <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
+        </div>
+
+        <!-- Grouped Floating Map Controls (Top-Right Toolbar) -->
+        <div class="map-controls-group">
+          <button type="button" class="map-ctrl-btn" @click="centerOnDevices()" title="จัดตำแหน่งกึ่งกลางผู้ใช้">
+            <i class="ri-focus-3-line" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="map-ctrl-btn" :class="{'is-active': showTrail}" @click="toggleTrail()" title="เปิด/ปิดเส้นทางย้อนหลัง 24 ชม.">
+            <i class="ri-route-line" aria-hidden="true"></i>
+          </button>
+          <div class="map-ctrl-divider"></div>
+          <button type="button" class="map-ctrl-btn" @click="zoomIn()" title="ซูมเข้า">
+            <i class="ri-add-line" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="map-ctrl-btn" @click="zoomOut()" title="ซูมออก">
+            <i class="ri-subtract-line" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- Compact Floating Legend (Bottom-Left) -->
+        <div class="map-legend">
+          <span class="legend-item"><img src="/static/img/avatar-chubu.png?v=28" alt="Chubu" class="legend-avatar"> Chubu</span>
+          <span class="legend-item"><img src="/static/img/avatar-furturia.png?v=28" alt="Furturia" class="legend-avatar"> Furturia</span>
+        </div>
       </section>
 
+      <!-- Place Picker Panel (3-Step Guided Wizard) -->
       <aside class="place-picker-panel" x-show="pickingLocation" x-transition.opacity x-cloak role="dialog" aria-modal="false" aria-labelledby="picker-title">
         <div class="picker-panel-heading">
           <div>
-            <span class="picker-eyebrow" x-text="`ขั้นตอน ${pickerStep} จาก 3`"></span>
+            <span class="picker-eyebrow" x-text="`ขั้นตอนที่ ${pickerStep} จาก 3`"></span>
             <h2 id="picker-title" tabindex="-1" x-text="pickerStepTitle"></h2>
           </div>
-          <button type="button" class="picker-close-btn" @click="cancelMapPicker()" aria-label="ปิดการเพิ่มสถานที่">ปิด</button>
+          <button type="button" class="picker-close-btn" @click="cancelMapPicker()" aria-label="ปิดหน้าต่างเพิ่มสถานที่">ปิด</button>
         </div>
-        <ol class="picker-step-list" aria-label="ขั้นตอนเพิ่มสถานที่">
-          <template x-for="(label, index) in ['เลือกจุด', 'ตั้งชื่อและรัศมี', 'เลือกการแจ้งเตือน']" :key="label">
-            <li :class="{'is-current': pickerStep === index + 1, 'is-complete': pickerStep > index + 1}" :aria-current="pickerStep === index + 1 ? 'step' : null">
-              <span x-text="index + 1"></span><small x-text="label"></small>
-            </li>
-          </template>
+
+        <!-- Step Indicator Pills -->
+        <ol class="picker-step-list" aria-label="ขั้นตอนการเพิ่มสถานที่">
+          <li :class="{'is-current': pickerStep === 1, 'is-complete': pickerStep > 1}">
+            <span>1</span><small>ตำแหน่ง &amp; รัศมี</small>
+          </li>
+          <li :class="{'is-current': pickerStep === 2, 'is-complete': pickerStep > 2}">
+            <span>2</span><small>ชื่อสถานที่</small>
+          </li>
+          <li :class="{'is-current': pickerStep === 3, 'is-complete': pickerStep > 3}">
+            <span>3</span><small>การแจ้งเตือน</small>
+          </li>
         </ol>
 
-        <form class="picker-panel-form" @submit.prevent="pickerStep < 3 ? nextPickerStep() : createGeofence()">
+        <!-- Multi-step Form Content -->
+        <div class="picker-panel-form">
+          <!-- STEP 1: Select Location & Adjust Radius Directly on Map -->
           <section class="picker-step-content" x-show="pickerStep === 1" aria-labelledby="picker-location-title">
-            <h3 id="picker-location-title">จุดนี้อยู่ตรงไหน?</h3>
-            <p>เลื่อนแผนที่ให้ตำแหน่งอยู่ใต้เป้ากลาง วงสีเขียวคือพื้นที่แจ้งเตือน</p>
+            <h3 id="picker-location-title">เลือกตำแหน่งและปรับขนาดรัศมี</h3>
+            <p>เลื่อนแผนที่ให้จุดศูนย์กลางอยู่ใต้เป้า และปรับรัศมีด้านล่าง วงสีเขียวบนแผนที่จะขยายตามทันที</p>
+
             <div class="picker-device-shortcuts">
-              <button type="button" class="device-shortcut" @click="useDeviceLocation('me')" :disabled="!me" :aria-label="me ? `ใช้ตำแหน่งล่าสุดของ Chubu ${deviceAge(me)}` : 'ยังไม่มีตำแหน่งของ Chubu'">
-                <img src="/static/img/avatar-chubu.png?v=22" alt="" aria-hidden="true"><span><strong>ใช้ Chubu</strong><small x-text="me ? deviceAge(me) : 'ยังไม่มีตำแหน่งล่าสุด'"></small></span>
+              <button type="button" class="device-shortcut" @click="useDeviceLocation('me')" :disabled="!me">
+                <img src="/static/img/avatar-chubu.png?v=28" alt="" aria-hidden="true">
+                <span>
+                  <strong>จุดของ Chubu</strong>
+                  <small x-text="me ? deviceAge(me) : 'ไม่มีพิกัด'"></small>
+                </span>
               </button>
-              <button type="button" class="device-shortcut" @click="useDeviceLocation('friend')" :disabled="!friend" :aria-label="friend ? `ใช้ตำแหน่งล่าสุดของ Furturia ${deviceAge(friend)}` : 'ยังไม่มีตำแหน่งของ Furturia'">
-                <img src="/static/img/avatar-furturia.png?v=22" alt="" aria-hidden="true"><span><strong>ใช้ Furturia</strong><small x-text="friend ? deviceAge(friend) : 'ยังไม่มีตำแหน่งล่าสุด'"></small></span>
+              <button type="button" class="device-shortcut" @click="useDeviceLocation('friend')" :disabled="!friend">
+                <img src="/static/img/avatar-furturia.png?v=28" alt="" aria-hidden="true">
+                <span>
+                  <strong>จุดของ Furturia</strong>
+                  <small x-text="friend ? deviceAge(friend) : 'ไม่มีพิกัด'"></small>
+                </span>
               </button>
             </div>
-            <p class="picker-coordinate-readout" x-show="newZone.latitude != null" x-text="`พิกัดที่เลือก: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></p>
-            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
-          </section>
 
-          <section class="picker-step-content" x-show="pickerStep === 2" aria-labelledby="picker-details-title" x-cloak>
-            <h3 id="picker-details-title">จำสถานที่นี้ด้วยชื่ออะไร?</h3>
-            <label class="picker-field-label" for="place-name">ชื่อสถานที่</label>
-            <input id="place-name" type="text" x-model.trim="newZone.name" class="picker-name-input" placeholder="เช่น บ้าน, ที่ทำงาน, โรงเรียน" maxlength="80" autocomplete="off" required>
+            <div class="picker-coordinate-readout" x-show="newZone.latitude != null">
+              <i class="ri-map-pin-line" aria-hidden="true"></i>
+              <span x-text="`พิกัด: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></span>
+            </div>
+
+            <!-- Radius Adjustment in Step 1 -->
             <div class="picker-radius-section">
               <div class="picker-radius-heading">
                 <label class="picker-field-label" for="place-radius-slider">รัศมีแจ้งเตือน</label>
                 <strong x-text="`${newZone.radius_meters} เมตร`"></strong>
               </div>
-              <input id="place-radius-slider" class="radius-range" type="range" min="50" max="2000" step="25" x-model.number="radiusSlider" @input="applyRadiusSlider()" :aria-valuetext="`${radiusSlider} เมตร`" aria-describedby="radius-help">
-              <div class="radius-range-labels"><span>50 ม.</span><span>2,000 ม.</span></div>
-              <p id="radius-help">แถบเลื่อนปรับ 50–2,000 ม.; ช่องระบุเองปรับได้ 25–100,000 ม.</p>
-              <div class="radius-exact-row">
-                <label class="picker-field-label" for="place-radius-exact">ระบุเอง</label>
-                <div class="radius-number-wrap"><input id="place-radius-exact" type="number" min="25" max="100000" step="1" x-model.number="newZone.radius_meters" @input="applyExactRadius()" @blur="normalizeExactRadius()" inputmode="numeric"><span>เมตร</span></div>
+              <input id="place-radius-slider" class="radius-range" type="range" min="50" max="2000" step="25" x-model.number="radiusSlider" @input="applyRadiusSlider()" :aria-valuetext="`${radiusSlider} เมตร`">
+              <div class="radius-range-labels">
+                <span>50 ม.</span>
+                <span>500 ม.</span>
+                <span>2,000 ม.</span>
               </div>
-              <div class="picker-radius-presets" aria-label="ค่ารัศมีที่ใช้บ่อย">
-                <template x-for="r in [50, 100, 250, 500, 1000]" :key="r">
+
+              <!-- Quick Presets -->
+              <div class="picker-radius-presets" aria-label="ค่ารัศมีแนะนำ">
+                <template x-for="r in [50, 100, 200, 500, 1000]" :key="r">
                   <button type="button" class="radius-pill" :class="{'is-active': newZone.radius_meters === r}" @click="setRadius(r)" x-text="`${r} ม.`"></button>
                 </template>
               </div>
+
+              <!-- Custom Exact Radius Input -->
+              <div class="radius-exact-row">
+                <label class="picker-field-label" for="place-radius-exact">ระบุเองละเอียด</label>
+                <div class="radius-number-wrap">
+                  <input id="place-radius-exact" type="number" min="25" max="100000" step="1" x-model.number="newZone.radius_meters" @input="applyExactRadius()" @blur="normalizeExactRadius()" inputmode="numeric">
+                  <span>เมตร</span>
+                </div>
+              </div>
             </div>
+
             <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
           </section>
 
+          <!-- STEP 2: Place Name -->
+          <section class="picker-step-content" x-show="pickerStep === 2" aria-labelledby="picker-name-title" x-cloak>
+            <h3 id="picker-name-title">ตั้งชื่อสถานที่</h3>
+            <p>ใส่ชื่อเพื่อให้จำได้ง่าย หรือเลือกจากหมวดหมู่ที่ใช้บ่อยด้านล่าง</p>
+
+            <label class="picker-field-label" for="place-name">ชื่อสถานที่</label>
+            <input id="place-name" type="text" x-model.trim="newZone.name" class="picker-name-input" placeholder="เช่น บ้าน, ที่ทำงาน, มหาวิทยาลัย" maxlength="80" autocomplete="off">
+
+            <!-- Suggestion Chips -->
+            <div class="picker-chips-label">หมวดหมู่แนะนำ:</div>
+            <div class="picker-suggestion-chips">
+              <template x-for="chip in placeSuggestions" :key="chip">
+                <button type="button" class="suggestion-chip" @click="setPlaceSuggestion(chip)" x-text="chip"></button>
+              </template>
+            </div>
+
+            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
+          </section>
+
+          <!-- STEP 3: Notifications & Summary Review -->
           <section class="picker-step-content" x-show="pickerStep === 3" aria-labelledby="picker-alerts-title" x-cloak>
-            <h3 id="picker-alerts-title">อยากรับแจ้งเตือนอะไร?</h3>
-            <p>เลือกได้ทั้งสองแบบ และเปลี่ยนใจภายหลังได้</p>
+            <h3 id="picker-alerts-title">การแจ้งเตือนและการบันทึก</h3>
+            <p>เลือกเงื่อนไขการแจ้งเตือน Discord เมื่ออุปกรณ์เข้าหรือออกจากสถานที่นี้</p>
+
             <div class="picker-alert-options">
-              <label class="picker-alert-option"><span><strong>เมื่อมาถึง</strong><small>แจ้งเมื่อเข้าในรัศมีนี้</small></span><input type="checkbox" x-model="newZone.notify_enter" aria-label="แจ้งเมื่อมาถึง"></label>
-              <label class="picker-alert-option"><span><strong>เมื่อออกไป</strong><small>แจ้งเมื่อออกนอกพื้นที่</small></span><input type="checkbox" x-model="newZone.notify_exit" aria-label="แจ้งเมื่อออกไป"></label>
+              <label class="picker-alert-option">
+                <span>
+                  <strong>เมื่อมาถึง (Enter)</strong>
+                  <small>ส่งการแจ้งเตือนเมื่ออุปกรณ์เข้ามาในรัศมีนี้</small>
+                </span>
+                <input type="checkbox" x-model="newZone.notify_enter" aria-label="แจ้งเมื่อมาถึง">
+              </label>
+              <label class="picker-alert-option">
+                <span>
+                  <strong>เมื่อออกไป (Exit)</strong>
+                  <small>ส่งการแจ้งเตือนเมื่ออุปกรณ์ออกนอกพื้นที่นี้</small>
+                </span>
+                <input type="checkbox" x-model="newZone.notify_exit" aria-label="แจ้งเมื่อออกไป">
+              </label>
             </div>
+
+            <!-- Summary Card -->
             <div class="picker-summary-card">
-              <strong x-text="newZone.name || 'ยังไม่ได้ตั้งชื่อสถานที่'"></strong>
-              <span x-text="`${newZone.radius_meters} เมตร · ${newZone.notify_enter ? 'แจ้งเมื่อมาถึง' : ''}${newZone.notify_enter && newZone.notify_exit ? ' และ ' : ''}${newZone.notify_exit ? 'แจ้งเมื่อออกไป' : ''}`"></span>
-              <small x-text="newZone.latitude == null ? '' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></small>
+              <strong x-text="newZone.name || 'ไม่ได้ระบุชื่อ'"></strong>
+              <span x-text="`รัศมี ${newZone.radius_meters} เมตร · ${newZone.notify_enter ? 'แจ้งเมื่อถึง' : ''}${newZone.notify_enter && newZone.notify_exit ? ' และ ' : ''}${newZone.notify_exit ? 'แจ้งเมื่อออก' : ''}`"></span>
+              <small x-text="newZone.latitude == null ? '' : `พิกัด ${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></small>
             </div>
-            <label class="picker-field-label" for="place-pin" x-show="!pin">Relay PIN</label>
-            <input id="place-pin" type="password" x-show="!pin" x-model="pin" inputmode="numeric" autocomplete="current-password" class="picker-pin-input" placeholder="กรอก PIN เพื่อบันทึก">
+
+            <!-- Relay PIN field if not saved -->
+            <div x-show="!pin" class="picker-pin-wrapper">
+              <label class="picker-field-label" for="place-pin">Relay PIN (ยืนยันสิทธิ์)</label>
+              <input id="place-pin" type="password" x-model="pin" inputmode="numeric" autocomplete="current-password" class="picker-pin-input" placeholder="กรอก PIN เพื่อบันทึก (เช่น 1804)">
+            </div>
+
             <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
           </section>
 
+          <!-- Footer Navigation Buttons -->
           <div class="picker-panel-footer">
             <button type="button" class="picker-cancel-action" @click="cancelMapPicker()">ยกเลิก</button>
             <button type="button" class="picker-back-action" x-show="pickerStep > 1" @click="previousPickerStep()">ย้อนกลับ</button>
-            <button type="submit" class="picker-next-action" :disabled="savingZone" x-text="pickerStep < 3 ? 'ถัดไป' : (savingZone ? 'กำลังบันทึก…' : 'บันทึกสถานที่')"></button>
+            <button type="button" class="picker-next-action" :disabled="savingZone" @click="pickerStep < 3 ? nextPickerStep() : createGeofence()" x-text="pickerStep < 3 ? 'ถัดไป' : (savingZone ? 'กำลังบันทึก…' : 'บันทึกสถานที่')"></button>
           </div>
-        </form>
+        </div>
       </aside>
     </div>
 
+    <!-- Tracked User Cards: Compact 3-Column Metric Layout -->
     <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
+      <!-- Device Card: Chubu -->
       <article class="device-card device-card-me">
-        <div class="device-card-heading">
-          <img class="device-avatar-img" src="/static/img/avatar-chubu.png?v=22" alt="Chubu">
-          <div><strong>Chubu</strong><small x-text="deviceAge(me)"></small></div>
-          <span class="device-color"></span>
+        <div class="device-card-header">
+          <img class="device-avatar-img" src="/static/img/avatar-chubu.png?v=28" alt="Chubu">
+          <div class="device-card-info">
+            <div class="device-card-name-row">
+              <strong>Chubu</strong>
+              <span class="device-status-badge" :class="connectionStatus(me).class">
+                <span class="device-status-dot" :class="connectionStatus(me).dot"></span>
+                <span x-text="connectionStatus(me).label"></span>
+              </span>
+            </div>
+            <small x-text="deviceAge(me)"></small>
+          </div>
         </div>
-        <div class="device-metrics">
-          <div><span>แบตเตอรี่</span><strong x-text="batteryText(me)"></strong></div>
-          <div><span>ความเร็ว</span><strong x-text="speedText(me)"></strong></div>
-          <div><span>ความแม่นยำ</span><strong x-text="accuracyText(me)"></strong></div>
+        <div class="device-metrics-grid">
+          <!-- Metric 1: Battery -->
+          <div class="metric-cell">
+            <span class="metric-label">แบตเตอรี่</span>
+            <strong class="metric-value">
+              <span x-text="`${batteryPercent(me)}%`"></span>
+              <span x-show="isCharging(me)" class="charging-icon">⚡</span>
+            </strong>
+            <div class="metric-bar-track">
+              <div class="metric-bar-fill" :class="batteryBarClass(me)" :style="`width: ${batteryPercent(me)}%`"></div>
+            </div>
+          </div>
+          <!-- Metric 2: Speed -->
+          <div class="metric-cell">
+            <span class="metric-label">ความเร็ว</span>
+            <strong class="metric-value" x-text="speedText(me)"></strong>
+            <small class="metric-sub" x-text="me && me.speed >= 1 ? 'กำลังเคลื่อนที่' : 'อยู่นิ่ง'"></small>
+          </div>
+          <!-- Metric 3: Accuracy -->
+          <div class="metric-cell">
+            <span class="metric-label">ความแม่นยำ</span>
+            <strong class="metric-value" x-text="accuracyText(me)"></strong>
+            <small class="metric-sub">GPS</small>
+          </div>
         </div>
       </article>
+
+      <!-- Device Card: Furturia -->
       <article class="device-card device-card-friend">
-        <div class="device-card-heading">
-          <img class="device-avatar-img" src="/static/img/avatar-furturia.png?v=22" alt="Furturia">
-          <div><strong>Furturia</strong><small x-text="deviceAge(friend)"></small></div>
-          <span class="device-color"></span>
+        <div class="device-card-header">
+          <img class="device-avatar-img" src="/static/img/avatar-furturia.png?v=28" alt="Furturia">
+          <div class="device-card-info">
+            <div class="device-card-name-row">
+              <strong>Furturia</strong>
+              <span class="device-status-badge" :class="connectionStatus(friend).class">
+                <span class="device-status-dot" :class="connectionStatus(friend).dot"></span>
+                <span x-text="connectionStatus(friend).label"></span>
+              </span>
+            </div>
+            <small x-text="deviceAge(friend)"></small>
+          </div>
         </div>
-        <div class="device-metrics">
-          <div><span>แบตเตอรี่</span><strong x-text="batteryText(friend)"></strong></div>
-          <div><span>ความเร็ว</span><strong x-text="speedText(friend)"></strong></div>
-          <div><span>ความแม่นยำ</span><strong x-text="accuracyText(friend)"></strong></div>
+        <div class="device-metrics-grid">
+          <!-- Metric 1: Battery -->
+          <div class="metric-cell">
+            <span class="metric-label">แบตเตอรี่</span>
+            <strong class="metric-value">
+              <span x-text="`${batteryPercent(friend)}%`"></span>
+              <span x-show="isCharging(friend)" class="charging-icon">⚡</span>
+            </strong>
+            <div class="metric-bar-track">
+              <div class="metric-bar-fill" :class="batteryBarClass(friend)" :style="`width: ${batteryPercent(friend)}%`"></div>
+            </div>
+          </div>
+          <!-- Metric 2: Speed -->
+          <div class="metric-cell">
+            <span class="metric-label">ความเร็ว</span>
+            <strong class="metric-value" x-text="speedText(friend)"></strong>
+            <small class="metric-sub" x-text="friend && friend.speed >= 1 ? 'กำลังเคลื่อนที่' : 'อยู่นิ่ง'"></small>
+          </div>
+          <!-- Metric 3: Accuracy -->
+          <div class="metric-cell">
+            <span class="metric-label">ความแม่นยำ</span>
+            <strong class="metric-value" x-text="accuracyText(friend)"></strong>
+            <small class="metric-sub">GPS</small>
+          </div>
         </div>
       </article>
     </section>
 
-    <!-- Real-time Location Log Feed -->
+    <!-- Compact Real-time Location Log Feed (Collapsible Accordion) -->
     <section class="logs-section" aria-label="ประวัติการส่งพิกัดล่าสุด">
       <div class="logs-card">
         <div class="logs-header" @click="showLogs = !showLogs">
           <div class="logs-title">
-            <span>📡 บันทึกการรับพิกัดล่าสุด (Live Ping Log)</span>
+            <i class="ri-signal-tower-line" aria-hidden="true"></i>
+            <span>บันทึกพิกัดล่าสุด (Live Ping Log)</span>
             <span class="logs-count-badge" x-text="recentLogs.length + ' รายการ'"></span>
           </div>
-          <button type="button" class="icon-button" style="width:28px; height:28px; font-size:12px;" :aria-expanded="showLogs">
-            <span x-text="showLogs ? '▲' : '▼'"></span>
+          <button type="button" class="icon-button logs-collapse-btn" :aria-expanded="showLogs">
+            <i :class="showLogs ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" aria-hidden="true"></i>
           </button>
         </div>
         <div class="logs-body" x-show="showLogs" x-transition>
           <template x-if="recentLogs.length === 0">
-            <p style="padding: 16px; text-align: center; color: var(--map-muted); font-size: 12px; margin: 0;">กำลังรอพิกัดจากเครื่อง...</p>
+            <p class="empty-state-text">กำลังรอพิกัดจากเครื่อง...</p>
           </template>
           <ul class="logs-list">
             <template x-for="log in recentLogs" :key="log.id + '-' + log.device">
               <li class="log-item">
                 <div class="log-device">
-                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png?v=22' : '/static/img/avatar-furturia.png?v=22'" :alt="log.name" class="log-avatar">
+                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png?v=28' : '/static/img/avatar-furturia.png?v=28'" :alt="log.name" class="log-avatar">
                   <div>
                     <strong x-text="log.name"></strong>
                     <small x-text="formatTimeDetail(log.recorded_at)"></small>
@@ -242,37 +403,60 @@
       </div>
     </section>
 
-    <!-- Geofences & Discord Notifications Section (Inline, No Sidebar) -->
+    <!-- Compact Geofences & Discord Notifications Management Section -->
     <section class="management-section" aria-label="จัดการสถานที่และการแจ้งเตือน">
       <!-- Geofences Card -->
       <div class="management-card">
         <div class="management-card-header">
           <div class="management-title">
-            <span>📍 สถานที่ทั้งหมด (Geofences)</span>
+            <i class="ri-map-pin-range-line" aria-hidden="true"></i>
+            <span>สถานที่ทั้งหมด (Geofences)</span>
             <span class="logs-count-badge" x-text="geofences.length + ' แห่ง'"></span>
           </div>
           <button type="button" class="add-geofence-trigger-btn" @click="startMapPicker()">
-            + ปักหมุดเพิ่มสถานที่
+            <i class="ri-add-line" aria-hidden="true"></i>
+            <span>เพิ่มสถานที่</span>
           </button>
         </div>
         <div class="management-card-body">
           <template x-if="geofences.length === 0">
-            <p class="empty-state-text">ยังไม่มีสถานที่ที่บันทึกไว้ กดปุ่ม "ปักหมุดเพิ่มสถานที่" เพื่อเริ่มสร้าง</p>
+            <p class="empty-state-text">ยังไม่มีสถานที่ที่บันทึกไว้ กดปุ่ม "เพิ่มสถานที่" เพื่อเริ่มสร้าง</p>
           </template>
           <p class="geofence-error" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
+          
+          <!-- Compact List of Locations -->
           <ul class="geofence-inline-list">
             <template x-for="zone in orderedGeofences" :key="zone.id">
               <li class="geofence-inline-item">
-                <button type="button" class="geofence-focus-card" @click="focusGeofence(zone)" :aria-label="`ดู ${zone.name} บนแผนที่`">
-                  <span class="geofence-card-pin" aria-hidden="true">⌖</span>
-                  <span class="geofence-info">
-                    <span class="geofence-name-row"><strong x-text="zone.name"></strong><span class="geofence-radius-badge" x-text="`${zone.radius_meters} ม.`"></span></span>
-                    <small x-text="`${zone.notify_enter ? 'ถึง: เปิด' : 'ถึง: ปิด'} · ${zone.notify_exit ? 'ออก: เปิด' : 'ออก: ปิด'}`"></small>
-                    <small class="geofence-coordinates" x-text="`${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}`"></small>
-                  </span>
-                  <span class="geofence-focus-label">ดูแผนที่</span>
-                </button>
-                <button type="button" class="delete-zone-btn" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button>
+                <div class="geofence-item-main" @click="toggleGeofenceDetails(zone.id)">
+                  <div class="geofence-icon-box">
+                    <i class="ri-map-pin-2-fill" aria-hidden="true"></i>
+                  </div>
+                  <div class="geofence-info-col">
+                    <div class="geofence-title-row">
+                      <strong x-text="zone.name"></strong>
+                      <span class="geofence-radius-badge" x-text="`${zone.radius_meters} ม.`"></span>
+                      <span class="geofence-alert-pill" :class="{'is-active': zone.notify_enter}" title="แจ้งเตือนเมื่อมาถึง">ถึง</span>
+                      <span class="geofence-alert-pill" :class="{'is-active': zone.notify_exit}" title="แจ้งเตือนเมื่อออกไป">ออก</span>
+                    </div>
+                    <!-- Collapsible Coordinates & Info -->
+                    <div class="geofence-details-row" x-show="expandedGeofenceId === zone.id" x-transition>
+                      <small class="geofence-coordinates" x-text="`พิกัด: ${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}`"></small>
+                    </div>
+                  </div>
+                  <button type="button" class="geofence-chevron-btn" :aria-expanded="expandedGeofenceId === zone.id" title="ดูรายละเอียดพิกัด">
+                    <i :class="expandedGeofenceId === zone.id ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="geofence-actions-col">
+                  <button type="button" class="geofence-focus-btn" @click.stop="focusGeofence(zone)" title="ดูตำแหน่งบนแผนที่">
+                    <i class="ri-focus-2-line" aria-hidden="true"></i>
+                    <span>ดูบนแผนที่</span>
+                  </button>
+                  <button type="button" class="delete-zone-btn" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`" title="ลบสถานที่">
+                    <i class="ri-delete-bin-line" aria-hidden="true"></i>
+                  </button>
+                </div>
               </li>
             </template>
           </ul>
@@ -283,7 +467,8 @@
       <div class="management-card">
         <div class="management-card-header">
           <div class="management-title">
-            <span>🔔 การแจ้งเตือน Discord</span>
+            <i class="ri-notification-3-line" aria-hidden="true"></i>
+            <span>การแจ้งเตือน Discord</span>
           </div>
           <span class="settings-status-text" x-text="settingsMessage"></span>
         </div>
@@ -302,7 +487,7 @@
             <label class="toggle-switch-card">
               <div class="toggle-info">
                 <strong>เข้า / ออกจากสถานที่</strong>
-                <small>แจ้งเตือนเมื่อถึงหรือออกจาก Geofence</small>
+                <small>แจ้งเตือนเมื่ออุปกรณ์มาถึงหรือออกจาก Geofence ที่บันทึกไว้</small>
               </div>
               <span class="toggle-switch">
                 <input type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()">
@@ -312,7 +497,7 @@
             <label class="toggle-switch-card">
               <div class="toggle-info">
                 <strong>แบตเตอรี่ต่ำ</strong>
-                <small>แจ้งเตือนเมื่อแบตเตอรี่ ≤ 15% และไม่ได้เสียบชาร์จ</small>
+                <small>แจ้งเตือนเมื่อแบตเตอรี่ต่ำกว่า 15% และไม่ได้เสียบสายชาร์จ</small>
               </div>
               <span class="toggle-switch">
                 <input type="checkbox" x-model="settings.notify_battery" @change="saveSettings()">
@@ -320,19 +505,37 @@
               </span>
             </label>
           </div>
-          <div class="pin-management-row">
-            <label class="pin-inline-label">
-              <span>Relay PIN:</span>
-              <input type="password" x-model="pin" @change="localStorage.setItem('sentinel-relay-pin', pin)" inputmode="numeric" placeholder="1804" class="pin-inline-input">
-            </label>
-            <small class="pin-hint">บันทึกอัตโนมัติในเครื่องนี้เพื่อใช้เพิ่ม/ลบสถานที่และตั้งค่า</small>
+
+          <!-- Advanced Security: Relay PIN Management -->
+          <div class="advanced-pin-section">
+            <div class="advanced-pin-header">
+              <i class="ri-shield-keyhole-line" aria-hidden="true"></i>
+              <div>
+                <strong>Relay PIN (รหัสความปลอดภัย)</strong>
+                <small>จัดเก็บเฉพาะบนอุปกรณ์นี้เพื่อใช้ยืนยันการตั้งค่าและจัดการสถานที่</small>
+              </div>
+            </div>
+            <div class="advanced-pin-row">
+              <div class="pin-input-group">
+                <input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="เช่น 1804" class="pin-field-input" autocomplete="current-password">
+                <button type="button" class="pin-visibility-btn" @click="showPin = !showPin" :title="showPin ? 'ซ่อน PIN' : 'แสดง PIN'">
+                  <i :class="showPin ? 'ri-eye-off-line' : 'ri-eye-line'" aria-hidden="true"></i>
+                </button>
+              </div>
+              <button type="button" class="pin-save-btn" @click="savePinExplicit()">
+                <span x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก PIN'"></span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <p class="live-error" x-show="errorText" x-text="errorText" x-cloak></p>
-    <footer class="live-footer"><span>แผนที่จะรีเฟรชทุก 15 วินาที</span><span>ข้อมูลตำแหน่งจัดเก็บใน Pocket Sentinel</span></footer>
+    <footer class="live-footer">
+      <span>รีเฟรชข้อมูลตำแหน่งอัตโนมัติทุก 15 วินาที</span>
+      <span>ข้อมูลจัดเก็บปลอดภัยใน Pocket Sentinel</span>
+    </footer>
   </main>
 </body>
 </html>
