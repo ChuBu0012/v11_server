@@ -367,6 +367,14 @@ func setupRouter(app *App) *gin.Engine {
 	}
 	if app.locationModule != nil {
 		app.locationModule.RegisterRoutes(r)
+		r.Match([]string{"GET", "HEAD"}, "/api/location/viewer-token", func(c *gin.Context) {
+			token := app.locationModule.ViewerToken()
+			if token == "" {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"token": token})
+		})
 		r.Match([]string{"GET", "HEAD"}, "/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
 		r.Match([]string{"GET", "HEAD"}, "/live", func(c *gin.Context) {
 			token := app.locationModule.ViewerToken()

@@ -5,38 +5,38 @@
 
 :root {
   color-scheme: dark;
-  --map-bg: #0b1220;
-  --map-panel: #111c30;
-  --map-panel-strong: #16243d;
-  --map-text: #f1f5f9;
-  --map-muted: #94a3b8;
-  --map-line: rgba(176, 196, 222, 0.12);
-  --map-line-strong: rgba(176, 196, 222, 0.22);
-  --map-blue: #38bdf8;
-  --map-mint: #10b981;
-  --map-mint-glow: rgba(16, 185, 129, 0.2);
-  --map-amber: #f59e0b;
-  --map-red: #f87171;
-  --map-purple: #818cf8;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --map-bg: var(--parchment, #0c0d10);
+  --map-panel: var(--card, #1c1d24);
+  --map-panel-strong: var(--pearl, #22242e);
+  --map-text: var(--ink, #f5f5f7);
+  --map-muted: var(--muted, #8e8e93);
+  --map-line: var(--hairline, #282a35);
+  --map-line-strong: var(--hairline-dark, #383a48);
+  --map-blue: var(--blue, #2997ff);
+  --map-mint: var(--green, #30d158);
+  --map-mint-glow: rgba(48, 209, 88, 0.2);
+  --map-amber: var(--amber, #ffd60a);
+  --map-red: var(--red, #ff453a);
+  --map-purple: #bf5af2;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --map-bg: #f8fafc;
-  --map-panel: #ffffff;
-  --map-panel-strong: #f1f5f9;
-  --map-text: #0f172a;
-  --map-muted: #64748b;
-  --map-line: rgba(15, 23, 42, 0.08);
-  --map-line-strong: rgba(15, 23, 42, 0.18);
-  --map-blue: #0284c7;
-  --map-mint: #059669;
-  --map-mint-glow: rgba(5, 150, 105, 0.15);
-  --map-amber: #d97706;
-  --map-red: #ef4444;
-  --map-purple: #6366f1;
+  --map-bg: var(--parchment, #f5f5f7);
+  --map-panel: var(--card, #ffffff);
+  --map-panel-strong: var(--pearl, #fafafc);
+  --map-text: var(--ink, #1d1d1f);
+  --map-muted: var(--muted, #6e6e73);
+  --map-line: var(--hairline, #e0e0e0);
+  --map-line-strong: var(--hairline-dark, #424245);
+  --map-blue: var(--blue, #0066cc);
+  --map-mint: var(--green, #248a3d);
+  --map-mint-glow: rgba(36, 138, 61, 0.15);
+  --map-amber: var(--amber, #b45f06);
+  --map-red: var(--red, #d70015);
+  --map-purple: #af52de;
 }
 
 * { box-sizing: border-box; }
@@ -47,8 +47,17 @@ body.live-map-body {
   min-width: 320px;
   background: var(--map-bg);
   color: var(--map-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   line-height: 1.5;
   transition: background .2s ease, color .2s ease;
+}
+
+.map-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+  padding-bottom: 32px;
 }
 
 .live-map-app {

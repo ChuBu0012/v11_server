@@ -1,6 +1,7 @@
 # Rules Memory: v11 Pocket Server
 
 ## Must
+- [2026-11-19 | User alignment] Pull first & Push last: Always run `git pull origin main` before starting work, and commit + `git push origin main` immediately upon completing work.
 - [2026-11-14 | User] Use scp -r for file transfers to v11 (do not use rsync).
 - [2026-11-14 | User / AGENTS.md] Keep Go processes lightweight (< 300MB RAM) to avoid Android Low Memory Killer (LMK).
 - [2026-11-14 | AGENTS.md] Always compile to a standalone binary before running under PM2; never use `pm2 start "go run ..."`.

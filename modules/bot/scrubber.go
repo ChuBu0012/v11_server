@@ -123,6 +123,81 @@ func (s *OutputScrubber) EscapeHTML(text string) string {
 	return r
 }
 
+var (
+	mdCodeBlockRegex      = regexp.MustCompile("(?s)```(?:[a-zA-Z0-9_-]+)?\n?(.*?)```")
+	mdInlineCodeRegex     = regexp.MustCompile("`([^`\n]+)`")
+	mdBoldAsteriskRegex   = regexp.MustCompile(`\*\*([^*\n]+?)\*\*`)
+	mdBoldUnderscoreRegex = regexp.MustCompile(`__([^_\n]+?)__`)
+	mdItalicAsteriskRegex = regexp.MustCompile(`(^|[^\*])\*([^*\n]+?)\*([^\*]|$)`)
+	mdHeaderRegex         = regexp.MustCompile(`(?m)^#{1,6}\s*(.*)$`)
+	mdBulletRegex         = regexp.MustCompile(`(?m)^[\t ]*[-*][\t ]+(.*)$`)
+	mdLinkRegex           = regexp.MustCompile(`\[([^\]]+)\]\((https?://[^\s\)]+)\)`)
+)
+
+// MarkdownToTelegramHTML converts basic Markdown formatting (bold, italic, inline code, code blocks, bullets, headers)
+// into valid Telegram HTML entities and ensures special characters are properly escaped.
+func (s *OutputScrubber) MarkdownToTelegramHTML(text string) string {
+	if strings.TrimSpace(text) == "" {
+		return ""
+	}
+
+	// 1. First escape HTML entities (&, <, >) so raw text is safe.
+	escaped := s.EscapeHTML(text)
+
+	// 2. Extract code blocks and inline code to protect them from markup replacements.
+	var codeBlocks []string
+	placeholderBlock := func(match string) string {
+		idx := len(codeBlocks)
+		sub := mdCodeBlockRegex.FindStringSubmatch(match)
+		content := match
+		if len(sub) > 1 {
+			content = sub[1]
+		}
+		codeBlocks = append(codeBlocks, "<pre>"+strings.TrimSpace(content)+"</pre>")
+		return fmt.Sprintf("\x00CB_%d\x00", idx)
+	}
+	escaped = mdCodeBlockRegex.ReplaceAllStringFunc(escaped, placeholderBlock)
+
+	var inlineCodes []string
+	placeholderInline := func(match string) string {
+		idx := len(inlineCodes)
+		sub := mdInlineCodeRegex.FindStringSubmatch(match)
+		content := match
+		if len(sub) > 1 {
+			content = sub[1]
+		}
+		inlineCodes = append(inlineCodes, "<code>"+content+"</code>")
+		return fmt.Sprintf("\x00IC_%d\x00", idx)
+	}
+	escaped = mdInlineCodeRegex.ReplaceAllStringFunc(escaped, placeholderInline)
+
+	// 3. Convert Markdown headers (### Header) -> <b>Header</b>
+	escaped = mdHeaderRegex.ReplaceAllString(escaped, "<b>$1</b>")
+
+	// 4. Convert Bullet points (- Item or * Item) -> • Item
+	escaped = mdBulletRegex.ReplaceAllString(escaped, "• $1")
+
+	// 5. Convert Bold (**bold** or __bold__) -> <b>bold</b>
+	escaped = mdBoldAsteriskRegex.ReplaceAllString(escaped, "<b>$1</b>")
+	escaped = mdBoldUnderscoreRegex.ReplaceAllString(escaped, "<b>$1</b>")
+
+	// 6. Convert Italic (*italic*) -> <i>italic</i>
+	escaped = mdItalicAsteriskRegex.ReplaceAllString(escaped, "${1}<i>$2</i>${3}")
+
+	// 7. Convert Markdown Links [text](url) -> <a href="url">text</a>
+	escaped = mdLinkRegex.ReplaceAllString(escaped, `<a href="$2">$1</a>`)
+
+	// 8. Restore protected inline code and code blocks
+	for i, code := range inlineCodes {
+		escaped = strings.ReplaceAll(escaped, fmt.Sprintf("\x00IC_%d\x00", i), code)
+	}
+	for i, block := range codeBlocks {
+		escaped = strings.ReplaceAll(escaped, fmt.Sprintf("\x00CB_%d\x00", i), block)
+	}
+
+	return escaped
+}
+
 // ExtractSummary extracts an optional structured summary section from agent execution output.
 // It looks for markdown headers like '### สรุปการดำเนินงาน', '### สรุปคำตอบ', '### สรุปการทำงาน', or 'สรุปการทำงาน:'.
 func (s *OutputScrubber) ExtractSummary(text string) (string, string) {
@@ -156,7 +231,7 @@ func (s *OutputScrubber) FormatQuestionResult(result TaskResult, ramMB float64) 
 
 	var summaryBlock string
 	if summary != "" {
-		sanitizedSummary := s.EscapeHTML(s.Truncate(summary, 1000))
+		sanitizedSummary := s.MarkdownToTelegramHTML(s.Truncate(summary, 1000))
 		summaryBlock = fmt.Sprintf("\n\n📝 <b>สรุปคำตอบ:</b>\n%s", sanitizedSummary)
 	}
 
@@ -193,7 +268,7 @@ func (s *OutputScrubber) FormatResult(result TaskResult, ramMB float64) string {
 
 	var summaryBlock string
 	if summary != "" {
-		sanitizedSummary := s.EscapeHTML(s.Truncate(summary, 1000))
+		sanitizedSummary := s.MarkdownToTelegramHTML(s.Truncate(summary, 1000))
 		summaryBlock = fmt.Sprintf("\n\n📝 <b>สรุปการทำงาน:</b>\n%s", sanitizedSummary)
 	}
 

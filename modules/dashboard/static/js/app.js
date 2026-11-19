@@ -61,7 +61,7 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('alpine:init', () => {
   const initialParams = new URLSearchParams(window.location.search);
   const requestedTab = initialParams.get('tab');
-  const initialTab = ['overview', 'monitor', 'telegram'].includes(requestedTab)
+  const initialTab = ['overview', 'monitor', 'map', 'telegram'].includes(requestedTab)
     ? requestedTab
     : (initialParams.get('app') === 'relay' ? 'telegram' : 'overview');
 
@@ -86,12 +86,12 @@ document.addEventListener('alpine:init', () => {
       window.setInterval(() => this.refreshAll(), 60000);
       window.addEventListener('popstate', () => {
         const tab = new URLSearchParams(window.location.search).get('tab');
-        this.activateTab(['overview', 'monitor', 'telegram'].includes(tab) ? tab : 'overview');
+        this.activateTab(['overview', 'monitor', 'map', 'telegram'].includes(tab) ? tab : 'overview');
       });
     },
 
     setTab(tab) {
-      if (!['overview', 'monitor', 'telegram'].includes(tab) || tab === this.activeTab) return;
+      if (!['overview', 'monitor', 'map', 'telegram'].includes(tab) || tab === this.activeTab) return;
       const url = new URL(window.location.href);
       url.searchParams.delete('app');
       if (tab === 'overview') url.searchParams.delete('tab');

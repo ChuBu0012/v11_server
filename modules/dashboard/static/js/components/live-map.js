@@ -17,7 +17,23 @@ const PICKER_RADIUS_MAX = 100000;
 const PICKER_SLIDER_MIN = 50;
 const PICKER_SLIDER_MAX = 2000;
 
-const locationViewerToken = () => decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
+const locationViewerToken = () => {
+  const fromPath = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
+  if (fromPath && fromPath !== 'index.html' && fromPath !== 'live' && fromPath !== 'map' && fromPath.length >= 24) {
+    try { localStorage.setItem('sentinel_viewer_token', fromPath); } catch (_) {}
+    return fromPath;
+  }
+  const fromQuery = new URLSearchParams(window.location.search).get('token');
+  if (fromQuery && fromQuery.length >= 24) {
+    try { localStorage.setItem('sentinel_viewer_token', fromQuery); } catch (_) {}
+    return fromQuery;
+  }
+  try {
+    const saved = localStorage.getItem('sentinel_viewer_token');
+    if (saved) return saved;
+  } catch (_) {}
+  return '';
+};
 
 function haversineMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -311,10 +327,15 @@ document.addEventListener('alpine:init', () => {
     newZone: { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true },
 
     toggleTheme() {
+      if (window.Alpine && Alpine.store && Alpine.store('sentinel')) {
+        Alpine.store('sentinel').toggleTheme();
+        this.theme = Alpine.store('sentinel').theme;
+        return;
+      }
       this.theme = this.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', this.theme);
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', this.theme === 'dark' ? '#0b1220' : '#f4f6fa');
+      if (meta) meta.setAttribute('content', this.theme === 'dark' ? '#0c0d10' : '#f5f5f7');
       try { localStorage.setItem('sentinel-theme', this.theme); } catch (_) {}
       window.dispatchEvent(new CustomEvent('sentinel:theme-changed', { detail: { theme: this.theme } }));
     },
@@ -378,9 +399,19 @@ document.addEventListener('alpine:init', () => {
           document.documentElement.setAttribute('data-theme', this.theme);
         }
       });
-      if (!window.L) {
-        this.mapError = 'โหลดแผนที่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต';
-      } else {
+      window.addEventListener('sentinel:tab-changed', (e) => {
+        if (e.detail && e.detail.tab === 'map') {
+          setTimeout(() => {
+            if (liveMapState.map) {
+              liveMapState.map.invalidateSize();
+            }
+          }, 80);
+        }
+      });
+      const canvasEl = document.getElementById('live-map-canvas');
+      if (!window.L || !canvasEl) {
+        if (!window.L) this.mapError = 'โหลดแผนที่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต';
+      } else if (!liveMapState.map) {
         liveMapState.map = L.map('live-map-canvas', { zoomControl: false, preferCanvas: true }).setView([13.6516, 100.4939], 15);
 
         // Google Maps Clean Roadmap tiles with Esri fallback
@@ -423,9 +454,22 @@ document.addEventListener('alpine:init', () => {
 
     async refresh() {
       this.errorText = '';
+      let token = locationViewerToken();
+      if (!token) {
+        try {
+          const resp = await fetch('/api/location/viewer-token');
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.token) {
+              token = data.token;
+              try { localStorage.setItem('sentinel_viewer_token', token); } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
       try {
         const response = await fetch('/api/location/live', {
-          headers: { 'X-Location-Viewer-Token': locationViewerToken(), Accept: 'application/json' },
+          headers: { 'X-Location-Viewer-Token': token, Accept: 'application/json' },
           cache: 'no-store',
         });
         if (!response.ok) throw new Error(response.status === 401 ? 'ลิงก์แผนที่หมดอายุหรือไม่ถูกต้อง' : 'โหลดข้อมูลตำแหน่งไม่สำเร็จ');

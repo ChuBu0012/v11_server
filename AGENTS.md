@@ -1,5 +1,9 @@
 # AGENTS.md — Pocket Sentinel (go-app)
 
+## 0. Git Synchronization Protocol (CRITICAL)
+- **Pull First (ก่อนเริ่มงาน):** ทุกครั้งที่เอเจนต์เริ่มเซสชันหรือรับงานใหม่ ต้องรัน `git pull origin main` ทันทีเสมอเพื่อป้องกัน merge conflict และซิงค์โค้ดล่าสุดจากรีโมท
+- **Push Last (เมื่อจบงาน):** เมื่อเอเจนต์ทำงาน ตรวจสอบ ทดสอบ หรือ deploy เสร็จสมบูรณ์แล้ว ต้อง commit การเปลี่ยนแปลง และรัน `git push origin main` ก่อนจบงานเสมอ ห้ามทิ้งงานค้างไว้บน local เด็ดขาด
+
 ## 1. Project Overview & Stack
 - **Role:** Pocket Sentinel — autonomous health and telemetry monitoring service
 - **Stack:**

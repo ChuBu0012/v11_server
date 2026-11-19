@@ -432,3 +432,53 @@ func TestScrubber_FormatQuestionResult(t *testing.T) {
 		t.Fatalf("expected remaining logs in pre block, got: %s", formatted)
 	}
 }
+
+func TestScrubber_MarkdownToTelegramHTML(t *testing.T) {
+	s := NewOutputScrubber()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "User screenshot case: 1 + 1 is 2",
+			input:    "- ผลลัพธ์ของ 1 + 1 คือ **2**",
+			expected: "• ผลลัพธ์ของ 1 + 1 คือ <b>2</b>",
+		},
+		{
+			name:     "Multiple bullets with bold and inline code",
+			input:    "- ข้อ 1: ทำการแก้ไขไฟล์ `main.go` สำเร็จ\n- ข้อ 2: ผลทดสอบ **ผ่าน 100%**",
+			expected: "• ข้อ 1: ทำการแก้ไขไฟล์ <code>main.go</code> สำเร็จ\n• ข้อ 2: ผลทดสอบ <b>ผ่าน 100%</b>",
+		},
+		{
+			name:     "HTML escaping with markdown",
+			input:    "- ใช้แท็ก <div> & <script> ปลอดภัยด้วย **HTML Escape**",
+			expected: "• ใช้แท็ก &lt;div&gt; &amp; &lt;script&gt; ปลอดภัยด้วย <b>HTML Escape</b>",
+		},
+		{
+			name:     "Code block preserved",
+			input:    "ตัวอย่างโค้ด:\n```go\nfmt.Println(1 + 1)\n```",
+			expected: "ตัวอย่างโค้ด:\n<pre>fmt.Println(1 + 1)</pre>",
+		},
+		{
+			name:     "Markdown header to bold",
+			input:    "### สรุปผล\n- ผ่าน",
+			expected: "<b>สรุปผล</b>\n• ผ่าน",
+		},
+		{
+			name:     "Markdown link",
+			input:    "ดูรายละเอียดที่ [Pocket Sentinel](https://spindle-said-hemstitch.ngrok-free.dev)",
+			expected: `ดูรายละเอียดที่ <a href="https://spindle-said-hemstitch.ngrok-free.dev">Pocket Sentinel</a>`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := s.MarkdownToTelegramHTML(tc.input)
+			if actual != tc.expected {
+				t.Errorf("\nexpected: %q\ngot:      %q", tc.expected, actual)
+			}
+		})
+	}
+}
