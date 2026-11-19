@@ -15,16 +15,29 @@
 </head>
 <body class="schedule-page">
   <header class="topbar schedule-topbar">
-    <a class="brand schedule-brand" href="/" aria-label="Back to Pocket Sentinel dashboard"><span class="status-dot"></span><span class="brand-name">Pocket Sentinel</span><span class="brand-sub">v11</span></a>
-    <div class="schedule-top-actions"><span class="timezone-chip"><i class="ri-time-line" aria-hidden="true"></i> เวลาไทย</span><button class="schedule-pin-button" id="pin-open" type="button"><i class="ri-lock-line" aria-hidden="true"></i><span id="pin-state">ตั้งค่า PIN</span></button></div>
+    <div class="brand">
+      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+        <span class="status-dot ok"></span>
+        <span class="brand-name">Pocket Sentinel</span>
+        <span class="brand-sub">v11</span>
+      </a>
+    </div>
+    <div class="topbar-actions schedule-top-actions">
+      <span class="timezone-chip"><i class="ri-time-line" aria-hidden="true"></i> เวลาไทย</span>
+      <button class="schedule-pin-button" id="pin-open" type="button"><i class="ri-lock-line" aria-hidden="true"></i><span id="pin-state">ตั้งค่า PIN</span></button>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+        <i id="theme-icon" class="ri-sun-line"></i>
+      </button>
+    </div>
   </header>
   <nav class="sentinel-nav" aria-label="เมนูหลัก">
     <div class="sentinel-nav-inner">
-      <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
       <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
       <a class="sentinel-nav-link active" href="/schedule" aria-current="page"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-      <a class="sentinel-nav-link" href="/live"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-      <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+      <a class="sentinel-nav-link" href="/?tab=map"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
+      <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
     </div>
   </nav>
   <main class="schedule-shell">

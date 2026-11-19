@@ -326,23 +326,24 @@
       </a>
     </div>
     <div class="topbar-actions">
-      <a href="/" class="app-action-btn secondary" style="min-height: 32px; font-size: 12px;">
-        <i class="ri-arrow-left-line"></i> Dashboard
-      </a>
       <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN is configured' : 'Click to set PIN'">
         <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
         <span x-text="isUnlocked ? 'PIN Set' : 'Need PIN'"></span>
+      </button>
+      <button class="theme-toggle" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
+        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'"></i>
       </button>
     </div>
   </header>
 
   <nav class="sentinel-nav" aria-label="เมนูหลัก">
     <div class="sentinel-nav-inner">
-      <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
       <a class="sentinel-nav-link active" href="/watchtower" aria-current="page"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
       <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-      <a class="sentinel-nav-link" href="/live"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-      <a class="sentinel-nav-link" href="/tele-bridge"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+      <a class="sentinel-nav-link" href="/?tab=map"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
+      <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
     </div>
   </nav>
 

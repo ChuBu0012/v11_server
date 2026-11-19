@@ -269,6 +269,22 @@
 
   function setView(view){state.view=view;const agenda=view==='agenda';$('#month-grid').hidden=agenda;$('.weekday-row').hidden=agenda;$('#agenda-list').hidden=!agenda;$('#month-view-button').classList.toggle('selected',!agenda);$('#agenda-view-button').classList.toggle('selected',agenda);$('#month-view-button').setAttribute('aria-pressed',String(!agenda));$('#agenda-view-button').setAttribute('aria-pressed',String(agenda));renderAgenda();}
   function bind(){
+    const themeToggle = $('#theme-toggle');
+    if (themeToggle) {
+      const updateThemeIcon = () => {
+        const isDark = document.documentElement.dataset.theme !== 'light';
+        const icon = $('#theme-icon');
+        if (icon) icon.className = isDark ? 'ri-sun-line' : 'ri-moon-line';
+      };
+      updateThemeIcon();
+      themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.dataset.theme !== 'light';
+        const next = isDark ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('sentinel-theme', next);
+        updateThemeIcon();
+      });
+    }
     $('#pin-state').textContent=state.pin?'PIN พร้อมใช้':'ตั้งค่า PIN';$('#pin-open').addEventListener('click',()=>{$('#pin-error').textContent='';$('#reminder-pin').value=state.pin;$('#pin-dialog').showModal()});$('#pin-close').addEventListener('click',()=>$('#pin-dialog').close());$('#pin-form').addEventListener('submit',savePin);$('#forget-pin').addEventListener('click',()=>{state.pin='';localStorage.removeItem('reminder-pin');$('#pin-state').textContent='ตั้งค่า PIN';$('#pin-dialog').close();showToast('ล้าง PIN ที่บันทึกในอุปกรณ์แล้ว')});
     $('#add-reminder').addEventListener('click',()=>openForm());$('#dialog-close').addEventListener('click',()=>$('#reminder-dialog').close());$('#cancel-form').addEventListener('click',()=>$('#reminder-dialog').close());$('#reminder-form').addEventListener('submit',save);
     $('#nl-parse-btn')?.addEventListener('click', parseNLPrompt);

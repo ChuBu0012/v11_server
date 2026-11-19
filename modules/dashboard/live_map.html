@@ -25,52 +25,46 @@
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/live-map.css?v=29">
+  <link rel="stylesheet" href="/static/css/styles.css?v=30">
+  <link rel="stylesheet" href="/static/css/live-map.css?v=30">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js?v=29"></script>
+  <script defer src="/static/js/components/live-map.js?v=30"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
-<body class="live-map-body">
-  <main class="live-map-app" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
-    <!-- Header: Compact 56px Modern Utility Header -->
-    <header class="live-map-header">
-      <a class="live-brand" href="/" aria-label="Pocket Sentinel">
-        <span class="live-brand-mark">PS</span>
-        <div class="live-brand-text">
-          <strong>Pocket Sentinel</strong>
-          <small>Rendezvous</small>
-        </div>
+<body class="live-map-body" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
+  <!-- Unified Topbar -->
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+        <span class="status-dot ok" aria-hidden="true"></span>
+        <span class="brand-name">Pocket Sentinel</span>
+        <span class="brand-sub">v11</span>
       </a>
-      <div class="live-header-actions">
-        <span class="connection-pill" :class="{'is-live': connected}">
-          <span class="pulse-indicator"></span>
-          <span x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
-        </span>
-        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
-        </button>
-        <button class="icon-button theme-toggle-btn" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
-          <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'" aria-hidden="true"></i>
-        </button>
-        <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
-          <i class="ri-add-line" aria-hidden="true"></i>
-          <span>เพิ่มสถานที่</span>
-        </button>
-      </div>
-    </header>
+    </div>
+    <div class="topbar-actions">
+      <span class="connection-pill" :class="{'is-live': connected}">
+        <span class="pulse-indicator"></span>
+        <span x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
+      </span>
+      <button class="theme-toggle theme-toggle-btn" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
+        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'"></i>
+      </button>
+    </div>
+  </header>
 
-    <!-- Sub-Nav Bar -->
-    <nav class="sentinel-nav" aria-label="เมนูหลัก">
-      <div class="sentinel-nav-inner">
-        <a class="sentinel-nav-link" href="/"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
-        <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
-        <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
-        <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-        <a class="sentinel-nav-link active" href="/?tab=map" aria-current="page"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-        <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
-      </div>
-    </nav>
+  <!-- Unified Sub-Nav Bar -->
+  <nav class="sentinel-nav" aria-label="เมนูหลัก">
+    <div class="sentinel-nav-inner">
+      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
+      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link active" href="/?tab=map" aria-current="page"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
+      <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+    </div>
+  </nav>
 
+  <main class="wrap map-tab">
     <!-- Tracking Overview (Hero Status Banner) -->
     <section class="live-summary" aria-live="polite">
       <div class="summary-left">
@@ -82,6 +76,13 @@
       </div>
       <div class="summary-right">
         <span class="summary-time"><i class="ri-time-line" aria-hidden="true"></i> <span x-text="updatedText"></span></span>
+        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
+        </button>
+        <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
+          <i class="ri-add-line" aria-hidden="true"></i>
+          <span>เพิ่มสถานที่</span>
+        </button>
       </div>
     </section>
 

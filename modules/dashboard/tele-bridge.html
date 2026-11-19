@@ -28,16 +28,32 @@
 <body class="tele-bridge-page" x-data="relayComponent()">
 
   <!-- Top Navigation Bar -->
-  <header class="tele-nav">
-    <a href="/" class="tele-back-btn">
-      <i class="ri-arrow-left-line"></i> <span>หน้าหลัก Dashboard</span>
-    </a>
-    
-    <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN ตั้งค่าแล้ว (คลิกเพื่อเปลี่ยน)' : 'คลิกเพื่อตั้งค่า PIN'">
-      <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
-      <span x-text="isUnlocked ? 'PIN พร้อมใช้งาน' : 'ต้องการ PIN'"></span>
-    </button>
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+        <span class="status-dot ok"></span>
+        <span class="brand-name">Pocket Sentinel</span>
+        <span class="brand-sub">v11</span>
+      </a>
+    </div>
+    <div class="topbar-actions">
+      <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN ตั้งค่าแล้ว (คลิกเพื่อเปลี่ยน)' : 'คลิกเพื่อตั้งค่า PIN'">
+        <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
+        <span x-text="isUnlocked ? 'PIN พร้อมใช้งาน' : 'ต้องการ PIN'"></span>
+      </button>
+    </div>
   </header>
+
+  <nav class="sentinel-nav" aria-label="เมนูหลัก">
+    <div class="sentinel-nav-inner">
+      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
+      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
+      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
+      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
+      <a class="sentinel-nav-link" href="/?tab=map"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
+      <a class="sentinel-nav-link active" href="/?tab=telegram" aria-current="page"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
+    </div>
+  </nav>
 
   <!-- Main Card Container -->
   <main class="tele-card">

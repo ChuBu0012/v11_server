@@ -30,6 +30,14 @@ document.addEventListener('alpine:init', () => {
     tempPin: '',
     showPinModal: false,
 
+    // Theme state
+    theme: localStorage.getItem('sentinel-theme') || 'dark',
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.theme);
+      localStorage.setItem('sentinel-theme', this.theme);
+    },
+
     // Core data (primitive state & JSON items)
     summary: { total: 0, up: 0, down: 0, paused: 0, status: 'unknown' },
     watchers: [],

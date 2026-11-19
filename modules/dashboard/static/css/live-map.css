@@ -56,17 +56,17 @@ body.live-map-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-top: 8px;
-  padding-bottom: 32px;
+  padding: 16px 20px 32px;
 }
 
 .live-map-app {
-  width: min(100%, 1160px);
+  width: min(100%, 1120px);
   min-height: 100svh;
   margin: 0 auto;
-  padding: 0 20px 24px;
+  padding: 16px 20px 32px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 /* ============================================================
@@ -217,61 +217,6 @@ body.live-map-body {
 
 .add-place-pill i {
   font-size: 14px;
-}
-
-/* ============================================================
-   Unified Sub-Nav Bar across pages
-   ============================================================ */
-.sentinel-nav {
-  position: relative;
-  z-index: 10;
-  border-bottom: 1px solid var(--map-line);
-  margin-bottom: 4px;
-}
-
-.sentinel-nav-inner {
-  width: 100%;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.sentinel-nav-inner::-webkit-scrollbar { display: none; }
-
-.sentinel-nav-link {
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--map-muted);
-  text-decoration: none;
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  transition: all .16s ease;
-}
-
-.sentinel-nav-link i { font-size: 14px; }
-.sentinel-nav-link:hover { color: var(--map-text); background: rgba(255,255,255,.05); }
-[data-theme="light"] .sentinel-nav-link:hover { background: rgba(0,0,0,.04); }
-
-.sentinel-nav-link.active {
-  color: var(--map-blue);
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.25);
-}
-
-[data-theme="light"] .sentinel-nav-link.active {
-  color: #0284c7;
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.2);
 }
 
 /* ============================================================
