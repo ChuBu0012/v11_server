@@ -16,7 +16,7 @@ func TestExecutor(t *testing.T) {
 			return []byte(" 02:22:00 up 3:15, 1 user, load average: 0.15, 0.12, 0.08"), nil
 		case "slow":
 			select {
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(2 * time.Second):
 				return []byte("done"), nil
 			case <-ctx.Done():
 				return nil, ctx.Err()

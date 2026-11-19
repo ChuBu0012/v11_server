@@ -217,6 +217,13 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		if workDir := os.Getenv("AGY_WORK_DIR"); workDir != "" {
 			runnerOpts = append(runnerOpts, bot.WithCustomWorkDir(workDir))
 		}
+		if timeoutStr := os.Getenv("AGY_TIMEOUT"); timeoutStr != "" {
+			if d, err := time.ParseDuration(timeoutStr); err == nil && d > 0 {
+				runnerOpts = append(runnerOpts, bot.WithCustomTimeout(d))
+			} else {
+				log.Printf("Warning: invalid AGY_TIMEOUT %q, using default", timeoutStr)
+			}
+		}
 		agentRunner := bot.NewAgentRunner(runnerOpts...)
 		routerOpts = append(routerOpts, bot.WithAgentRunner(agentRunner))
 

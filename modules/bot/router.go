@@ -372,19 +372,23 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		}
 
 		// Send immediate ACK (< 500ms)
+		timeoutDesc := "1 ชั่วโมง"
+		if r.runner != nil && r.runner.Timeout() > 0 {
+			timeoutDesc = formatTimeoutTH(r.runner.Timeout())
+		}
 		promptSnippet := cleanPrompt
 		if utf8.RuneCountInString(promptSnippet) > 60 {
 			runes := []rune(promptSnippet)
 			promptSnippet = string(runes[:60]) + "..."
 		}
-		ackHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: 3 นาที\n⏱ กำลังประมวลผลในเบื้องหลัง...\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
-			r.scrubber.EscapeHTML(promptSnippet), strings.ToUpper(effort))
+		ackHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏱ กำลังประมวลผลในเบื้องหลัง...\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
+			r.scrubber.EscapeHTML(promptSnippet), strings.ToUpper(effort), timeoutDesc)
 		ackMsg, ackErr := r.sendMessage(ctx, chatID, ackHTML, keyboard)
 		ackSent <- ackMsg
 
 		// Start in-place heartbeat ticker if message was sent successfully
 		if ackErr == nil && ackMsg != nil && ackMsg.MessageID > 0 {
-			go func(msgID int64, snippet, eff string) {
+			go func(msgID int64, snippet, eff, tDesc string) {
 				ticker := time.NewTicker(15 * time.Second)
 				defer ticker.Stop()
 				start := time.Now()
@@ -398,14 +402,14 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 						if r.ramProvider != nil {
 							ramMB = r.ramProvider()
 						}
-						progressHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: 3 นาที\n⏳ <b>กำลังประมวลผล...</b> (ผ่านไปแล้ว %s | RAM: %.1f MB)\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
-							r.scrubber.EscapeHTML(snippet), strings.ToUpper(eff), elapsed.String(), ramMB)
+						progressHTML := fmt.Sprintf("🤖 <b>รับงานแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏳ <b>กำลังประมวลผล...</b> (ผ่านไปแล้ว %s | RAM: %.1f MB)\n💡 คุณสามารถไปทำอย่างอื่นได้เลย ระบบจะแจ้งเตือนเมื่อเสร็จสิ้น",
+							r.scrubber.EscapeHTML(snippet), strings.ToUpper(eff), tDesc, elapsed.String(), ramMB)
 						editCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 						_ = r.editMessage(editCtx, chatID, msgID, progressHTML, nil)
 						cancel()
 					}
 				}
-			}(ackMsg.MessageID, promptSnippet, effort)
+			}(ackMsg.MessageID, promptSnippet, effort, timeoutDesc)
 		}
 
 		return ackErr
@@ -546,4 +550,34 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		_, err := r.sendMessage(ctx, chatID, unknownHTML, keyboard)
 		return err
 	}
+}
+
+// formatTimeoutTH formats a duration into a human-readable Thai string.
+func formatTimeoutTH(d time.Duration) string {
+	if d <= 0 {
+		return "ไม่จำกัด"
+	}
+	if d%time.Hour == 0 {
+		return fmt.Sprintf("%d ชั่วโมง", d/time.Hour)
+	}
+	if d > time.Hour {
+		hrs := d / time.Hour
+		mins := (d % time.Hour) / time.Minute
+		if mins > 0 {
+			return fmt.Sprintf("%d ชั่วโมง %d นาที", hrs, mins)
+		}
+		return fmt.Sprintf("%d ชั่วโมง", hrs)
+	}
+	if d%time.Minute == 0 {
+		return fmt.Sprintf("%d นาที", d/time.Minute)
+	}
+	if d >= time.Minute {
+		mins := d / time.Minute
+		secs := (d % time.Minute) / time.Second
+		if secs > 0 {
+			return fmt.Sprintf("%d นาที %d วินาที", mins, secs)
+		}
+		return fmt.Sprintf("%d นาที", mins)
+	}
+	return fmt.Sprintf("%d วินาที", int(d.Seconds()))
 }

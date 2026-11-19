@@ -594,19 +594,22 @@ func TestRunner_DefaultOptions(t *testing.T) {
 	if r.workDir != "/data/data/com.termux/files/home/go-app" {
 		t.Errorf("expected default workDir, got %q", r.workDir)
 	}
-	if r.timeout != 3*time.Minute {
-		t.Errorf("expected default timeout 3m, got %v", r.timeout)
+	if r.timeout != 1*time.Hour {
+		t.Errorf("expected default timeout 1h, got %v", r.timeout)
+	}
+	if r.Timeout() != 1*time.Hour {
+		t.Errorf("expected Timeout() getter to return 1h, got %v", r.Timeout())
 	}
 
 	// Zero or negative timeout should retain default
 	r2 := NewAgentRunner(WithCustomTimeout(0))
-	if r2.timeout != 3*time.Minute {
-		t.Errorf("expected 0 timeout to retain default 3m, got %v", r2.timeout)
+	if r2.timeout != 1*time.Hour {
+		t.Errorf("expected 0 timeout to retain default 1h, got %v", r2.timeout)
 	}
 
 	r3 := NewAgentRunner(WithCustomTimeout(-1 * time.Minute))
-	if r3.timeout != 3*time.Minute {
-		t.Errorf("expected negative timeout to retain default 3m, got %v", r3.timeout)
+	if r3.timeout != 1*time.Hour {
+		t.Errorf("expected negative timeout to retain default 1h, got %v", r3.timeout)
 	}
 
 	// nil exec should retain default

@@ -485,8 +485,8 @@ func TestRouter_Task_BenignExecution(t *testing.T) {
 	if !strings.Contains(ackMsg.Text, "รับงานแล้ว") || !strings.Contains(ackMsg.Text, "เช็ค memory และ disk") {
 		t.Errorf("ACK message content mismatch: %s", ackMsg.Text)
 	}
-	if !strings.Contains(ackMsg.Text, "3 นาที") {
-		t.Errorf("ACK message should mention 3-minute timeout: %s", ackMsg.Text)
+	if !strings.Contains(ackMsg.Text, "1 ชั่วโมง") {
+		t.Errorf("ACK message should mention 1-hour timeout: %s", ackMsg.Text)
 	}
 
 	// Message 2: Result
@@ -980,5 +980,29 @@ func TestRouter_EditMessage(t *testing.T) {
 	}
 	if !strings.Contains(editedText, "กำลังประมวลผล") {
 		t.Errorf("expected progress text, got: %s", editedText)
+	}
+}
+
+func TestFormatTimeoutTH(t *testing.T) {
+	tests := []struct {
+		duration time.Duration
+		expected string
+	}{
+		{0, "ไม่จำกัด"},
+		{-1 * time.Minute, "ไม่จำกัด"},
+		{30 * time.Second, "30 วินาที"},
+		{1 * time.Minute, "1 นาที"},
+		{3 * time.Minute, "3 นาที"},
+		{1 * time.Hour, "1 ชั่วโมง"},
+		{2 * time.Hour, "2 ชั่วโมง"},
+		{90 * time.Minute, "1 ชั่วโมง 30 นาที"},
+		{65 * time.Second, "1 นาที 5 วินาที"},
+	}
+
+	for _, tc := range tests {
+		actual := formatTimeoutTH(tc.duration)
+		if actual != tc.expected {
+			t.Errorf("formatTimeoutTH(%v) = %q, expected %q", tc.duration, actual, tc.expected)
+		}
 	}
 }

@@ -104,8 +104,13 @@ func TestHardwareTorch(t *testing.T) {
 		t.Fatal("Torch should be ON before timer expiry")
 	}
 
-	// Wait for auto-off timer (50ms + margin)
-	time.Sleep(100 * time.Millisecond)
+	// Wait for auto-off timer (50ms + margin with polling to prevent test flakiness under load)
+	for i := 0; i < 20; i++ {
+		if !torch.IsOn() {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 
 	if torch.IsOn() {
 		t.Error("Expected torch to be automatically turned OFF after timer expiry")

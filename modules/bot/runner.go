@@ -22,6 +22,9 @@ var (
 	ErrTaskTimeout = errors.New("task execution timed out")
 )
 
+// DefaultTaskTimeout is the default duration allocated for background agy execution (1 hour).
+const DefaultTaskTimeout = 1 * time.Hour
+
 // TaskRequest represents a user request to run an agy task.
 type TaskRequest struct {
 	ChatID    int64
@@ -93,13 +96,23 @@ func NewAgentRunner(opts ...AgentRunnerOption) *AgentRunner {
 	r := &AgentRunner{
 		binPath:    "~/.local/bin/agy",
 		workDir:    "/data/data/com.termux/files/home/go-app",
-		timeout:    3 * time.Minute,
+		timeout:    DefaultTaskTimeout,
 		execRunner: DefaultSubprocessRunner,
 	}
 	for _, opt := range opts {
 		opt(r)
 	}
 	return r
+}
+
+// Timeout returns the configured task execution timeout.
+func (r *AgentRunner) Timeout() time.Duration {
+	if r == nil {
+		return DefaultTaskTimeout
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.timeout
 }
 
 // CanAcquireLock checks whether the runner is currently idle without modifying state.
