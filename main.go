@@ -1,7 +1,6 @@
 package main
 
 import (
-	"compress/gzip"
 	"context"
 	"crypto/subtle"
 	"database/sql"
@@ -352,7 +351,6 @@ func setupRouter(app *App) *gin.Engine {
 			param.ClientIP, param.TimeStamp.Format("2006/01/02 - 15:04:05"), param.Method,
 			redactedRequestPath(param.Path), param.StatusCode, param.Latency, param.ErrorMessage)
 	}))
-	r.Use(gzipMiddleware())
 
 	// Register modular apps
 	app.dashboard.RegisterRoutes(r)
@@ -462,55 +460,6 @@ func setupRouter(app *App) *gin.Engine {
 	})
 
 	return r
-}
-
-// gzipMiddleware compresses API and text responses when the client supports gzip.
-// Uses a pooled gzip.Writer to minimise per-request allocations.
-var gzipWriterPool = sync.Pool{
-	New: func() any {
-		gz, _ := gzip.NewWriterLevel(nil, gzip.BestSpeed)
-		return gz
-	},
-}
-
-// gzipResponseWriter wraps gin.ResponseWriter so Write/WriteString go through gzip.
-type gzipResponseWriter struct {
-	gin.ResponseWriter
-	gz *gzip.Writer
-}
-
-func (g *gzipResponseWriter) Write(data []byte) (int, error) {
-	return g.gz.Write(data)
-}
-
-func (g *gzipResponseWriter) WriteString(s string) (int, error) {
-	return g.gz.Write([]byte(s))
-}
-
-func gzipMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
-			c.Next()
-			return
-		}
-
-		gz := gzipWriterPool.Get().(*gzip.Writer)
-		// gz writes compressed bytes directly to the underlying http.ResponseWriter.
-		gz.Reset(c.Writer)
-
-		grw := &gzipResponseWriter{ResponseWriter: c.Writer, gz: gz}
-		c.Writer = grw
-		c.Header("Content-Encoding", "gzip")
-		c.Header("Vary", "Accept-Encoding")
-		c.Header("Content-Length", "")
-
-		defer func() {
-			_ = gz.Close()
-			gzipWriterPool.Put(gz)
-		}()
-
-		c.Next()
-	}
 }
 
 func validateMonitorEvidence(e ai.MonitorEvidence) error {
