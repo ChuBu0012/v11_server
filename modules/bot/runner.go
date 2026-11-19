@@ -189,6 +189,9 @@ func (r *AgentRunner) DispatchAsync(ctx context.Context, req TaskRequest, onComp
 
 		cleanEnv := SanitizeEnvironment(os.Environ())
 		effort := strings.ToLower(strings.TrimSpace(req.Effort))
+		if effort == "median" {
+			effort = "medium"
+		}
 		if effort != "low" && effort != "medium" && effort != "high" && effort != "max" {
 			effort = "medium"
 		}

@@ -53,11 +53,14 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 			{{Text: "🔄 สถานะ", CallbackData: "status_refresh"}, {Text: "🏓 Ping", CallbackData: "ping_check"}},
 			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}, copyCommand("🗺️ ดูพิกัด /live", "/live")},
 			{
+				copyCommand("💬 ถาม agy", "/ask [median] อธิบายภาพรวมสถานะระบบ Pocket Sentinel ในปัจจุบัน"),
 				copyCommand("📋 เช็คเครื่อง", "/task [low] ตรวจสอบ RAM, พื้นที่ disk และสถานะ PM2 go-server"),
-				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ ngrok-tunnel"),
 			},
 			{
+				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ ngrok-tunnel"),
 				copyCommand("📋 Task status", "/task_status"),
+			},
+			{
 				copyCommand("📰 Digest", "/digest"),
 				copyCommand("💾 Disk", "/exec df -h"),
 			},

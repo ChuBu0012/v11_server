@@ -124,9 +124,9 @@ func (s *OutputScrubber) EscapeHTML(text string) string {
 }
 
 // ExtractSummary extracts an optional structured summary section from agent execution output.
-// It looks for markdown headers like '### สรุปการดำเนินงาน', '### สรุปการทำงาน', or 'สรุปการทำงาน:'.
+// It looks for markdown headers like '### สรุปการดำเนินงาน', '### สรุปคำตอบ', '### สรุปการทำงาน', or 'สรุปการทำงาน:'.
 func (s *OutputScrubber) ExtractSummary(text string) (string, string) {
-	re := regexp.MustCompile(`(?i)(?:^|\n)(?:###?\s*(?:สรุปการดำเนินงาน|สรุปการทำงาน|สรุปผลการทำงาน|สรุปผล|summary)[\s:]*|สรุปการทำงาน:?\s*\n)([\s\S]*)$`)
+	re := regexp.MustCompile(`(?i)(?:^|\n)(?:###?\s*(?:สรุปการดำเนินงาน|สรุปคำตอบ|สรุปการทำงาน|สรุปผลการทำงาน|สรุปผล|summary)[\s:]*|สรุปการทำงาน:?\s*\n)([\s\S]*)$`)
 	loc := re.FindStringSubmatchIndex(text)
 	if loc != nil && len(loc) >= 4 {
 		summaryPart := strings.TrimSpace(text[loc[2]:loc[3]])
@@ -136,6 +136,43 @@ func (s *OutputScrubber) ExtractSummary(text string) (string, string) {
 		}
 	}
 	return "", text
+}
+
+// FormatQuestionResult formats a TaskResult for Q&A (/ask) with question-specific headers and formatting.
+func (s *OutputScrubber) FormatQuestionResult(result TaskResult, ramMB float64) string {
+	scrubbed := s.Scrub(result.Output)
+	summary, remaining := s.ExtractSummary(scrubbed)
+
+	displayLog := remaining
+	if strings.TrimSpace(displayLog) == "" {
+		displayLog = scrubbed
+	}
+
+	truncated := s.Truncate(displayLog, MaxTelegramOutputLength)
+	sanitized := s.EscapeHTML(truncated)
+
+	durationStr := formatDuration(result.Duration)
+	ramStr := fmt.Sprintf("%.1fMB", ramMB)
+
+	var summaryBlock string
+	if summary != "" {
+		sanitizedSummary := s.EscapeHTML(s.Truncate(summary, 1000))
+		summaryBlock = fmt.Sprintf("\n\n📝 <b>สรุปคำตอบ:</b>\n%s", sanitizedSummary)
+	}
+
+	if result.Success {
+		return fmt.Sprintf("💡 <b>คำตอบจาก Agent (agy):</b>\n⏱ ใช้เวลา: %s | 💾 RAM ปัจจุบัน: %s%s\n\n📋 รายละเอียดคำตอบ:\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
+			durationStr, ramStr, summaryBlock, sanitized)
+	}
+
+	scrubbedErr := s.Scrub(result.ErrorMessage)
+	truncatedErr := s.Truncate(scrubbedErr, MaxErrorMessageLength)
+	errMsg := s.EscapeHTML(truncatedErr)
+	if errMsg == "" {
+		errMsg = "Unknown error"
+	}
+	return fmt.Sprintf("❌ ไม่สามารถตอบคำถามได้ (Timeout / Error)!\n⏱ ใช้เวลา: %s\n\n⚠️ รายละเอียด: %s%s\n---------------------------------------------\n<pre>%s</pre>\n---------------------------------------------",
+		durationStr, errMsg, summaryBlock, sanitized)
 }
 
 // FormatResult formats a TaskResult with status emoji, duration, RAM usage, and a sanitized log block.

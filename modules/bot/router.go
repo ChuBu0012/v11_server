@@ -190,7 +190,7 @@ func (r *Router) editMessage(ctx context.Context, chatID int64, messageID int64,
 	return nil
 }
 
-// ParseTaskEffort extracts an optional [low|medium|high|max] or --effort=... prefix
+// ParseTaskEffort extracts an optional [low|medium|median|high|max] or --effort=... prefix
 // and returns the normalized effort (low, medium, high, max) and the clean prompt.
 func ParseTaskEffort(input string) (string, string) {
 	trimmed := strings.TrimSpace(input)
@@ -198,6 +198,9 @@ func ParseTaskEffort(input string) (string, string) {
 		closeIdx := strings.Index(trimmed, "]")
 		if closeIdx > 1 {
 			eff := strings.ToLower(strings.TrimSpace(trimmed[1:closeIdx]))
+			if eff == "median" {
+				eff = "medium"
+			}
 			switch eff {
 			case "low", "medium", "high", "max":
 				rest := strings.TrimSpace(trimmed[closeIdx+1:])
@@ -208,6 +211,9 @@ func ParseTaskEffort(input string) (string, string) {
 	if strings.HasPrefix(trimmed, "--effort=") {
 		parts := strings.SplitN(trimmed, " ", 2)
 		eff := strings.ToLower(strings.TrimPrefix(parts[0], "--effort="))
+		if eff == "median" {
+			eff = "medium"
+		}
 		switch eff {
 		case "low", "medium", "high", "max":
 			rest := ""
@@ -279,7 +285,8 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/status</code> สุขภาพเครื่องและ Tunnel\n" +
 			"<code>/ping</code> ตรวจการตอบสนอง\n" +
 			"<code>/torch status</code> ตรวจไฟฉาย\n\n" +
-			"<b>🤖 งานและเครื่องมือ</b>\n" +
+			"<b>🤖 ถาม-ตอบ และงาน Agent</b>\n" +
+			"<code>/ask [low|median|high] &lt;คำถาม&gt;</code> ถามคำถามกับ Agent\n" +
 			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
 			"<code>/task_status</code> ดูงาน Agent\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
@@ -442,6 +449,151 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 
 		return ackErr
 
+	case "/ask":
+		if r.runner == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Agent Runner ไม่ได้ถูกตั้งค่า:</b> Agent Runner feature is not configured.", keyboard)
+			return err
+		}
+
+		rawInput := ""
+		if len(text) > len(parts[0]) {
+			rawInput = strings.TrimSpace(text[len(parts[0]):])
+		}
+
+		if rawInput == "" {
+			usageHTML := "💬 <b>ถามคำถามกับ Agent (agy)</b>\n" +
+				"ส่งคำถามในรูปแบบนี้:\n<code>/ask [low|median|high] &lt;คำถามหรือข้อสงสัย&gt;</code>\n\n" +
+				"⚡ <b>ระดับความลึกในการคิด (Effort):</b>\n" +
+				"• <code>[low]</code> คำถามง่าย ๆ / ตอบเร็ว\n" +
+				"• <code>[median]</code> หรือ <code>[medium]</code> คำถามทั่วไป / วิเคราะห์มาตรฐาน (ค่าเริ่มต้น)\n" +
+				"• <code>[high]</code> คิดวิเคราะห์เชิงลึก / ซับซ้อน\n\n" +
+				"💡 ตัวอย่าง:\n" +
+				"<code>/ask [low] ระบบ Pocket Sentinel ทำหน้าที่อะไรบ้าง</code>"
+			_, err := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
+			return err
+		}
+
+		effort, cleanPrompt := ParseTaskEffort(rawInput)
+		if cleanPrompt == "" {
+			cleanPrompt = rawInput
+		}
+
+		if !r.runner.CanAcquireLock() {
+			st := r.runner.Status()
+			elapsedStr := "สักครู่"
+			if st.Elapsed > 0 {
+				elapsedStr = st.Elapsed.Round(time.Second).String()
+			}
+			busyHTML := fmt.Sprintf("⏳ <b>Agent กำลังทำงานอื่นอยู่:</b> เริ่มเมื่อ %s ที่แล้ว\nไม่สามารถรับคำถามซ้อนได้ในขณะนี้ กรุณารอสักครู่แล้วลองใหม่อีกครั้ง\n(พิมพ์ /task_status เพื่อดูสถานะ)", elapsedStr)
+			_, err := r.sendMessage(ctx, chatID, busyHTML, keyboard)
+			return err
+		}
+
+		framedPrompt, err := r.guard.ValidateAndFrameQuestion(cleanPrompt)
+		if err != nil {
+			if errors.Is(err, ErrPromptTooLong) {
+				lenHTML := fmt.Sprintf("⚠️ <b>ความยาวข้อความเกินกำหนด:</b> คำถามต้องไม่เกิน %d ตัวอักษร (ปัจจุบัน %d ตัวอักษร)",
+					MaxPromptLength, utf8.RuneCountInString(cleanPrompt))
+				_, sendErr := r.sendMessage(ctx, chatID, lenHTML, keyboard)
+				return sendErr
+			}
+			if errors.Is(err, ErrPromptEmpty) {
+				usageHTML := "💬 <b>ถามคำถามกับ Agent (agy)</b>\n<code>/ask [low|median|high] &lt;คำถาม&gt;</code>\n\n" +
+					"กรุณาระบุคำถามที่ต้องการถาม Agent"
+				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
+				return sendErr
+			}
+			secHTML := "🛡️ <b>Security Warning:</b> คำถามถูกปฏิเสธเนื่องจากละเมิดนโยบายความปลอดภัย (Prompt Injection / Forbidden Content)"
+			_, sendErr := r.sendMessage(ctx, chatID, secHTML, keyboard)
+			return sendErr
+		}
+
+		taskReq := TaskRequest{
+			ChatID:    chatID,
+			RawPrompt: framedPrompt,
+			Effort:    effort,
+			CreatedAt: time.Now(),
+		}
+
+		ackSent := make(chan *Message, 1)
+		stopHeartbeat := make(chan struct{})
+
+		dispatchErr := r.runner.DispatchAsync(context.Background(), taskReq, func(result TaskResult) {
+			<-ackSent // Guarantee ACK has finished sending before transmitting result
+			select {
+			case <-stopHeartbeat:
+			default:
+				close(stopHeartbeat) // Stop heartbeat ticker if still active
+			}
+
+			ramMB := 0.0
+			if r.ramProvider != nil {
+				ramMB = r.ramProvider()
+			}
+			formatted := r.scrubber.FormatQuestionResult(result, ramMB)
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_, sendResErr := r.sendMessage(bgCtx, chatID, formatted, nil)
+			if sendResErr != nil {
+				log.Printf("[bot:router] failed to send question result to chat %d: %v", chatID, sendResErr)
+			}
+		})
+
+		if errors.Is(dispatchErr, ErrAgentBusy) {
+			ackSent <- nil
+			busyHTML := "⏳ <b>Agent กำลังทำงานอื่นอยู่:</b> ไม่สามารถรับคำถามซ้อนได้ในขณะนี้ กรุณารอสักครู่แล้วลองใหม่อีกครั้ง\n(พิมพ์ /task_status เพื่อดูสถานะ)"
+			_, sendErr := r.sendMessage(ctx, chatID, busyHTML, keyboard)
+			return sendErr
+		}
+		if dispatchErr != nil {
+			ackSent <- nil
+			_, sendErr := r.sendMessage(ctx, chatID, fmt.Sprintf("❌ ไม่สามารถประมวลผลคำถามได้: %s", r.scrubber.EscapeHTML(dispatchErr.Error())), keyboard)
+			return sendErr
+		}
+
+		// Send immediate ACK (< 500ms)
+		timeoutDesc := "1 ชั่วโมง"
+		if r.runner != nil && r.runner.Timeout() > 0 {
+			timeoutDesc = formatTimeoutTH(r.runner.Timeout())
+		}
+		promptSnippet := cleanPrompt
+		if utf8.RuneCountInString(promptSnippet) > 60 {
+			runes := []rune(promptSnippet)
+			promptSnippet = string(runes[:60]) + "..."
+		}
+		ackHTML := fmt.Sprintf("💬 <b>รับคำถามแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏱ กำลังค้นหาคำตอบในเบื้องหลัง...\n💡 ระบบจะแจ้งเตือนเมื่อได้รับคำตอบจาก agy",
+			r.scrubber.EscapeHTML(promptSnippet), strings.ToUpper(effort), timeoutDesc)
+		ackMsg, ackErr := r.sendMessage(ctx, chatID, ackHTML, keyboard)
+		ackSent <- ackMsg
+
+		// Start in-place heartbeat ticker if message was sent successfully
+		if ackErr == nil && ackMsg != nil && ackMsg.MessageID > 0 {
+			go func(msgID int64, snippet, eff, tDesc string) {
+				ticker := time.NewTicker(15 * time.Second)
+				defer ticker.Stop()
+				start := time.Now()
+				for {
+					select {
+					case <-stopHeartbeat:
+						return
+					case <-ticker.C:
+						elapsed := time.Since(start).Round(time.Second)
+						ramMB := 0.0
+						if r.ramProvider != nil {
+							ramMB = r.ramProvider()
+						}
+						progressHTML := fmt.Sprintf("💬 <b>รับคำถามแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏳ <b>กำลังวิเคราะห์คำตอบ...</b> (ผ่านไปแล้ว %s | RAM: %.1f MB)\n🔍 agy กำลังคิดและประมวลผลคำตอบ...",
+							r.scrubber.EscapeHTML(snippet), strings.ToUpper(eff), tDesc, elapsed.String(), ramMB)
+						editCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+						_ = r.editMessage(editCtx, chatID, msgID, progressHTML, nil)
+						cancel()
+					}
+				}
+			}(ackMsg.MessageID, promptSnippet, effort, timeoutDesc)
+		}
+
+		return ackErr
+
 	case "/task_status":
 		if r.runner == nil {
 			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Agent Runner ไม่ได้ถูกตั้งค่า:</b> Agent Runner feature is not configured.", keyboard)
@@ -451,7 +603,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		st := r.runner.Status()
 		if !st.IsRunning {
 			idleHTML := "💤 <b>สถานะ Agent:</b> ว่าง (Idle)\n" +
-				"พร้อมรับคำสั่งใหม่ สามารถสั่งงานได้ด้วย <code>/task &lt;คำสั่ง&gt;</code>"
+				"พร้อมรับคำสั่งใหม่ สามารถสั่งงานได้ด้วย <code>/task &lt;คำสั่ง&gt;</code> หรือถามด้วย <code>/ask &lt;คำถาม&gt;</code>"
 			_, err := r.sendMessage(ctx, chatID, idleHTML, keyboard)
 			return err
 		}

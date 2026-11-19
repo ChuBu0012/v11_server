@@ -402,3 +402,33 @@ Memory: 18MB
 		t.Fatalf("expected remaining logs in pre block, got: %s", formatted)
 	}
 }
+
+func TestScrubber_FormatQuestionResult(t *testing.T) {
+	s := NewOutputScrubber()
+
+	res := TaskResult{
+		Success:  true,
+		Duration: 12 * time.Second,
+		Output: `กำลังวิเคราะห์คำถามเกี่ยวกับระบบ...
+โมดูลหลักประกอบด้วย bot, telemetry, dashboard, location, alerts
+
+### สรุปคำตอบ
+- Pocket Sentinel มี 5 โมดูลหลักที่ทำงานร่วมกัน
+- ระบบจัดการผ่าน PM2 และสื่อสารผ่าน Telegram Long Polling`,
+	}
+
+	formatted := s.FormatQuestionResult(res, 21.0)
+
+	if !strings.Contains(formatted, "💡 <b>คำตอบจาก Agent (agy):</b>") {
+		t.Fatalf("expected question header, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "📝 <b>สรุปคำตอบ:</b>") {
+		t.Fatalf("expected question summary header, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "Pocket Sentinel มี 5 โมดูลหลักที่ทำงานร่วมกัน") {
+		t.Fatalf("expected summary bullet 1, got: %s", formatted)
+	}
+	if !strings.Contains(formatted, "กำลังวิเคราะห์คำถามเกี่ยวกับระบบ...") {
+		t.Fatalf("expected remaining logs in pre block, got: %s", formatted)
+	}
+}
