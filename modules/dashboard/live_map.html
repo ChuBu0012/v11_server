@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="referrer" content="no-referrer">
+  <title>Location &amp; Rendezvous — Pocket Sentinel</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+  <link rel="stylesheet" href="/static/css/live-map.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+  <script defer src="/static/js/components/live-map.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body class="live-map-body">
+  <main class="live-map-app" x-data="liveMap" x-init="init()">
+    <header class="live-map-header">
+      <a class="live-brand" href="/" aria-label="Pocket Sentinel">
+        <span class="live-brand-mark">PS</span>
+        <span><strong>Pocket Sentinel</strong><small>Location &amp; Rendezvous</small></span>
+      </a>
+      <div class="live-header-actions">
+        <span class="connection-pill" :class="{'is-live': connected}" x-text="connected ? '● กำลังอัปเดต' : '○ รอการเชื่อมต่อ'"></span>
+        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชตำแหน่ง" title="รีเฟรช">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
+        </button>
+        <button class="icon-button" type="button" @click="openSettings()" aria-label="ตั้งค่าการแจ้งเตือนและสถานที่" title="ตั้งค่า">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="m19.4 15 .1.1 1.2.9-1.2 2.1-1.4-.6a8 8 0 0 1-1.5.9l-.2 1.5h-2.5l-.3-1.5a8 8 0 0 1-1.5-.9l-1.4.6-1.2-2.1 1.2-.9a8 8 0 0 1 0-1.8l-1.2-.9 1.2-2.1 1.4.6a8 8 0 0 1 1.5-.9l.3-1.5h2.5l.2 1.5a8 8 0 0 1 1.5.9l1.4-.6 1.2 2.1-1.2.9a8 8 0 0 1 0 1.8Z" transform="translate(-1 -1) scale(.95)"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="live-summary" aria-live="polite">
+      <div class="summary-status">
+        <span class="summary-kicker">สถานะระยะห่าง</span>
+        <strong x-text="proximityText"></strong>
+        <span class="summary-distance" x-text="distanceText"></span>
+      </div>
+      <div class="summary-updated"><span class="summary-kicker">อัปเดตล่าสุด</span><strong x-text="updatedText"></strong></div>
+    </section>
+
+    <section class="map-shell" aria-label="แผนที่ตำแหน่ง">
+      <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของคุณและเพื่อน"></div>
+      <div class="map-loading" x-show="!mapReady" x-cloak>
+        <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
+      </div>
+      <div class="map-controls">
+        <button type="button" class="map-control" @click="centerOnDevices()" title="จัดตำแหน่งแผนที่">⌖</button>
+        <button type="button" class="map-control" :class="{'is-selected': showTrail}" @click="toggleTrail()" title="แสดงเส้นทาง 24 ชั่วโมง">⌁</button>
+      </div>
+      <div class="map-legend">
+        <span><i class="legend-dot legend-me"></i> คุณ</span><span><i class="legend-dot legend-friend"></i> เพื่อน</span>
+      </div>
+    </section>
+
+    <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
+      <article class="device-card device-card-me">
+        <div class="device-card-heading"><span class="device-avatar">คุณ</span><div><strong>ตำแหน่งของคุณ</strong><small x-text="deviceAge(me)"></small></div><span class="device-color"></span></div>
+        <div class="device-metrics">
+          <div><span>แบตเตอรี่</span><strong x-text="batteryText(me)"></strong></div>
+          <div><span>ความเร็ว</span><strong x-text="speedText(me)"></strong></div>
+          <div><span>ความแม่นยำ</span><strong x-text="accuracyText(me)"></strong></div>
+        </div>
+      </article>
+      <article class="device-card device-card-friend">
+        <div class="device-card-heading"><span class="device-avatar">เพื่อน</span><div><strong>ตำแหน่งของเพื่อน</strong><small x-text="deviceAge(friend)"></small></div><span class="device-color"></span></div>
+        <div class="device-metrics">
+          <div><span>แบตเตอรี่</span><strong x-text="batteryText(friend)"></strong></div>
+          <div><span>ความเร็ว</span><strong x-text="speedText(friend)"></strong></div>
+          <div><span>ความแม่นยำ</span><strong x-text="accuracyText(friend)"></strong></div>
+        </div>
+      </article>
+    </section>
+    <p class="live-error" x-show="errorText" x-text="errorText" x-cloak></p>
+    <footer class="live-footer"><span>แผนที่จะรีเฟรชทุก 15 วินาที</span><span>ข้อมูลตำแหน่งจัดเก็บใน Pocket Sentinel</span></footer>
+
+    <div class="settings-backdrop" x-show="settingsOpen" x-transition.opacity @click="settingsOpen = false" x-cloak></div>
+    <aside class="settings-drawer" x-show="settingsOpen" :class="{'is-open': settingsOpen}" aria-label="ตั้งค่า Location Tracker" :aria-hidden="!settingsOpen" x-cloak>
+      <div class="drawer-heading"><div><span class="summary-kicker">สำหรับเจ้าของระบบ</span><h2>ตั้งค่า Tracker</h2></div><button class="icon-button" type="button" @click="settingsOpen = false" aria-label="ปิด">×</button></div>
+      <label class="settings-pin-label">Relay PIN<input type="password" x-model="pin" inputmode="numeric" autocomplete="current-password" placeholder="กรอก PIN เพื่อจัดการ"></label>
+      <div class="settings-actions"><button type="button" class="secondary-button" @click="loadManagement()">โหลดการตั้งค่า</button><span class="settings-message" x-text="settingsMessage"></span></div>
+      <section class="settings-section">
+        <h3>การแจ้งเตือน Discord</h3>
+        <label class="toggle-row"><span>พบกัน / แยกย้าย</span><input type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()"></label>
+        <label class="toggle-row"><span>เข้า / ออกจากสถานที่</span><input type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()"></label>
+        <label class="toggle-row"><span>แบตเตอรี่ต่ำ</span><input type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
+        <p class="settings-note">พบกัน ≤ 80 ม. · แยกย้าย ≥ 250 ม. · พักแจ้งซ้ำ 5 นาที<br>แบตเตอรี่ ≤ 15% และไม่ได้ชาร์จ แจ้งซ้ำทุก 2 ชม.</p>
+      </section>
+      <section class="settings-section">
+        <h3>สถานที่ (Geofence)</h3>
+        <form class="geofence-form" @submit.prevent="createGeofence()">
+          <label>ชื่อสถานที่<input type="text" x-model="newZone.name" maxlength="80" placeholder="เช่น บ้านเพื่อน" required></label>
+          <div class="form-grid"><label>ละติจูด<input type="number" step="any" x-model.number="newZone.latitude" placeholder="13.7462" required></label><label>ลองจิจูด<input type="number" step="any" x-model.number="newZone.longitude" placeholder="100.5348" required></label></div>
+          <label>รัศมี (เมตร)<input type="number" min="1" max="100000" x-model.number="newZone.radius_meters" required></label>
+          <div class="zone-options"><label><input type="checkbox" x-model="newZone.notify_enter"> แจ้งเมื่อมาถึง</label><label><input type="checkbox" x-model="newZone.notify_exit"> แจ้งเมื่อออก</label></div>
+          <button class="primary-button" type="submit" :disabled="savingZone">เพิ่มสถานที่</button>
+        </form>
+        <ul class="geofence-list"><template x-for="zone in managedGeofences" :key="zone.id"><li><div><strong x-text="zone.name"></strong><small x-text="`${zone.radius_meters} ม. · ${zone.latitude.toFixed(4)}, ${zone.longitude.toFixed(4)}`"></small></div><button type="button" class="delete-zone" @click="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button></li></template></ul>
+      </section>
+      <p class="settings-footnote">การแก้ไขต้องใช้ Relay PIN จาก `.env`. อย่าแชร์ PIN หรือแผนที่ให้บุคคลอื่น</p>
+    </aside>
+  </main>
+</body>
+</html>

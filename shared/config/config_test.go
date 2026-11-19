@@ -35,6 +35,7 @@ func clearConfigEnv(t *testing.T) {
 		"BATTERY_THRESHOLD", "DISK_THRESHOLD_GB",
 		"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_TIMEOUT",
 		"GEMINI_API_KEY", "REMINDER_PIN", "WATCHTOWER_PIN", "OPENROUTER_API_KEY",
+		"LOCATION_SECRET_TOKEN", "LOCATION_VIEWER_TOKEN",
 	}
 	saved := make(map[string]string)
 	for _, k := range keys {
@@ -74,6 +75,18 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.TelegramTimeout != 10*time.Second {
 		t.Errorf("TelegramTimeout = %v, want 10s", cfg.TelegramTimeout)
 	}
+	if len(cfg.LocationSecretToken) != 32 {
+		t.Errorf("LocationSecretToken length = %d, want 32", len(cfg.LocationSecretToken))
+	}
+	if len(cfg.LocationViewerToken) != 32 {
+		t.Errorf("LocationViewerToken length = %d, want 32", len(cfg.LocationViewerToken))
+	}
+	if cfg.LocationSecretToken == cfg.LocationViewerToken {
+		t.Error("location ingress and viewer tokens must be distinct")
+	}
+	if cfg.LocationSecretTokenExplicit || cfg.LocationViewerTokenExplicit {
+		t.Error("defaulted location tokens must not be marked as explicit environment configuration")
+	}
 	if cfg.TelegramEnabled() {
 		t.Error("TelegramEnabled should be false with no token/chatID")
 	}
@@ -82,16 +95,18 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadOverrides(t *testing.T) {
 	clearConfigEnv(t)
 	withEnv(t, map[string]string{
-		"SAMPLE_INTERVAL":    "30s",
-		"RETENTION_MAX_AGE":  "24h",
-		"RETENTION_MAX_ROWS": "1000",
-		"BATTERY_THRESHOLD":  "15",
-		"DISK_THRESHOLD_GB":  "2.5",
-		"TELEGRAM_BOT_TOKEN": "123456:ABC-DEF-token",
-		"TELEGRAM_CHAT_ID":   "-100999",
-		"TELEGRAM_TIMEOUT":   "5s",
-		"WATCHTOWER_PIN":     "wt-pin-1234",
-		"OPENROUTER_API_KEY": "sk-or-v1-secret-key",
+		"SAMPLE_INTERVAL":       "30s",
+		"RETENTION_MAX_AGE":     "24h",
+		"RETENTION_MAX_ROWS":    "1000",
+		"BATTERY_THRESHOLD":     "15",
+		"DISK_THRESHOLD_GB":     "2.5",
+		"TELEGRAM_BOT_TOKEN":    "123456:ABC-DEF-token",
+		"TELEGRAM_CHAT_ID":      "-100999",
+		"TELEGRAM_TIMEOUT":      "5s",
+		"WATCHTOWER_PIN":        "wt-pin-1234",
+		"OPENROUTER_API_KEY":    "sk-or-v1-secret-key",
+		"LOCATION_SECRET_TOKEN": "owner-device-token-32-characters",
+		"LOCATION_VIEWER_TOKEN": "private-viewer-token-32-characters",
 	})
 
 	cfg, err := Load()
@@ -124,6 +139,15 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.OpenRouterAPIKey != "sk-or-v1-secret-key" {
 		t.Errorf("OpenRouterAPIKey = %v, want sk-or-v1-secret-key", cfg.OpenRouterAPIKey)
+	}
+	if cfg.LocationSecretToken != "owner-device-token-32-characters" {
+		t.Errorf("LocationSecretToken = %q, want environment value", cfg.LocationSecretToken)
+	}
+	if cfg.LocationViewerToken != "private-viewer-token-32-characters" {
+		t.Errorf("LocationViewerToken = %q, want environment value", cfg.LocationViewerToken)
+	}
+	if !cfg.LocationSecretTokenExplicit || !cfg.LocationViewerTokenExplicit {
+		t.Error("environment-provided location tokens should be marked explicit")
 	}
 }
 
@@ -168,6 +192,19 @@ func TestLoadInvalidValues(t *testing.T) {
 			env:  map[string]string{"TELEGRAM_TIMEOUT": "notaduration"},
 			want: "invalid duration",
 		},
+		{
+			name: "short location token",
+			env:  map[string]string{"LOCATION_SECRET_TOKEN": "too-short"},
+			want: "must contain at least 32 characters",
+		},
+		{
+			name: "identical location tokens",
+			env: map[string]string{
+				"LOCATION_SECRET_TOKEN": "abcdefghijklmnopqrstuvwxyz123456",
+				"LOCATION_VIEWER_TOKEN": "abcdefghijklmnopqrstuvwxyz123456",
+			},
+			want: "must be different",
+		},
 	}
 
 	for _, tc := range tests {
@@ -187,16 +224,18 @@ func TestLoadInvalidValues(t *testing.T) {
 
 func TestStringRedaction(t *testing.T) {
 	cfg := &Config{
-		SampleInterval:   60 * time.Second,
-		RetentionMaxAge:  72 * time.Hour,
-		RetentionMaxRows: 4320,
-		BatteryThreshold: 20,
-		DiskThresholdGB:  5.0,
-		TelegramBotToken: "123456789:ABCDEF-long-token",
-		TelegramChatID:   "-100999888",
-		TelegramTimeout:  10 * time.Second,
-		WatchtowerPIN:    "secret-watchtower-pin",
-		OpenRouterAPIKey: "sk-or-v1-secret-openrouter-key",
+		SampleInterval:      60 * time.Second,
+		RetentionMaxAge:     72 * time.Hour,
+		RetentionMaxRows:    4320,
+		BatteryThreshold:    20,
+		DiskThresholdGB:     5.0,
+		TelegramBotToken:    "123456789:ABCDEF-long-token",
+		TelegramChatID:      "-100999888",
+		TelegramTimeout:     10 * time.Second,
+		WatchtowerPIN:       "secret-watchtower-pin",
+		OpenRouterAPIKey:    "sk-or-v1-secret-openrouter-key",
+		LocationSecretToken: "location-secret-token",
+		LocationViewerToken: "location-viewer-token",
 	}
 
 	s := cfg.String()
@@ -207,6 +246,9 @@ func TestStringRedaction(t *testing.T) {
 	}
 	if strings.Contains(s, "sk-or-v1-secret-openrouter-key") {
 		t.Error("String() should not contain OpenRouterAPIKey")
+	}
+	if strings.Contains(s, "location-secret-token") || strings.Contains(s, "location-viewer-token") {
+		t.Error("String() should not contain location tokens")
 	}
 
 	// Token should be partially masked

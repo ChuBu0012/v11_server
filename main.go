@@ -24,6 +24,7 @@ import (
 	"v11-server/modules/bot"
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
+	"v11-server/modules/location"
 	"v11-server/modules/logs"
 	"v11-server/modules/relay"
 	"v11-server/modules/reminders"
@@ -101,6 +102,10 @@ type App struct {
 	reminderService   *reminders.Service
 	watchtower        *watchtower.Module
 	watchtowerService *watchtower.Service
+	locationModule    *location.Module
+	locationService   *location.Service
+	locationStore     *location.Store
+	locationRetention *worker.Worker
 	aiClient          *ai.Client
 }
 
@@ -271,6 +276,29 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		watchtowerMod = watchtower.NewModule(watchtowerSvc)
 	}
 
+	locationCredentials := location.Credentials{
+		SecretToken: cfg.LocationSecretToken, ViewerToken: cfg.LocationViewerToken,
+		SecretExplicit: cfg.LocationSecretTokenExplicit, ViewerExplicit: cfg.LocationViewerTokenExplicit,
+	}
+	locationStore, locationErr := location.NewStore(dbConn, locationCredentials)
+	var locationService *location.Service
+	var locationModule *location.Module
+	var locationRetention *worker.Worker
+	if locationErr != nil {
+		log.Printf("Warning: failed to initialize Location Tracker: %v", locationErr)
+	} else {
+		locationNotifier := location.NewDiscordNotifier(os.Getenv("DISCORD_WEBHOOK_URL"), 8*time.Second)
+		locationService = location.NewService(locationStore, locationNotifier)
+		locationModule = location.NewModule(locationStore, locationService, cfg.RelayPIN)
+		locationRetention = worker.New("location-retention", 24*time.Hour, func(ctx context.Context) error {
+			deleted, err := locationStore.PruneOld(ctx, time.Now().UTC().Add(-7*24*time.Hour))
+			if err == nil && deleted > 0 {
+				log.Printf("[retention:location] pruned %d points older than 7 days", deleted)
+			}
+			return err
+		})
+	}
+
 	return &App{
 		cfg:               cfg,
 		db:                dbConn,
@@ -289,6 +317,10 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		reminderService:   reminderService,
 		watchtower:        watchtowerMod,
 		watchtowerService: watchtowerSvc,
+		locationModule:    locationModule,
+		locationService:   locationService,
+		locationStore:     locationStore,
+		locationRetention: locationRetention,
 		aiClient:          aiClient,
 	}
 }
@@ -300,7 +332,11 @@ func setupRouter(app *App) *gin.Engine {
 
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(gin.Logger())
+	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s\" %d %s\n%s",
+			param.ClientIP, param.TimeStamp.Format("2006/01/02 - 15:04:05"), param.Method,
+			redactedRequestPath(param.Path), param.StatusCode, param.Latency, param.ErrorMessage)
+	}))
 
 	// Register modular apps
 	app.dashboard.RegisterRoutes(r)
@@ -314,6 +350,10 @@ func setupRouter(app *App) *gin.Engine {
 	}
 	if app.watchtower != nil {
 		app.watchtower.RegisterRoutes(r)
+	}
+	if app.locationModule != nil {
+		app.locationModule.RegisterRoutes(r)
+		r.GET("/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
 	}
 	r.POST("/api/monitor/insight", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
@@ -416,6 +456,19 @@ func validateMonitorEvidence(e ai.MonitorEvidence) error {
 	return nil
 }
 
+func redactedRequestPath(path string) string {
+	if strings.HasPrefix(path, "/live/") {
+		return "/live/[token]"
+	}
+	if strings.HasPrefix(path, "/api/location/report?") {
+		return "/api/location/report?[redacted]"
+	}
+	if strings.HasPrefix(path, "/api/location/live?") {
+		return "/api/location/live?[redacted]"
+	}
+	return path
+}
+
 func requirePINAuth(configuredPIN, headerName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if configuredPIN == "" {
@@ -482,6 +535,9 @@ func main() {
 	// Start background worker with cancellable context
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
+	if app.locationRetention != nil {
+		app.locationRetention.Start(workerCtx)
+	}
 	if app.reminderService != nil {
 		app.reminderService.Start(workerCtx)
 	}

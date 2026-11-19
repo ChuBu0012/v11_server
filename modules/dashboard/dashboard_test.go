@@ -56,6 +56,25 @@ func TestDashboardEndpoint(t *testing.T) {
 	}
 }
 
+func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
+	mod := New()
+	r := gin.New()
+	r.GET("/live-page", mod.HandleLiveMap)
+	response := httptest.NewRecorder()
+	r.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/live-page", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("live map status = %d", response.Code)
+	}
+	for _, want := range []string{"id=\"live-map-canvas\"", "live-map.css", "live-map.js", "viewport-fit=cover"} {
+		if !strings.Contains(response.Body.String(), want) {
+			t.Errorf("embedded live map page missing %q", want)
+		}
+	}
+	if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Referrer-Policy") != "no-referrer" {
+		t.Error("live map response must not be cached or leaked as a referrer")
+	}
+}
+
 func TestPWARoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

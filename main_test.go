@@ -78,6 +78,39 @@ func TestDashboardEndpoint(t *testing.T) {
 	}
 }
 
+func TestLocationViewerRouteIsTokenProtected(t *testing.T) {
+	app, router, cleanup := setupTestApp(t)
+	defer cleanup()
+	_, viewerToken := app.locationStore.Tokens()
+
+	unauthorized := httptest.NewRecorder()
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/live/wrong-token", nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid viewer token status = %d", unauthorized.Code)
+	}
+
+	authorized := httptest.NewRecorder()
+	router.ServeHTTP(authorized, httptest.NewRequest(http.MethodGet, "/live/"+viewerToken, nil))
+	if authorized.Code != http.StatusOK || !strings.Contains(authorized.Body.String(), "live-map-canvas") {
+		t.Fatalf("valid viewer response = %d (%d bytes)", authorized.Code, authorized.Body.Len())
+	}
+	if authorized.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("Cache-Control = %q, want no-store", authorized.Header().Get("Cache-Control"))
+	}
+}
+
+func TestLiveViewerRequestPathRedactsToken(t *testing.T) {
+	if got := redactedRequestPath("/live/private-viewer-token"); got != "/live/[token]" {
+		t.Fatalf("redacted request path = %q", got)
+	}
+	if got := redactedRequestPath("/api/location/live"); got != "/api/location/live" {
+		t.Fatalf("unrelated request path changed: %q", got)
+	}
+	if got := redactedRequestPath("/api/location/report?device=me&token=private-secret"); strings.Contains(got, "private-secret") {
+		t.Fatalf("location report token was not redacted: %q", got)
+	}
+}
+
 func TestHealthEndpoint(t *testing.T) {
 	_, router, cleanup := setupTestApp(t)
 	defer cleanup()

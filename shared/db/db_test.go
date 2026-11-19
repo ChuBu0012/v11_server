@@ -20,13 +20,25 @@ func TestInitDB(t *testing.T) {
 	}
 	defer db.Close()
 
-	tables := []string{"event_logs", "health_samples", "alert_states", "watchers", "watcher_checks"}
+	tables := []string{
+		"event_logs", "health_samples", "alert_states", "watchers", "watcher_checks",
+		"location_points", "location_battery_states", "location_geofences", "location_geofence_states",
+		"location_colocation_state", "location_settings",
+	}
 	for _, tbl := range tables {
 		var name string
 		err := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name=?", tbl).Scan(&name)
 		if err != nil {
 			t.Errorf("Expected table %s to exist, got error: %v", tbl, err)
 		}
+	}
+
+	var secretToken, viewerToken string
+	if err := db.QueryRow("SELECT secret_token, viewer_token FROM location_settings WHERE id=1").Scan(&secretToken, &viewerToken); err != nil {
+		t.Fatalf("read initial location settings: %v", err)
+	}
+	if secretToken != "" || viewerToken != "" {
+		t.Fatalf("fresh database should not contain predictable location tokens: secret=%q viewer=%q", secretToken, viewerToken)
 	}
 
 	// Test foreign keys and cascading delete on watchers -> watcher_checks

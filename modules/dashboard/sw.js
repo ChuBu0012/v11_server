@@ -1,5 +1,5 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v16';
+const CACHE_NAME = 'sentinel-shell-v17';
 const SHELL_ASSETS = [
   '/',
   '/tele-bridge',
@@ -21,7 +21,9 @@ const SHELL_ASSETS = [
   '/static/js/components/schedule-summary.js',
   '/static/js/components/schedule.js',
   '/static/js/components/watchtower.js',
-  '/static/js/components/monitor.js'
+  '/static/js/components/monitor.js',
+  '/static/css/live-map.css',
+  '/static/js/components/live-map.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -46,7 +48,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Pass all API and data requests directly through network
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/health')) {
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/health') || url.pathname.startsWith('/live/')) {
     event.respondWith(fetch(event.request));
     return;
   }

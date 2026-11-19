@@ -102,6 +102,79 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	);
 	CREATE INDEX IF NOT EXISTS idx_watcher_checks_watcher_id_checked_at ON watcher_checks(watcher_id, checked_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_watcher_checks_checked_at ON watcher_checks(checked_at DESC);
+
+	CREATE TABLE IF NOT EXISTS location_points (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		device_id TEXT NOT NULL,
+		latitude REAL NOT NULL,
+		longitude REAL NOT NULL,
+		accuracy REAL NOT NULL DEFAULT 0,
+		speed REAL NOT NULL DEFAULT 0,
+		altitude REAL NOT NULL DEFAULT 0,
+		course REAL NOT NULL DEFAULT 0,
+		battery_level INTEGER NOT NULL DEFAULT 0,
+		battery_status INTEGER NOT NULL DEFAULT 0,
+		recorded_at DATETIME NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_location_points_device_recorded ON location_points(device_id, recorded_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_location_points_recorded_at ON location_points(recorded_at DESC);
+
+	CREATE TABLE IF NOT EXISTS location_battery_states (
+		device_id TEXT PRIMARY KEY,
+		is_critical BOOLEAN NOT NULL DEFAULT 0,
+		last_alert_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS location_geofences (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		latitude REAL NOT NULL,
+		longitude REAL NOT NULL,
+		radius_meters REAL NOT NULL DEFAULT 150.0,
+		notify_enter BOOLEAN NOT NULL DEFAULT 1,
+		notify_exit BOOLEAN NOT NULL DEFAULT 1,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS location_geofence_states (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		device_id TEXT NOT NULL,
+		geofence_id INTEGER NOT NULL REFERENCES location_geofences(id) ON DELETE CASCADE,
+		is_inside BOOLEAN NOT NULL DEFAULT 0,
+		last_transition_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(device_id, geofence_id)
+	);
+
+	CREATE TABLE IF NOT EXISTS location_colocation_state (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		is_colocated BOOLEAN NOT NULL DEFAULT 0,
+		last_distance_meters REAL NOT NULL DEFAULT 0,
+		last_transition_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+		last_notified_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	INSERT OR IGNORE INTO location_colocation_state (id, is_colocated, last_distance_meters, last_transition_at, last_notified_at)
+	VALUES (1, 0, 0.0, '1970-01-01 00:00:00', '1970-01-01 00:00:00');
+
+	CREATE TABLE IF NOT EXISTS location_settings (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		secret_token TEXT NOT NULL DEFAULT '',
+		viewer_token TEXT NOT NULL DEFAULT '',
+		notify_colocation BOOLEAN NOT NULL DEFAULT 1,
+		notify_geofence BOOLEAN NOT NULL DEFAULT 1,
+		notify_battery BOOLEAN NOT NULL DEFAULT 1,
+		colocation_enter_meters REAL NOT NULL DEFAULT 80.0,
+		colocation_exit_meters REAL NOT NULL DEFAULT 250.0,
+		cooldown_seconds INTEGER NOT NULL DEFAULT 300,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	INSERT OR IGNORE INTO location_settings (id) VALUES (1);
+	UPDATE location_settings SET secret_token = '' WHERE secret_token = 'sentinel-loc-secret';
+	UPDATE location_settings SET viewer_token = '' WHERE viewer_token = 'live-shared-token';
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

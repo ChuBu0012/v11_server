@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -40,6 +42,12 @@ type Config struct {
 
 	// OpenRouter AI
 	OpenRouterAPIKey string // ENV: OPENROUTER_API_KEY
+
+	// Location & Rendezvous Tracker
+	LocationSecretToken         string // ENV: LOCATION_SECRET_TOKEN
+	LocationViewerToken         string // ENV: LOCATION_VIEWER_TOKEN
+	LocationSecretTokenExplicit bool   // true when LOCATION_SECRET_TOKEN is explicitly set
+	LocationViewerTokenExplicit bool   // true when LOCATION_VIEWER_TOKEN is explicitly set
 }
 
 // Load reads configuration from environment variables, applying defaults
@@ -135,11 +143,37 @@ func Load() (*Config, error) {
 		cfg.RelayPIN = "1804"
 	}
 
+	var err error
+	if cfg.LocationSecretToken, cfg.LocationSecretTokenExplicit, err = configuredLocationToken("LOCATION_SECRET_TOKEN"); err != nil {
+		return nil, err
+	}
+	if cfg.LocationViewerToken, cfg.LocationViewerTokenExplicit, err = configuredLocationToken("LOCATION_VIEWER_TOKEN"); err != nil {
+		return nil, err
+	}
+	if cfg.LocationSecretToken == cfg.LocationViewerToken {
+		return nil, fmt.Errorf("LOCATION_SECRET_TOKEN and LOCATION_VIEWER_TOKEN must be different")
+	}
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("config validation failed:\n  %s", strings.Join(errs, "\n  "))
 	}
 
 	return cfg, nil
+}
+
+func configuredLocationToken(envName string) (string, bool, error) {
+	if value := strings.TrimSpace(os.Getenv(envName)); value != "" {
+		if len(value) < 32 {
+			return "", true, fmt.Errorf("%s must contain at least 32 characters", envName)
+		}
+		return value, true, nil
+	}
+
+	raw := make([]byte, 24)
+	if _, err := rand.Read(raw); err != nil {
+		return "", false, fmt.Errorf("generate default %s: %w", envName, err)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), false, nil
 }
 
 // TelegramEnabled returns true when both bot token and chat ID are configured.
@@ -175,10 +209,11 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****, ReminderPIN:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****, ReminderPIN:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
 		token, chatID, c.TelegramTimeout, geminiKey, secretState(c.ReminderPIN), secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
+		secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
 	)
 }
 

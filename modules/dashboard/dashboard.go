@@ -20,6 +20,9 @@ var scheduleHTML []byte
 //go:embed watchtower.html
 var watchtowerHTML []byte
 
+//go:embed live_map.html
+var liveMapHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -92,6 +95,13 @@ func (m *Module) HandleSchedule(c *gin.Context) {
 // HandleWatchtower serves the dedicated Personal Watchtower management interface.
 func (m *Module) HandleWatchtower(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", watchtowerHTML)
+}
+
+// HandleLiveMap serves the responsive tracker viewer after token authorization.
+func (m *Module) HandleLiveMap(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Header("Referrer-Policy", "no-referrer")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", liveMapHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.
