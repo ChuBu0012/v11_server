@@ -3,10 +3,11 @@
 # Pocket Sentinel — Automated Deploy Script for vivo 1804 (V11) Termux ARM64
 #
 # Usage:
-#   ./scripts/deploy.sh               # Full build: compile Go binary + sync + restart
-#   ./scripts/deploy.sh --config-only # Quick sync: only .env / configs (no rebuild)
-#   ./scripts/deploy.sh -c            # Shortcut for --config-only
-#   ./scripts/deploy.sh --help        # Show usage
+#   ./scripts/deploy.sh                           # Full build with auto git commit message
+#   ./scripts/deploy.sh -m "สิ่งที่อัปเดต"        # Full build with custom deploy message
+#   ./scripts/deploy.sh -c                        # Quick sync: only .env / configs (no rebuild)
+#   ./scripts/deploy.sh -c -m "อัปเดต .env"       # Quick sync with custom deploy message
+#   ./scripts/deploy.sh --help                    # Show usage
 # ==============================================================================
 
 set -euo pipefail
@@ -20,6 +21,14 @@ fi
 REMOTE_HOST="v11"
 REMOTE_DIR="/data/data/com.termux/files/home/go-app"
 SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+
+escape_html() {
+  local s="$1"
+  s="${s//&/&amp;}"
+  s="${s//</&lt;}"
+  s="${s//>/&gt;}"
+  echo "$s"
+}
 
 notify_telegram() {
   local msg="$1"
@@ -38,26 +47,65 @@ notify_telegram() {
 on_error() {
   local line="$1"
   echo "❌ Deploy failed on line ${line}"
-  notify_telegram "❌ <b>การ Deploy ล้มเหลว!</b> (เกิดข้อผิดพลาดที่บรรทัด ${line} ของ deploy script)"
+  local err_msg="❌ <b>การ Deploy ล้มเหลว!</b> (เกิดข้อผิดพลาดที่บรรทัด ${line} ของ deploy script)"
+  if [[ -n "${DEPLOY_MSG:-}" ]]; then
+    err_msg+=$'\n'
+    err_msg+="📦 <b>งานที่พยายาม Deploy:</b> $(escape_html "${DEPLOY_MSG}")"
+  fi
+  notify_telegram "${err_msg}"
 }
 trap 'on_error $LINENO' ERR
 
 MODE="full"
-if [[ "${1:-}" == "--config-only" || "${1:-}" == "-c" ]]; then
-  MODE="config"
-elif [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  echo "Usage: $0 [--config-only | -c | --help]"
-  echo "  (no flags)     Full deploy: cross-compile ARM64 binary + batch sync + PM2 reload"
-  echo "  --config-only  Fast sync: only upload .env, ecosystem.config.js, run-ngrok.sh"
-  exit 0
+DEPLOY_MSG="${DEPLOY_MSG:-${DEPLOY_MESSAGE:-}}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -m|--message|--msg)
+      DEPLOY_MSG="${2:-}"
+      shift 2
+      ;;
+    -c|--config-only)
+      MODE="config"
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [-m \"message\"] [--config-only | -c] [--help]"
+      echo "  -m, --message      Specify what is being deployed (included in Telegram notifications)"
+      echo "  -c, --config-only  Fast sync: only upload .env, ecosystem.config.js, run-ngrok.sh"
+      echo "  -h, --help         Show this help message"
+      exit 0
+      ;;
+    *)
+      if [[ -z "${DEPLOY_MSG}" && "$1" != -* ]]; then
+        DEPLOY_MSG="$1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+# Auto-detect deploy message from git commit if not explicitly provided
+if [[ -z "${DEPLOY_MSG}" ]] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  DEPLOY_MSG=$(git log -1 --pretty=format:"%s" 2>/dev/null || true)
 fi
+if [[ -z "${DEPLOY_MSG}" ]]; then
+  DEPLOY_MSG="อัปเดตระบบทั่วไป"
+fi
+
+ESCAPED_DEPLOY_MSG=$(escape_html "${DEPLOY_MSG}")
 
 START_TIME=$(date +%s)
 echo "=================================================="
 echo "🚀 Pocket Sentinel Deploy [mode: ${MODE}]"
-echo "   Target: ${REMOTE_HOST}:${REMOTE_DIR}"
+echo "   Target:  ${REMOTE_HOST}:${REMOTE_DIR}"
+echo "   Message: ${DEPLOY_MSG}"
 echo "=================================================="
-notify_telegram "🔄 <b>เริ่มกระบวนการ Deploy บน vivo v11</b> [mode: ${MODE}]..."
+
+START_NOTI="🚀 <b>เริ่มกระบวนการ Deploy บน vivo v11</b> [mode: ${MODE}]"
+START_NOTI+=$'\n'
+START_NOTI+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
+notify_telegram "${START_NOTI}"
 
 # ------------------------------------------------------------------------------
 # [1/4] Build Stage (Full mode only)
@@ -186,6 +234,8 @@ echo "✨ Deploy completed successfully in ${TOTAL_TIME}s!"
 
 ENDPOINT=$(ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" 'curl -s --max-time 3 http://localhost:4040/api/tunnels 2>/dev/null | grep -oE "https://[a-zA-Z0-9.-]+\.ngrok(-free)?\.(app|dev)" | head -n 1 || true' 2>/dev/null || true)
 SUCCESS_MSG="✅ <b>Deploy สำเร็จสมบูรณ์</b> ใน ${TOTAL_TIME}s! บริการพร้อมใช้งาน"
+SUCCESS_MSG+=$'\n'
+SUCCESS_MSG+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
 if [[ -n "${ENDPOINT}" ]]; then
   SUCCESS_MSG+=$'\n'
   SUCCESS_MSG+="🌐 <b>URL:</b> ${ENDPOINT}"

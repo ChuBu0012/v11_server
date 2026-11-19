@@ -18,7 +18,7 @@
 - **Restart Cycle:** เมื่อคอมไพล์ binary ใหม่เสร็จแล้ว ให้ reload process ด้วย:
   `pm2 restart go-server`
   `pm2 logs go-server --lines 20 --nostream` (CRITICAL: ต้องใส่ `--nostream` ทุกครั้งเพื่อไม่ให้ SSH ค้าง)
-- **Deploy Script:** เมื่อ deploy จาก macOS ให้ใช้ `./scripts/deploy.sh` ซึ่งจะ cross-compile ARM64 Android (`CGO_ENABLED=0 GOOS=android GOARCH=arm64`), sync แบบ atomic, และแจ้งเตือนสถานะผ่าน Telegram
+- **Deploy Script:** เมื่อ deploy จาก macOS ให้ใช้ `./scripts/deploy.sh -m "คำอธิบายสิ่งที่อัปเดต"` ซึ่งจะ cross-compile ARM64 Android (`CGO_ENABLED=0 GOOS=android GOARCH=arm64`), sync แบบ atomic, และแจ้งเตือนสถานะพร้อมรายละเอียดการอัปเดต (`📦 สิ่งที่อัปเดต:`) ผ่าน Telegram ทันที (หากไม่ระบุ `-m` จะดึงข้อความจาก Git commit ล่าสุดโดยอัตโนมัติ)
 
 ## 3. Frontend Architecture & Alpine.js Proxy Guardrails
 - **ข้อห้ามเด็ดขาด (Proxy Violation):** ห้ามนำ Object จากภายนอกที่มี prototype ซับซ้อน เช่น Three.js (Scene, Mesh, Renderer, Camera, OrbitControls) หรือ Chart.js (`new Chart()`) ไปเก็บใน Object ของ `Alpine.data(...)` เด็ดขาด

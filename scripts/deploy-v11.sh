@@ -18,6 +18,14 @@ cd "${APP_DIR}"
 
 START_TIME=$(date +%s)
 
+escape_html() {
+  local s="$1"
+  s="${s//&/&amp;}"
+  s="${s//</&lt;}"
+  s="${s//>/&gt;}"
+  echo "$s"
+}
+
 notify_telegram() {
   local msg="$1"
   if [[ -f .env ]]; then
@@ -35,15 +43,57 @@ notify_telegram() {
 on_error() {
   local line="$1"
   echo "❌ Deploy failed on line ${line}"
-  notify_telegram "❌ <b>การ Deploy ล้มเหลว!</b> (เกิดข้อผิดพลาดที่บรรทัด ${line} ของ deploy-v11.sh)"
+  local err_msg="❌ <b>การ Deploy ล้มเหลว!</b> (เกิดข้อผิดพลาดที่บรรทัด ${line} ของ deploy-v11.sh)"
+  if [[ -n "${DEPLOY_MSG:-}" ]]; then
+    err_msg+=$'\n'
+    err_msg+="📦 <b>งานที่พยายาม Deploy:</b> $(escape_html "${DEPLOY_MSG}")"
+  fi
+  notify_telegram "${err_msg}"
 }
 trap 'on_error $LINENO' ERR
+
+DEPLOY_MSG="${DEPLOY_MSG:-${DEPLOY_MESSAGE:-}}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -m|--message|--msg)
+      DEPLOY_MSG="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 [-m \"message\"] [--help]"
+      echo "  -m, --message  Specify what is being deployed (included in Telegram notifications)"
+      echo "  -h, --help     Show this help message"
+      exit 0
+      ;;
+    *)
+      if [[ -z "${DEPLOY_MSG}" && "$1" != -* ]]; then
+        DEPLOY_MSG="$1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "${DEPLOY_MSG}" ]] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  DEPLOY_MSG=$(git log -1 --pretty=format:"%s" 2>/dev/null || true)
+fi
+if [[ -z "${DEPLOY_MSG}" ]]; then
+  DEPLOY_MSG="อัปเดตระบบทั่วไปบนอุปกรณ์"
+fi
+
+ESCAPED_DEPLOY_MSG=$(escape_html "${DEPLOY_MSG}")
 
 echo "=================================================="
 echo "📱 Pocket Sentinel — Deploying natively on vivo V11"
 echo "   Directory: ${APP_DIR}"
+echo "   Message:   ${DEPLOY_MSG}"
 echo "=================================================="
-notify_telegram "🔄 <b>เริ่มกระบวนการ Deploy บน vivo v11</b> (อัปเดต Timeout /task เป็น 1 ชม.)..."
+
+START_NOTI="🚀 <b>เริ่มกระบวนการ Deploy บน vivo v11</b>"
+START_NOTI+=$'\n'
+START_NOTI+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
+notify_telegram "${START_NOTI}"
 
 # 1. Pull latest code from GitHub (optional when changes are local)
 if [ -d .git ]; then
@@ -92,7 +142,7 @@ if [ "$OK" -eq 1 ]; then
 
   SUCCESS_MSG="✅ <b>Deploy บน vivo v11 สำเร็จสมบูรณ์</b> ใน ${TOTAL_TIME}s! บริการพร้อมใช้งาน"
   SUCCESS_MSG+=$'\n'
-  SUCCESS_MSG+="⏱ <b>Timeout /task:</b> 1 ชั่วโมง (DefaultTaskTimeout = 1h)"
+  SUCCESS_MSG+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
   if [[ -n "${ENDPOINT}" ]]; then
     SUCCESS_MSG+=$'\n'
     SUCCESS_MSG+="🌐 <b>URL:</b> ${ENDPOINT}"
