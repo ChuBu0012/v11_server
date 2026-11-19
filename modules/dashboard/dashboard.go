@@ -100,7 +100,7 @@ func (m *Module) HandleWatchtower(c *gin.Context) {
 // HandleLiveMap serves the responsive tracker viewer after token authorization.
 func (m *Module) HandleLiveMap(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
-	c.Header("Referrer-Policy", "no-referrer")
+	c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 	c.Data(http.StatusOK, "text/html; charset=utf-8", liveMapHTML)
 }
 

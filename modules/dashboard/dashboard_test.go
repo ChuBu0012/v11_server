@@ -70,8 +70,8 @@ func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
 			t.Errorf("embedded live map page missing %q", want)
 		}
 	}
-	if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Referrer-Policy") != "no-referrer" {
-		t.Error("live map response must not be cached or leaked as a referrer")
+	if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Referrer-Policy") != "strict-origin-when-cross-origin" {
+		t.Error("live map response must not be cached and should use strict-origin-when-cross-origin")
 	}
 }
 

@@ -49,7 +49,7 @@ func (m *Module) ViewerPage(page gin.HandlerFunc) gin.HandlerFunc {
 			return
 		}
 		c.Header("Cache-Control", "no-store")
-		c.Header("Referrer-Policy", "no-referrer")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		page(c)
 	}
 }
