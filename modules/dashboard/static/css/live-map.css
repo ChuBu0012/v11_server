@@ -74,40 +74,51 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 .avatar-tag { margin-top: 2px; padding: 2px 7px; border-radius: 6px; font-size: 9px; font-weight: 700; color: white; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(4px); box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); }
 .avatar-pointer { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid #0f172a; margin-top: -1px; }
 
-/* Interactive Map Picker Elements */
+/* Header Add Place Pill */
+.add-place-pill { display: flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.16); color: #34d399; font-size: 11px; font-weight: 650; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.add-place-pill:hover { background: #10b981; color: white; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); }
+
+/* Interactive On-Map Place Creator Card */
 .map-picking-cursor { cursor: crosshair !important; }
-.map-picker-banner { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 600; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 14px; background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px); border: 1px solid rgba(16, 185, 129, 0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.picker-status { display: flex; align-items: center; gap: 9px; }
-.picker-icon { font-size: 18px; }
-.picker-status strong { display: block; font-size: 12px; color: #f8fafc; }
-.picker-status small { display: block; font-size: 10px; color: #94a3b8; }
-.picker-actions { display: flex; gap: 8px; }
-.picker-done-btn { padding: 6px 12px; border-radius: 8px; border: none; background: #10b981; color: white; font-size: 11px; font-weight: 600; cursor: pointer; }
-.picker-cancel-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #cbd5e1; font-size: 11px; cursor: pointer; }
-.pick-map-trigger { padding: 5px 11px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.12); color: #34d399; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.pick-map-trigger:hover, .pick-map-trigger.is-active { background: #10b981; color: white; }
-.section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.section-title-row h3 { margin: 0; }
+.map-picker-card { position: absolute; bottom: 12px; left: 12px; right: 12px; max-width: 440px; margin: 0 auto; z-index: 600; background: rgba(14, 23, 39, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); padding: 13px 15px; animation: slide-up-card 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slide-up-card { from { transform: translateY(18px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.picker-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.picker-card-title { display: flex; align-items: center; gap: 8px; }
+.picker-pin-icon { font-size: 16px; }
+.picker-card-title strong { display: block; font-size: 13px; color: #f8fafc; font-weight: 700; }
+.picker-card-title small { display: block; font-size: 10px; color: #94a3b8; }
+.picker-close-btn { width: 24px; height: 24px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #94a3b8; font-size: 11px; cursor: pointer; display: grid; place-items: center; }
+.picker-close-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.picker-card-form { display: flex; flex-direction: column; gap: 9px; }
+.picker-name-input { width: 100%; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.16); background: #111c2e; color: #f8fafc; font-size: 12px; outline: none; font-family: inherit; }
+.picker-name-input:focus { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); }
+.picker-radius-control { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(15, 23, 42, 0.5); padding: 5px 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.06); }
+.picker-radius-head { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.picker-radius-head strong { color: #34d399; }
+.picker-radius-pills { display: flex; gap: 4px; overflow-x: auto; }
+.radius-pill { padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #cbd5e1; font-size: 10px; cursor: pointer; white-space: nowrap; }
+.radius-pill.is-active { background: #10b981; color: white; border-color: transparent; }
+.picker-toggles-row { display: flex; gap: 14px; }
+.picker-toggle-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #cbd5e1; cursor: pointer; user-select: none; }
+.picker-toggle-item input[type=checkbox] { accent-color: #10b981; cursor: pointer; }
+.picker-pin-input { width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: #111c2e; color: white; font-size: 11px; outline: none; font-family: inherit; }
+.picker-pin-input:focus { border-color: #10b981; }
+.picker-actions-row { display: flex; gap: 8px; margin-top: 1px; }
+.picker-submit-btn { flex: 1; height: 36px; border-radius: 9px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 650; font-size: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); font-family: inherit; }
+.picker-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.picker-dismiss-btn { padding: 0 13px; height: 36px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #cbd5e1; font-size: 11px; cursor: pointer; font-family: inherit; }
+.picker-coords-hint { font-size: 9px; color: #64748b; text-align: center; }
 .picker-pin-marker { background: transparent; border: 0; }
 .picker-target-pin { font-size: 26px; text-shadow: 0 2px 8px rgba(0,0,0,0.6); animation: bounce-picker 1.2s ease-in-out infinite alternate; }
 @keyframes bounce-picker { from { transform: translateY(0); } to { transform: translateY(-8px); } }
-.radius-control-block { display: flex; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 10px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(176, 196, 222, 0.1); }
-.radius-label-row { display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; }
-.radius-slider { width: 100%; accent-color: #10b981; cursor: pointer; }
-.radius-pills { display: flex; gap: 6px; margin-top: 4px; overflow-x: auto; }
-.radius-pill { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--map-line); background: rgba(255,255,255,0.05); color: #cbd5e1; font-size: 10px; cursor: pointer; }
-.radius-pill.is-active { background: #10b981; color: white; border-color: transparent; }
 
 /* iOS-Style Toggle Switches */
 .toggle-group { display: flex; flex-direction: column; gap: 8px; }
-.toggle-group.compact { margin-top: 6px; }
 .toggle-switch-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(20, 32, 51, 0.55); border: 1px solid var(--map-line); cursor: pointer; transition: background 0.2s; }
 .toggle-switch-card:hover { background: rgba(26, 42, 68, 0.65); }
-.toggle-switch-card.compact { padding: 8px 10px; }
 .toggle-info { display: flex; flex-direction: column; gap: 2px; }
 .toggle-info strong { font-size: 12px; font-weight: 600; color: #e2e8f0; }
 .toggle-info small { font-size: 10px; color: var(--map-muted); }
-.toggle-info span { font-size: 11px; color: #cbd5e1; }
 .toggle-switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; inset: 0; background-color: #334155; transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 34px; border: 1px solid rgba(255,255,255,0.08); }
@@ -137,31 +148,30 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 .leaflet-control-attribution { color: #93a0b4 !important; background: rgba(9,15,25,.76) !important; font-size: 9px !important; }
 .leaflet-control-attribution a { color: #b5c8df !important; }
 .leaflet-control-zoom a { border-color: rgba(255,255,255,.12) !important; background: rgba(12,20,33,.9) !important; color: #e8f1ff !important; }
-.settings-backdrop { position: fixed; z-index: 2000; inset: 0; background: rgba(1,5,12,.65); backdrop-filter: blur(3px); }
-.settings-drawer { position: fixed; z-index: 2001; top: 0; right: 0; bottom: 0; width: min(440px,100vw); overflow-y: auto; padding: 23px 22px max(24px,env(safe-area-inset-bottom)); border-left: 1px solid var(--map-line); background: #0e1727; box-shadow: -25px 0 70px rgba(0,0,0,.3); transform: translateX(102%); transition: transform .25s ease; }
-.settings-drawer.is-open { transform: translateX(0); }
-.drawer-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 19px; }
-.drawer-heading h2 { margin: 5px 0 0; font-size: 20px; }
-.settings-pin-label,.geofence-form>label,.form-grid label { display: flex; flex-direction: column; gap: 7px; color: #c4d1e4; font-size: 11px; }
-.settings-pin-label input,.geofence-form input:not([type=checkbox]) { width: 100%; height: 40px; padding: 0 11px; border: 1px solid var(--map-line); border-radius: 10px; outline: none; background: #121f33; color: var(--map-text); font: inherit; font-size: 12px; }
-.settings-pin-label input:focus,.geofence-form input:focus { border-color: rgba(67,167,255,.7); }
-.settings-actions { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
-.settings-message { color: #8edfc5; font-size: 10px; }
-.secondary-button,.primary-button { min-height: 36px; padding: 0 12px; border: 1px solid var(--map-line); border-radius: 9px; background: #192842; color: #e6effe; font: inherit; font-size: 11px; cursor: pointer; }
-.primary-button { border-color: transparent; background: linear-gradient(110deg,#287fd5,#16a985); color: white; font-weight: 650; }
-.primary-button:disabled { opacity: .55; cursor: wait; }
-.settings-section { margin-top: 23px; padding-top: 18px; border-top: 1px solid var(--map-line); }
-.settings-section h3 { margin: 0 0 12px; font-size: 13px; }
-.settings-note,.settings-footnote { color: #8293ad; font-size: 10px; line-height: 1.65; }
-.geofence-form { display: flex; flex-direction: column; gap: 10px; padding: 13px; border: 1px solid var(--map-line); border-radius: 12px; background: rgba(20,32,51,.66); }
-.form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
-.geofence-list { padding: 0; margin: 10px 0 0; list-style: none; }
-.geofence-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 3px; border-bottom: 1px solid var(--map-line); }
-.geofence-list strong,.geofence-list small { display: block; }
-.geofence-list strong { font-size: 11px; }
-.geofence-list small { margin-top: 4px; color: var(--map-muted); font-size: 9px; }
-.delete-zone { padding: 6px 9px; border: 1px solid rgba(255,115,115,.23); border-radius: 8px; background: rgba(255,82,82,.08); color: #ffaaa1; font: inherit; font-size: 10px; cursor: pointer; }
-.settings-footnote { margin-top: 16px; }
+
+/* Inline Management Section (No Sidebar) */
+.management-section { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+.management-card { border: 1px solid var(--map-line); border-radius: 18px; background: var(--map-panel); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.management-card-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--map-line); }
+.management-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: #e2e8f0; }
+.management-card-body { padding: 14px 18px; }
+.add-geofence-trigger-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14); color: #34d399; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.add-geofence-trigger-btn:hover { background: #10b981; color: white; }
+.empty-state-text { color: var(--map-muted); font-size: 12px; text-align: center; margin: 10px 0; }
+.geofence-inline-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.geofence-inline-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: rgba(20, 32, 51, 0.55); border: 1px solid var(--map-line); }
+.geofence-info { display: flex; flex-direction: column; gap: 2px; }
+.geofence-name-row { display: flex; align-items: center; gap: 6px; }
+.geofence-name-row strong { font-size: 13px; color: #f1f5f9; }
+.geofence-info small { font-size: 10px; color: var(--map-muted); }
+.delete-zone-btn { padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255, 100, 100, 0.3); background: rgba(255, 80, 80, 0.1); color: #fca5a5; font-size: 11px; cursor: pointer; font-weight: 600; font-family: inherit; }
+.delete-zone-btn:hover { background: #ef4444; color: white; }
+.pin-management-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+.pin-inline-label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; }
+.pin-inline-input { width: 90px; height: 30px; border-radius: 8px; border: 1px solid var(--map-line); background: #121f33; color: white; padding: 0 8px; font-size: 12px; outline: none; text-align: center; font-family: inherit; }
+.pin-inline-input:focus { border-color: #10b981; }
+.pin-hint { font-size: 10px; color: #64748b; }
+.settings-status-text { font-size: 11px; color: #34d399; font-weight: 600; }
 
 @media (max-width: 680px) {
   .live-map-app { min-height: 100svh; padding: 0 13px max(14px,env(safe-area-inset-bottom)); }

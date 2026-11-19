@@ -235,12 +235,10 @@ document.addEventListener('alpine:init', () => {
     errorText: '',
     updatedAt: null,
     showTrail: false,
-    settingsOpen: false,
     pickingLocation: false,
     showLogs: true,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     settingsMessage: '',
-    managedGeofences: [],
     savingZone: false,
     settings: { notify_colocation: true, notify_geofence: true, notify_battery: true },
     newZone: { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true },
@@ -388,28 +386,32 @@ document.addEventListener('alpine:init', () => {
       updateLeafletLayers({ me: this.me, friend: this.friend, geofences: this.geofences, breadcrumbs: this.breadcrumbs, distance_meters: this.distanceMeters, is_colocated: this.isColocated }, this.showTrail);
     },
 
-    openSettings() {
-      this.settingsOpen = true;
-      if (this.pin) this.loadManagement();
+    // Map Picker Handlers (Direct on Map, No Sidebar)
+    startMapPicker() {
+      this.pickingLocation = true;
+      const mapEl = document.getElementById('live-map-canvas');
+      if (mapEl) {
+        mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      const container = liveMapState.map?.getContainer();
+      if (container) container.classList.add('map-picking-cursor');
+
+      // If no lat/lng yet, set default from current user or map center
+      if (!this.newZone.latitude) {
+        const center = liveMapState.map?.getCenter() || { lat: 13.6516, lng: 100.4939 };
+        const baseLat = this.me?.latitude || center.lat;
+        const baseLng = this.me?.longitude || center.lng;
+        this.newZone.latitude = parseFloat(baseLat.toFixed(6));
+        this.newZone.longitude = parseFloat(baseLng.toFixed(6));
+      }
+      this.renderPickerPreview();
     },
 
-    // Map Picker Handlers
     toggleMapPicker() {
-      this.pickingLocation = !this.pickingLocation;
       if (this.pickingLocation) {
-        this.settingsOpen = false; // Hide drawer so map is fully visible
-        const container = liveMapState.map?.getContainer();
-        if (container) container.classList.add('map-picking-cursor');
-
-        // If no lat/lng yet, set default from current user or map center
-        if (!this.newZone.latitude) {
-          const center = liveMapState.map.getCenter();
-          this.newZone.latitude = parseFloat(center.lat.toFixed(6));
-          this.newZone.longitude = parseFloat(center.lng.toFixed(6));
-        }
-        this.renderPickerPreview();
-      } else {
         this.cancelMapPicker();
+      } else {
+        this.startMapPicker();
       }
     },
 
@@ -463,88 +465,98 @@ document.addEventListener('alpine:init', () => {
       this.updatePickerRadius();
     },
 
-    finishMapPicker() {
-      this.pickingLocation = false;
-      const container = liveMapState.map?.getContainer();
-      if (container) container.classList.remove('map-picking-cursor');
-      this.settingsOpen = true; // reopen drawer to complete form
-    },
-
     cancelMapPicker() {
       this.pickingLocation = false;
       const container = liveMapState.map?.getContainer();
       if (container) container.classList.remove('map-picking-cursor');
-      liveMapState.pickerLayer.clearLayers();
-    },
-
-    async loadManagement() {
-      this.settingsMessage = '';
-      if (!this.pin) {
-        this.settingsMessage = 'กรอก Relay PIN ก่อน';
-        return;
+      if (liveMapState.pickerLayer) {
+        liveMapState.pickerLayer.clearLayers();
       }
-      try {
-        const response = await fetch('/api/location/geofences', { headers: { 'X-Relay-PIN': this.pin, Accept: 'application/json' }, cache: 'no-store' });
-        if (!response.ok) throw new Error(response.status === 401 ? 'PIN ไม่ถูกต้อง' : 'โหลดสถานที่ไม่สำเร็จ');
-        this.managedGeofences = await response.json();
-        localStorage.setItem('sentinel-relay-pin', this.pin);
-        this.settingsMessage = 'ยืนยัน PIN แล้ว';
-      } catch (error) {
-        this.settingsMessage = error?.message || 'เชื่อมต่อไม่สำเร็จ';
-      }
+      this.newZone = { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true };
     },
 
     async saveSettings() {
-      if (!this.pin) return this.settingsMessage = 'กรอก Relay PIN ก่อน';
+      const pin = this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
+      if (!pin) {
+        this.settingsMessage = 'กรุณากรอก Relay PIN';
+        return;
+      }
       try {
         const response = await fetch('/api/location/settings', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': this.pin },
+          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': pin },
           body: JSON.stringify({
             notify_colocation: this.settings.notify_colocation,
             notify_geofence: this.settings.notify_geofence,
             notify_battery: this.settings.notify_battery,
           }),
         });
-        if (!response.ok) throw new Error('บันทึกการตั้งค่าไม่สำเร็จ ตรวจสอบ PIN');
+        if (!response.ok) throw new Error('บันทึกไม่สำเร็จ ตรวจสอบ PIN');
         this.settings = { ...this.settings, ...(await response.json()) };
-        localStorage.setItem('sentinel-relay-pin', this.pin);
-        this.settingsMessage = 'บันทึกแล้ว';
+        this.pin = pin;
+        localStorage.setItem('sentinel-relay-pin', pin);
+        this.settingsMessage = '✅ บันทึกการตั้งค่าแล้ว';
+        setTimeout(() => { this.settingsMessage = ''; }, 3000);
       } catch (error) {
-        this.settingsMessage = error?.message || 'บันทึกไม่สำเร็จ';
+        this.settingsMessage = `❌ ${error?.message || 'บันทึกไม่สำเร็จ'}`;
       }
     },
 
     async createGeofence() {
-      if (!this.pin) return this.settingsMessage = 'กรอก Relay PIN ก่อน';
+      const pin = this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
+      if (!pin) {
+        alert('กรุณากรอก Relay PIN ก่อนบันทึกสถานที่');
+        return;
+      }
+      if (!this.newZone.name || !this.newZone.latitude) {
+        alert('กรุณาระบุชื่อสถานที่และจิ้มตำแหน่งบนแผนที่');
+        return;
+      }
       this.savingZone = true;
+      this.settingsMessage = '';
       try {
         const response = await fetch('/api/location/geofences', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': this.pin },
+          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': pin },
           body: JSON.stringify(this.newZone),
         });
-        if (!response.ok) throw new Error('เพิ่มสถานที่ไม่สำเร็จ ตรวจสอบข้อมูลและ PIN');
-        this.newZone = { name: '', latitude: null, longitude: null, radius_meters: 150, notify_enter: true, notify_exit: true };
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'เพิ่มสถานที่ไม่สำเร็จ ตรวจสอบ PIN');
+        }
+        this.pin = pin;
+        localStorage.setItem('sentinel-relay-pin', pin);
+        this.settingsMessage = '✅ บันทึกสถานที่สำเร็จ!';
         this.cancelMapPicker();
-        await this.loadManagement();
         await this.refresh();
+        setTimeout(() => { this.settingsMessage = ''; }, 3500);
       } catch (error) {
-        this.settingsMessage = error?.message || 'เพิ่มสถานที่ไม่สำเร็จ';
+        alert(error?.message || 'เพิ่มสถานที่ไม่สำเร็จ');
       } finally {
         this.savingZone = false;
       }
     },
 
     async deleteGeofence(id) {
-      if (!this.pin || !window.confirm('ลบสถานที่นี้หรือไม่?')) return;
+      const pin = this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
+      if (!pin) {
+        alert('กรุณากรอก Relay PIN ก่อนลบสถานที่');
+        return;
+      }
+      if (!window.confirm('คุณต้องการลบสถานที่นี้ใช่หรือไม่?')) return;
       try {
-        const response = await fetch(`/api/location/geofences/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Relay-PIN': this.pin } });
-        if (!response.ok) throw new Error('ลบสถานที่ไม่สำเร็จ ตรวจสอบ PIN');
-        await this.loadManagement();
+        const response = await fetch(`/api/location/geofences/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { 'X-Relay-PIN': pin },
+        });
+        if (!response.ok) throw new Error('ลบไม่สำเร็จ ตรวจสอบ PIN');
+        this.pin = pin;
+        localStorage.setItem('sentinel-relay-pin', pin);
+        this.settingsMessage = '✅ ลบสถานที่สำเร็จ';
         await this.refresh();
+        setTimeout(() => { this.settingsMessage = ''; }, 3000);
       } catch (error) {
-        this.settingsMessage = error?.message || 'ลบสถานที่ไม่สำเร็จ';
+        alert(error?.message || 'ลบไม่สำเร็จ');
       }
     },
   }));
