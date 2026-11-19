@@ -54,3 +54,4 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 - [2026-11-18] Implemented dual-level Telegram lifecycle & deploy notifications (boot/shutdown in `main.go`, start/error/success in `scripts/deploy.sh`) and 15s in-place progress heartbeat.
 - [2026-11-18] Configured deterministic post-tool quality guardrail hook (`.agents/hooks.json` & `scripts/hook-validate.sh`) enforcing `gofmt -w` and `go vet ./...`.
 - [2026-11-18] Successfully committed, pushed to GitHub `origin/main`, pulled directly on vivo v11, recompiled standalone ARM64 binary on-device, and reloaded PM2 `go-server` (PID 4967, ~11.7MB RAM, Health Check 200 OK).
+- [2026-11-19] Fixed CSS `:root` selector syntax typo (`c:root` -> `:root`) in `modules/dashboard/static/css/live-map.css`, restoring dark UI palette and CSS variables. Bumped PWA Service Worker cache to `sentinel-shell-v26` and deployed to v11.
