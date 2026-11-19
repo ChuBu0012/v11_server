@@ -59,8 +59,15 @@ if ('serviceWorker' in navigator) {
 
 // Alpine Store Initialization
 document.addEventListener('alpine:init', () => {
+  const initialParams = new URLSearchParams(window.location.search);
+  const requestedTab = initialParams.get('tab');
+  const initialTab = ['overview', 'monitor', 'telegram'].includes(requestedTab)
+    ? requestedTab
+    : (initialParams.get('app') === 'relay' ? 'telegram' : 'overview');
+
   Alpine.store('sentinel', {
     theme: localStorage.getItem('sentinel-theme') || 'dark',
+    activeTab: initialTab,
     busy: false,
     heroTitle: 'Checking your server',
     heroCopy: 'Loading the latest device and service status.',
@@ -77,6 +84,25 @@ document.addEventListener('alpine:init', () => {
       this.applyTheme(this.theme);
       this.refreshAll();
       window.setInterval(() => this.refreshAll(), 60000);
+      window.addEventListener('popstate', () => {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        this.activateTab(['overview', 'monitor', 'telegram'].includes(tab) ? tab : 'overview');
+      });
+    },
+
+    setTab(tab) {
+      if (!['overview', 'monitor', 'telegram'].includes(tab) || tab === this.activeTab) return;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('app');
+      if (tab === 'overview') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', tab);
+      window.history.pushState({ tab }, '', url);
+      this.activateTab(tab);
+    },
+
+    activateTab(tab) {
+      this.activeTab = tab;
+      window.dispatchEvent(new CustomEvent('sentinel:tab-changed', { detail: { tab } }));
     },
 
     toggleTheme() {

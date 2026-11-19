@@ -11,6 +11,7 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('relayComponent', () => ({
     isOpen: window.location.pathname.includes('tele-br') || window.location.pathname === '/relay',
     isStandalonePage: window.location.pathname.includes('tele-br') || window.location.pathname === '/relay',
+    isEmbeddedTab: window.location.pathname === '/' || window.location.pathname === '',
     activeTab: 'text', // 'text' | 'file'
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     isUnlocked: Boolean(localStorage.getItem('sentinel-relay-pin')),
@@ -48,6 +49,8 @@ document.addEventListener('alpine:init', () => {
       if (params.get('app') === 'relay') {
         this.open();
       }
+
+      if (params.get('tab') === 'telegram') this.open();
 
       // If standalone page and no PIN configured, prompt setup
       if (this.isStandalonePage && !this.pin) {
@@ -90,11 +93,19 @@ document.addEventListener('alpine:init', () => {
       window.addEventListener('sentinel:open-relay', () => {
         this.open();
       });
+      window.addEventListener('sentinel:tab-changed', (event) => {
+        if (!this.isEmbeddedTab) return;
+        if (event.detail?.tab === 'telegram') this.open();
+        else {
+          this.isOpen = false;
+          document.body.classList.remove('drawer-locked');
+        }
+      });
     },
 
     open() {
       this.isOpen = true;
-      if (!this.isStandalonePage) {
+      if (!this.isStandalonePage && !this.isEmbeddedTab) {
         document.body.classList.add('drawer-locked');
       }
       if (!this.pin) {
@@ -108,6 +119,10 @@ document.addEventListener('alpine:init', () => {
 
     close() {
       if (this.isStandalonePage) return;
+      if (this.isEmbeddedTab) {
+        this.$store.sentinel.setTab('overview');
+        return;
+      }
       this.isOpen = false;
       document.body.classList.remove('drawer-locked');
       this.statusText = '';

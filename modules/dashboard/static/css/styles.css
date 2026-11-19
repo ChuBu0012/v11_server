@@ -1190,6 +1190,72 @@ body.drawer-locked { overflow: hidden !important; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
+/* Shared Dashboard tabs: Telegram uses the same shell and page flow. */
+.telegram-tab { padding-top: 24px; padding-bottom: 36px; }
+.telegram-tab .relay-drawer {
+  position: relative;
+  inset: auto;
+  transform: none;
+  width: 100%;
+  max-width: 920px;
+  max-height: none;
+  overflow: visible;
+  margin: 0 auto;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: none;
+  padding: 24px;
+  z-index: auto;
+}
+.telegram-tab-current, .relay-tab-hint { color: var(--muted); font-size: 12px; }
+.telegram-tab-current { display: inline-flex; align-items: center; gap: 4px; color: var(--green); }
+.telegram-tab .relay-cancel-btn { display: none; }
+
+.monitor-view { padding-top: 28px; padding-bottom: 48px; }
+.monitor-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.monitor-heading h1 { margin: 3px 0 4px; font-size: clamp(28px, 5vw, 38px); letter-spacing: -.04em; }
+.monitor-heading .eyebrow { margin: 0; color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+.monitor-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.monitor-summary-grid .card { padding: 18px; min-width: 0; }
+.monitor-summary-grid .metric-value { font-size: 25px; }
+.monitor-status { margin-top: 11px; font-size: 19px; font-weight: 700; }
+.monitor-status.healthy { color: var(--green); }
+.monitor-status.warning { color: var(--amber); }
+.monitor-trends, .monitor-insight { margin-top: 26px; }
+.monitor-conditions { margin-top: 24px; }
+.monitor-condition-list { display: grid; gap: 8px; }
+.monitor-condition { display: flex; align-items: center; gap: 10px; padding: 12px 15px; color: var(--amber); font-size: 13px; }
+.monitor-trend-list { overflow: hidden; border: 1px solid var(--hairline); border-radius: 14px; background: var(--card); }
+.monitor-trend-row { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(100px, .5fr) minmax(160px, 1fr); gap: 12px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+.monitor-trend-row:last-child { border-bottom: 0; }
+.monitor-trend-row span { color: var(--muted); }
+.monitor-trend-row .positive { color: var(--green); }
+.monitor-trend-row .warning { color: var(--amber); }
+.monitor-trend-row .neutral { color: var(--muted); }
+.monitor-insight .section-heading { align-items: center; }
+.monitor-insight-card { min-height: 140px; padding: 20px; }
+.monitor-insight-summary { margin: 0 0 18px; font-size: 17px; font-weight: 650; }
+.monitor-insight-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.monitor-insight-columns h3 { margin: 0 0 8px; font-size: 13px; }
+.monitor-insight-columns ul { margin: 0; padding-left: 20px; color: var(--muted-dark); font-size: 13px; }
+.monitor-insight-columns li + li { margin-top: 6px; }
+.monitor-empty, .monitor-fallback { margin: 0; color: var(--muted); font-size: 13px; }
+.monitor-fallback { margin-top: 16px; color: var(--amber); }
+.monitor-notice { padding: 12px 14px; margin: 14px 0; border-radius: 10px; font-size: 13px; }
+.monitor-notice.error { color: var(--red); background: rgba(255,69,58,.1); border: 1px solid rgba(255,69,58,.25); }
+.monitor-pin-link { margin-left: 6px; border: 0; padding: 0; color: var(--blue); background: transparent; text-decoration: underline; cursor: pointer; font-size: inherit; }
+@media (max-width: 600px) {
+  .monitor-heading { align-items: flex-start; }
+  .monitor-heading .refresh { flex: 0 0 auto; }
+  .monitor-trend-row { grid-template-columns: 1fr auto; }
+  .monitor-trend-row .monitor-trend-delta { grid-column: 1 / -1; }
+  .monitor-insight-columns { grid-template-columns: 1fr; gap: 16px; }
+  .telegram-tab .relay-drawer { padding: 17px 14px; border-radius: 15px; }
+  .telegram-tab .drawer-header { align-items: flex-start; }
+  .telegram-tab-current { display: none; }
+}
+
 /* Mobile Drawer Responsive Mode */
 @media (max-width: 760px) {
   .relay-drawer {

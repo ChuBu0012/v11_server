@@ -120,6 +120,16 @@ document.addEventListener('alpine:init', () => {
         this.updateTheme(e.detail.theme);
       });
 
+      window.addEventListener('sentinel:tab-changed', (e) => {
+        if (e.detail?.tab !== 'overview') return;
+        this.$nextTick(() => {
+          Object.values(chartInstances).forEach((chart) => {
+            if (!chart) return;
+            try { chart.resize(); } catch (_) {}
+          });
+        });
+      });
+
       // 3. Fallback direct load on init in case event was dispatched before component mounted
       this.loadHistory();
     },

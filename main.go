@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	_ "time/tzdata"
@@ -36,6 +37,11 @@ import (
 )
 
 var startTime = time.Now()
+
+var monitorInsightRate = struct {
+	sync.Mutex
+	last time.Time
+}{}
 
 func init() {
 	setupAndroidDNS()
@@ -302,6 +308,29 @@ func setupRouter(app *App) *gin.Engine {
 	if app.watchtower != nil {
 		app.watchtower.RegisterRoutes(r)
 	}
+	r.POST("/api/monitor/insight", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
+		var evidence ai.MonitorEvidence
+		if err := c.ShouldBindJSON(&evidence); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูล Monitor ไม่ถูกต้อง หรือมีขนาดใหญ่เกินไป"})
+			return
+		}
+		if err := validateMonitorEvidence(evidence); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		monitorInsightRate.Lock()
+		if time.Since(monitorInsightRate.last) < 20*time.Second {
+			monitorInsightRate.Unlock()
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "รอสักครู่ก่อนขอ AI insight อีกครั้ง"})
+			return
+		}
+		monitorInsightRate.last = time.Now()
+		monitorInsightRate.Unlock()
+
+		c.JSON(http.StatusOK, ai.SummarizeMonitorInsight(c.Request.Context(), app.aiClient, evidence))
+	})
 
 	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
 	r.POST("/api/schedule/parse", requirePINAuth(app.cfg.ReminderPIN, "X-Reminder-PIN"), func(c *gin.Context) {
@@ -346,6 +375,38 @@ func setupRouter(app *App) *gin.Engine {
 	})
 
 	return r
+}
+
+func validateMonitorEvidence(e ai.MonitorEvidence) error {
+	switch e.Status {
+	case "รอข้อมูล telemetry", "ต้องตรวจสอบการเก็บข้อมูล", "พบเงื่อนไขที่ต้องติดตาม", "ระบบทำงานปกติ":
+	default:
+		return fmt.Errorf("สถานะ Monitor ไม่ถูกต้อง")
+	}
+	if e.HostRAMUsedMB < 0 || e.HostRAMUsedMB > 1024*1024 || e.HostRAMTotalMB < 0 || e.HostRAMTotalMB > 1024*1024 ||
+		e.GoRAMMB < 0 || e.GoRAMMB > 1024*1024 || e.DiskFreeGB < 0 || e.DiskFreeGB > 1024*1024 ||
+		e.DiskTotalGB < 0 || e.DiskTotalGB > 1024*1024 || (e.BatteryAvailable && (e.BatteryPct < 0 || e.BatteryPct > 100)) || e.UptimeSeconds < 0 {
+		return fmt.Errorf("ค่าตัวเลข Monitor อยู่นอกช่วงที่รองรับ")
+	}
+	if len(e.Conditions) > 10 || len(e.Trend) > 24 || e.Watchtower.Total < 0 || e.Watchtower.Total > 1000 ||
+		e.Watchtower.Up < 0 || e.Watchtower.Down < 0 || e.Watchtower.Paused < 0 ||
+		e.Watchtower.Up+e.Watchtower.Down+e.Watchtower.Paused > e.Watchtower.Total {
+		return fmt.Errorf("จำนวนรายการ Monitor อยู่นอกช่วงที่รองรับ")
+	}
+	for _, condition := range e.Conditions {
+		switch condition {
+		case "low_battery", "low_disk", "service_failure":
+		default:
+			return fmt.Errorf("รหัสเงื่อนไข Monitor ไม่ถูกต้อง")
+		}
+	}
+	for _, point := range e.Trend {
+		if point.GoRAMMB < 0 || point.GoRAMMB > 1024*1024 ||
+			point.DiskFreeGB < 0 || point.DiskFreeGB > 1024*1024 || (point.BatteryAvailable && (point.BatteryPct < 0 || point.BatteryPct > 100)) {
+			return fmt.Errorf("จุดข้อมูลแนวโน้มไม่ถูกต้อง")
+		}
+	}
+	return nil
 }
 
 func requirePINAuth(configuredPIN, headerName string) gin.HandlerFunc {
