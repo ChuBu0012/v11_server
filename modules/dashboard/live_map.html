@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Sentinel">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png">
+  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=22">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/live-map.css">
+  <link rel="stylesheet" href="/static/css/live-map.css?v=22">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js"></script>
+  <script defer src="/static/js/components/live-map.js?v=22"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="live-map-body">
@@ -71,15 +71,15 @@
         <button type="button" class="map-control" :class="{'is-selected': showTrail}" @click="toggleTrail()" title="แสดงเส้นทาง 24 ชั่วโมง">⌁</button>
       </div>
       <div class="map-legend">
-        <span class="legend-item"><img src="/static/img/avatar-chubu.png" alt="Chubu" class="legend-avatar"> Chubu</span>
-        <span class="legend-item"><img src="/static/img/avatar-furturia.png" alt="Furturia" class="legend-avatar"> Furturia</span>
+        <span class="legend-item"><img src="/static/img/avatar-chubu.png?v=22" alt="Chubu" class="legend-avatar"> Chubu</span>
+        <span class="legend-item"><img src="/static/img/avatar-furturia.png?v=22" alt="Furturia" class="legend-avatar"> Furturia</span>
       </div>
     </section>
 
     <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
       <article class="device-card device-card-me">
         <div class="device-card-heading">
-          <img class="device-avatar-img" src="/static/img/avatar-chubu.png" alt="Chubu">
+          <img class="device-avatar-img" src="/static/img/avatar-chubu.png?v=22" alt="Chubu">
           <div><strong>Chubu</strong><small x-text="deviceAge(me)"></small></div>
           <span class="device-color"></span>
         </div>
@@ -91,7 +91,7 @@
       </article>
       <article class="device-card device-card-friend">
         <div class="device-card-heading">
-          <img class="device-avatar-img" src="/static/img/avatar-furturia.png" alt="Furturia">
+          <img class="device-avatar-img" src="/static/img/avatar-furturia.png?v=22" alt="Furturia">
           <div><strong>Furturia</strong><small x-text="deviceAge(friend)"></small></div>
           <span class="device-color"></span>
         </div>
@@ -101,6 +101,44 @@
           <div><span>ความแม่นยำ</span><strong x-text="accuracyText(friend)"></strong></div>
         </div>
       </article>
+    </section>
+
+    <!-- Real-time Location Log Feed -->
+    <section class="logs-section" aria-label="ประวัติการส่งพิกัดล่าสุด">
+      <div class="logs-card">
+        <div class="logs-header" @click="showLogs = !showLogs">
+          <div class="logs-title">
+            <span>📡 บันทึกการรับพิกัดล่าสุด (Live Ping Log)</span>
+            <span class="logs-count-badge" x-text="recentLogs.length + ' รายการ'"></span>
+          </div>
+          <button type="button" class="icon-button" style="width:28px; height:28px; font-size:12px;" :aria-expanded="showLogs">
+            <span x-text="showLogs ? '▲' : '▼'"></span>
+          </button>
+        </div>
+        <div class="logs-body" x-show="showLogs" x-transition>
+          <template x-if="recentLogs.length === 0">
+            <p style="padding: 16px; text-align: center; color: var(--map-muted); font-size: 12px; margin: 0;">กำลังรอพิกัดจากเครื่อง...</p>
+          </template>
+          <ul class="logs-list">
+            <template x-for="log in recentLogs" :key="log.id + '-' + log.device">
+              <li class="log-item">
+                <div class="log-device">
+                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png?v=22' : '/static/img/avatar-furturia.png?v=22'" :alt="log.name" class="log-avatar">
+                  <div>
+                    <strong x-text="log.name"></strong>
+                    <small x-text="formatTimeDetail(log.recorded_at)"></small>
+                  </div>
+                </div>
+                <div class="log-meta">
+                  <span class="log-badge batt" x-text="'🔋 ' + log.battery_level + '%'"></span>
+                  <span class="log-badge speed" x-text="log.speed < 1 ? 'หยุดนิ่ง' : log.speed + ' km/h'"></span>
+                  <span class="log-badge" x-text="'±' + Math.round(log.accuracy) + ' ม.'"></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
     </section>
     <p class="live-error" x-show="errorText" x-text="errorText" x-cloak></p>
     <footer class="live-footer"><span>แผนที่จะรีเฟรชทุก 15 วินาที</span><span>ข้อมูลตำแหน่งจัดเก็บใน Pocket Sentinel</span></footer>

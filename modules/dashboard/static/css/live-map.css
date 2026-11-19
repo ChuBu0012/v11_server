@@ -35,10 +35,7 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 .summary-updated { text-align: right; }
 .summary-updated strong { color: #cad7eb; font-size: 12px; font-weight: 500; }
 .map-shell { position: relative; height: clamp(340px, 50vh, 540px); min-height: 310px; overflow: hidden; border: 1px solid var(--map-line); border-radius: 20px; background: #111a29; box-shadow: 0 20px 70px rgba(0,0,0,.22); }
-#live-map-canvas { width: 100%; height: 100%; background: #111a29; }
-.leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
-}
+#live-map-canvas { width: 100%; height: 100%; background: #e2e8f0; }
 .map-loading { position: absolute; z-index: 500; inset: 0; display: flex; align-items: center; justify-content: center; gap: 11px; background: rgba(11,18,32,.78); color: #c9d7ea; font-size: 13px; pointer-events: none; }
 .loading-orbit { width: 18px; height: 18px; border: 2px solid rgba(67,167,255,.2); border-top-color: var(--map-blue); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -51,19 +48,19 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 
 /* Life360 Dual-Avatar Co-Location Speech Bubble Marker */
 .colocated-bubble-wrapper { background: transparent; border: 0; }
-.life360-bubble { position: relative; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45)); transform: translateY(-8px); }
-.bubble-header-card { display: flex; align-items: center; gap: 8px; padding: 6px 13px; border-radius: 999px; background: #ffffff; color: #0f172a; border: 1px solid rgba(255, 255, 255, 0.85); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); }
-.bubble-icon { font-size: 13px; line-height: 1; }
+.life360-bubble { position: relative; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35)); transform: translateY(-8px); }
+.bubble-header-card { display: flex; align-items: center; gap: 8px; padding: 7px 15px; border-radius: 999px; background: #ffffff; color: #0f172a; border: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16); }
+.bubble-icon { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #f3e8ff; flex-shrink: 0; }
 .bubble-titles { display: flex; flex-direction: column; text-align: left; }
-.bubble-headline { font-size: 11px; font-weight: 750; color: #0f172a; line-height: 1.25; white-space: nowrap; }
-.bubble-subline { font-size: 9px; font-weight: 500; color: #64748b; line-height: 1.2; white-space: nowrap; }
-.bubble-avatars-cluster { display: flex; align-items: center; margin-top: 4px; }
-.cluster-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; border: 3px solid #ffffff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.28); background: #0f172a; }
+.bubble-headline { font-size: 12px; font-weight: 750; color: #0f172a; line-height: 1.25; white-space: nowrap; }
+.bubble-subline { font-size: 10px; font-weight: 500; color: #64748b; line-height: 1.2; white-space: nowrap; }
+.bubble-avatars-cluster { display: flex; align-items: center; margin-top: 5px; }
+.cluster-avatar { position: relative; width: 50px; height: 50px; border-radius: 50%; border: 3.5px solid #ffffff; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.22); background: #f8fafc; }
 .cluster-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cluster-avatar.furturia { margin-left: -12px; z-index: 2; }
+.cluster-avatar.furturia { margin-left: -14px; z-index: 2; }
 .cluster-avatar.chubu { z-index: 1; }
 .cluster-tag { display: none; }
-.bubble-tip { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 9px solid #ffffff; margin-top: -2px; z-index: 3; }
+.bubble-tip { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 10px solid #ffffff; margin-top: -2px; z-index: 3; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.12)); }
 
 /* Single Avatar Marker */
 .single-avatar-marker { background: transparent; border: 0; }
@@ -201,3 +198,22 @@ body.live-map-body { margin: 0; min-width: 320px; background: var(--map-bg); col
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Location Logs / Ping History Card */
+.logs-section { margin-top: 14px; }
+.logs-card { border: 1px solid var(--map-line); border-radius: 18px; background: var(--map-panel); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.logs-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--map-line); cursor: pointer; user-select: none; }
+.logs-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: #e2e8f0; }
+.logs-count-badge { padding: 2px 8px; border-radius: 999px; background: rgba(56, 217, 169, 0.15); color: #34d399; font-size: 11px; font-weight: 600; }
+.logs-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; }
+.log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+.log-item:last-child { border-bottom: none; }
+.log-device { display: flex; align-items: center; gap: 10px; }
+.log-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1.5px solid white; flex-shrink: 0; }
+.log-device strong { display: block; font-size: 12px; color: #f1f5f9; line-height: 1.2; }
+.log-device small { color: var(--map-muted); font-size: 10px; }
+.log-meta { display: flex; align-items: center; gap: 8px; text-align: right; }
+.log-badge { padding: 2px 7px; border-radius: 6px; font-size: 10px; background: rgba(255,255,255,0.06); color: #94a3b8; font-variant-numeric: tabular-nums; }
+.log-badge.batt { color: #facc15; }
+.log-badge.speed { color: #38bdf8; }
+

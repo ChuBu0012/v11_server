@@ -37,7 +37,7 @@ function formatRelativeShort(dateStr) {
 const singleAvatarIcon = (kind) => {
   const isMe = kind === 'me';
   const name = isMe ? 'Chubu' : 'Furturia';
-  const avatarSrc = isMe ? '/static/img/avatar-chubu.png' : '/static/img/avatar-furturia.png';
+  const avatarSrc = isMe ? '/static/img/avatar-chubu.png?v=22' : '/static/img/avatar-furturia.png?v=22';
   const themeClass = isMe ? 'marker-chubu' : 'marker-furturia';
   return L.divIcon({
     className: `single-avatar-marker ${themeClass}`,
@@ -64,7 +64,11 @@ const colocatedSpeechBubbleIcon = (title, subtext) => {
     html: `
       <div class="life360-bubble">
         <div class="bubble-header-card">
-          <span class="bubble-icon">📍</span>
+          <span class="bubble-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#8b5cf6">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+          </span>
           <div class="bubble-titles">
             <span class="bubble-headline">${title}</span>
             <span class="bubble-subline">${subtext}</span>
@@ -72,19 +76,17 @@ const colocatedSpeechBubbleIcon = (title, subtext) => {
         </div>
         <div class="bubble-avatars-cluster">
           <div class="cluster-avatar chubu">
-            <img src="/static/img/avatar-chubu.png" alt="Chubu" />
-            <span class="cluster-tag">Chubu</span>
+            <img src="/static/img/avatar-chubu.png?v=22" alt="Chubu" />
           </div>
           <div class="cluster-avatar furturia">
-            <img src="/static/img/avatar-furturia.png" alt="Furturia" />
-            <span class="cluster-tag">Furturia</span>
+            <img src="/static/img/avatar-furturia.png?v=22" alt="Furturia" />
           </div>
         </div>
         <div class="bubble-tip"></div>
       </div>
     `,
-    iconSize: [210, 115],
-    iconAnchor: [105, 115],
+    iconSize: [220, 115],
+    iconAnchor: [110, 115],
     popupAnchor: [0, -112],
   });
 };
@@ -235,6 +237,7 @@ document.addEventListener('alpine:init', () => {
     showTrail: false,
     settingsOpen: false,
     pickingLocation: false,
+    showLogs: true,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     settingsMessage: '',
     managedGeofences: [],
@@ -248,10 +251,21 @@ document.addEventListener('alpine:init', () => {
       } else {
         liveMapState.map = L.map('live-map-canvas', { zoomControl: false, preferCanvas: true }).setView([13.6516, 100.4939], 15);
         L.control.zoom({ position: 'bottomright' }).addTo(liveMapState.map);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(liveMapState.map);
+
+        // Google Maps Clean Roadmap tiles with Esri fallback
+        const baseLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['0', '1', '2', '3'],
+          attribution: '&copy; Google Maps',
+        });
+        baseLayer.on('tileerror', function() {
+          if (!this._hasFallenBack) {
+            this._hasFallenBack = true;
+            this.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}');
+          }
+        });
+        baseLayer.addTo(liveMapState.map);
+
         liveMapState.geofenceLayer = L.layerGroup().addTo(liveMapState.map);
         liveMapState.trailLayer = L.layerGroup().addTo(liveMapState.map);
         liveMapState.pickerLayer = L.layerGroup().addTo(liveMapState.map);
@@ -346,6 +360,20 @@ document.addEventListener('alpine:init', () => {
 
     accuracyText(point) {
       return point ? `±${Math.round(point.accuracy)} ม.` : '—';
+    },
+
+    get recentLogs() {
+      const meLogs = (this.breadcrumbs?.me || []).map((p) => ({ ...p, device: 'me', name: 'Chubu' }));
+      const friendLogs = (this.breadcrumbs?.friend || []).map((p) => ({ ...p, device: 'friend', name: 'Furturia' }));
+      return [...meLogs, ...friendLogs].sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()).slice(0, 15);
+    },
+
+    formatTimeDetail(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const time = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const rel = this.relativeAge(dateStr);
+      return `${time} (${rel})`;
     },
 
     centerOnDevices() {
