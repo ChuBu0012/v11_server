@@ -21,8 +21,9 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
 	}
 
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(2)
+	// Keep idle connections alive to reuse WAL readers on a single-core ARM64 device.
+	db.SetMaxOpenConns(3)
+	db.SetMaxIdleConns(3)
 	db.SetConnMaxLifetime(time.Hour)
 
 	pragmas := []string{
@@ -30,6 +31,12 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		"PRAGMA busy_timeout=5000;",
 		"PRAGMA synchronous=NORMAL;",
 		"PRAGMA foreign_keys=ON;",
+		// 8 MB page cache — reduces I/O on the low-RAM ARM device.
+		"PRAGMA cache_size=-8000;",
+		// Memory-mapped I/O for read-heavy workloads (256 MB ceiling).
+		"PRAGMA mmap_size=268435456;",
+		// Use memory for temporary tables to avoid disk I/O.
+		"PRAGMA temp_store=MEMORY;",
 	}
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
