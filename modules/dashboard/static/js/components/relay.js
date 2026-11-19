@@ -20,6 +20,12 @@ document.addEventListener('alpine:init', () => {
 
     // Form fields (Primitive state only — NO File instances in proxy)
     messageText: '',
+    messageTemplates: [
+      { label: '📝 บันทึก', text: '📝 บันทึก\nหัวข้อ: [พิมพ์หัวข้อ]\nรายละเอียด: [พิมพ์รายละเอียด]' },
+      { label: '🚨 แจ้งปัญหา', text: '🚨 รายงานปัญหา\nอาการ: [อธิบายอาการ]\nเริ่มพบเมื่อ: [เวลา]\nสิ่งที่ลองแล้ว: [รายการ]' },
+      { label: '✅ ความคืบหน้า', text: '✅ รายงานความคืบหน้า\nทำแล้ว: [รายการ]\nกำลังทำ: [รายการ]\nติดขัด: [ถ้ามี]\nขั้นถัดไป: [รายการ]' },
+      { label: '📋 ขอให้ตรวจสอบ', text: '📋 ขอให้ช่วยตรวจสอบ\nรายการ: [RAM / disk / PM2]\nช่วงเวลา: [เช่น 24 ชั่วโมง]' },
+    ],
     captionText: '',
     hasFile: false,
     filePreviewUrl: null,
@@ -127,6 +133,14 @@ document.addEventListener('alpine:init', () => {
       document.body.classList.remove('drawer-locked');
       this.statusText = '';
       this.statusType = '';
+    },
+
+    useTemplate(template) {
+      if (!template?.text) return;
+      this.activeTab = 'text';
+      this.messageText = template.text;
+      this.showProofreadDiff = false;
+      this.$nextTick(() => document.getElementById('relay-message-input')?.focus());
     },
 
     savePin() {

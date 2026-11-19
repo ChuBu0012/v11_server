@@ -52,9 +52,15 @@ type InlineKeyboardMarkup struct {
 
 // InlineKeyboardButton represents one button of an inline keyboard.
 type InlineKeyboardButton struct {
-	Text         string `json:"text"`
-	CallbackData string `json:"callback_data,omitempty"`
-	URL          string `json:"url,omitempty"`
+	Text         string          `json:"text"`
+	CallbackData string          `json:"callback_data,omitempty"`
+	URL          string          `json:"url,omitempty"`
+	CopyText     *CopyTextButton `json:"copy_text,omitempty"`
+}
+
+// CopyTextButton copies a user-editable command draft to the Telegram clipboard.
+type CopyTextButton struct {
+	Text string `json:"text"`
 }
 
 // APIResponse represents the standard Telegram Bot API response envelope.

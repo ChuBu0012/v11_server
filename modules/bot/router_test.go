@@ -118,7 +118,7 @@ func TestRouter(t *testing.T) {
 	if lastChatID != 123456 {
 		t.Errorf("Expected chat ID 123456, got %d", lastChatID)
 	}
-	if !strings.Contains(lastSentMessage, "Pocket Sentinel 2.0") || !strings.Contains(lastSentMessage, "/status") || !strings.Contains(lastSentMessage, "/task") || !strings.Contains(lastSentMessage, "/task_status") {
+	if !strings.Contains(lastSentMessage, "Pocket Sentinel") || !strings.Contains(lastSentMessage, "/status") || !strings.Contains(lastSentMessage, "/task") || !strings.Contains(lastSentMessage, "/task_status") {
 		t.Errorf("Expected /start help text to include /status, /task, and /task_status, got: %s", lastSentMessage)
 	}
 	mu.Unlock()
@@ -193,7 +193,7 @@ func TestRouter(t *testing.T) {
 		t.Fatalf("/reboot failed: %v", err)
 	}
 	mu.Lock()
-	if !strings.Contains(lastSentMessage, "Restarting Pocket Sentinel via PM2") {
+	if !strings.Contains(lastSentMessage, "กำลังรีสตาร์ต") && !strings.Contains(lastSentMessage, "Restarting Pocket Sentinel via PM2") {
 		t.Errorf("Expected reboot message, got: %s", lastSentMessage)
 	}
 	mu.Unlock()
@@ -357,7 +357,7 @@ func TestRouter_Task_EmptyArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get response: %v", err)
 	}
-	if !strings.Contains(msg.Text, "วิธีใช้งาน /task") {
+	if !strings.Contains(msg.Text, "สร้างงานให้ Agent") && !strings.Contains(msg.Text, "วิธีใช้งาน /task") {
 		t.Errorf("Expected usage syntax, got: %s", msg.Text)
 	}
 	if mockExecCalled {
@@ -379,7 +379,7 @@ func TestRouter_Task_EmptyArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get response: %v", err)
 	}
-	if !strings.Contains(msg.Text, "วิธีใช้งาน /task") {
+	if !strings.Contains(msg.Text, "สร้างงานให้ Agent") && !strings.Contains(msg.Text, "วิธีใช้งาน /task") {
 		t.Errorf("Expected usage syntax for whitespace task, got: %s", msg.Text)
 	}
 }

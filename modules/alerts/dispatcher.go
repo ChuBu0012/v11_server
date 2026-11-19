@@ -3,6 +3,7 @@ package alerts
 import (
 	"context"
 	"fmt"
+	"html"
 	"log"
 	"time"
 )
@@ -104,16 +105,40 @@ func (m *AlertManager) ProcessSample(sample Sample) error {
 
 // buildMessage creates a human-readable notification message.
 func (m *AlertManager) buildMessage(kind TransitionKind, cond Condition, state AlertState) string {
+	condition := html.EscapeString(string(cond.Type))
+	var detail string
+	switch cond.Type {
+	case LowBattery:
+		condition = "แบตเตอรี่ต่ำ"
+		detail = fmt.Sprintf("เหลือ <code>%.0f%%</code> (เกณฑ์แจ้งเตือน ≤ <code>%.0f%%</code>)", cond.Value, cond.Threshold)
+	case LowDisk:
+		condition = "พื้นที่ดิสก์เหลือน้อย"
+		detail = fmt.Sprintf("เหลือ <code>%.2f GB</code> (เกณฑ์แจ้งเตือน ≤ <code>%.2f GB</code>)", cond.Value, cond.Threshold)
+	case ServiceFailure:
+		condition = "การตรวจสอบบริการ"
+		if kind == TransitionToRecovery {
+			detail = "ตรวจสุขภาพบริการผ่านแล้ว"
+		} else {
+			detail = "ตรวจสุขภาพบริการไม่ผ่าน"
+		}
+	default:
+		detail = html.EscapeString(cond.Message)
+	}
+
 	switch kind {
 	case TransitionToAlert:
-		return fmt.Sprintf("🚨 <b>ALERT: %s</b>\n%s\nTriggered at: %s",
-			cond.Type, cond.Message, state.TriggeredAt.Format(time.RFC3339))
+		return fmt.Sprintf("🚨 <b>ตรวจพบปัญหาระบบ</b>\n\n<b>รายการ:</b> %s\n<b>รายละเอียด:</b> %s\n<b>เวลา:</b> %s",
+			condition, detail, formatAlertTime(state.TriggeredAt))
 	case TransitionToRecovery:
-		return fmt.Sprintf("✅ <b>RECOVERED: %s</b>\n%s\nRecovered at: %s",
-			cond.Type, cond.Message, state.LastCheckedAt.Format(time.RFC3339))
+		return fmt.Sprintf("✅ <b>ระบบกลับมาปกติ</b>\n\n<b>รายการ:</b> %s\n<b>สถานะ:</b> %s\n<b>เวลา:</b> %s",
+			condition, detail, formatAlertTime(state.LastCheckedAt))
 	default:
 		return cond.Message
 	}
+}
+
+func formatAlertTime(t time.Time) string {
+	return t.In(time.FixedZone("ICT", 7*60*60)).Format("2006-01-02 15:04:05 MST")
 }
 
 // dispatchAsync sends a notification in a goroutine with a bounded timeout.

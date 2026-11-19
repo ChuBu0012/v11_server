@@ -49,4 +49,8 @@
 - **Max Upload Limit:** 20 MB
 - **Web UI & App Hub:** เข้าถึงได้ผ่านหน้า Dashboard (`/`) ในโซน App Hub & Gateways หรือเปิดตรงผ่าน `/?app=relay` หรือ `/relay` รองรับการกด `⌘+V` / `Ctrl+V` เพื่อวางภาพจากคลิปบอร์ดส่งเข้า Telegram ได้ทันที
 
+## 7. Telegram & Discord Message Templates
+- เมื่อสร้างหรือแก้ไขข้อความ Telegram/Discord, alert, command menu หรือ Relay template ให้อ่าน `.agents/skills/telegram-discord-message-templates/SKILL.md` ก่อน
+- ใช้ Telegram HTML และ Discord Markdown ให้ตรงกับ sender, escape dynamic content ตาม platform และให้ปุ่ม task คัดลอก draft เพื่อให้เจ้าของตรวจทานก่อนส่ง
+
 

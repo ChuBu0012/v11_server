@@ -254,21 +254,24 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 
 	chatID := msg.Chat.ID
 	keyboard := MakeStatusKeyboard()
+	helpKeyboard := MakeHelpKeyboard()
 
 	switch cmd {
 	case "/start", "/help":
-		helpHTML := "🛡️ <b>Pocket Sentinel 2.0</b> — Terminal &amp; Hardware Sentinel\n\n" +
-			"<b>Available Commands:</b>\n" +
-			"📊 /status — Live system vitals &amp; tunnel URL\n" +
-			"🤖 /task &lt;prompt&gt; — Dispatch autonomous task to Antigravity\n" +
-			"⚡ /task_status — Check active agent task status\n" +
-			"📰 /digest — Generate AI News &amp; Insights Digest\n" +
-			"🏓 /ping — Check server latency &amp; heartbeat\n" +
-			"🔦 /torch &lt;on|off|status&gt; — Toggle phone LED flash (3m safety)\n" +
-			"⚡ /exec &lt;cmd&gt; — Run diagnostic command (ps, df, free, uptime, pm2)\n" +
-			"♻️ /reboot — Restart Go server process via PM2\n" +
-			"ℹ️ /help — Show this message"
-		_, err := r.sendMessage(ctx, chatID, helpHTML, keyboard)
+		helpHTML := "🛡️ <b>Pocket Sentinel</b>\n" +
+			"<i>เลือกปุ่มเพื่อดูสถานะ ควบคุมไฟฉาย หรือคัดลอกคำสั่งตัวอย่าง</i>\n\n" +
+			"<b>📊 ดูสถานะ</b>\n" +
+			"<code>/status</code> สุขภาพเครื่องและ Tunnel\n" +
+			"<code>/ping</code> ตรวจการตอบสนอง\n" +
+			"<code>/torch status</code> ตรวจไฟฉาย\n\n" +
+			"<b>🤖 งานและเครื่องมือ</b>\n" +
+			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
+			"<code>/task_status</code> ดูงาน Agent\n" +
+			"<code>/digest</code> สรุปข่าว AI\n" +
+			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
+			"<code>/reboot</code> รีสตาร์ต Go server\n\n" +
+			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
+		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
 		return err
 
 	case "/task":
@@ -283,12 +286,10 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		}
 
 		if rawInput == "" {
-			usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task [low|medium|high] &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
-				"ตัวอย่าง:\n" +
-				"• <code>/task [low] ตรวจสอบ disk และ memory</code>\n" +
-				"• <code>/task [medium] เช็คสถานะ pm2 go-server</code>\n" +
-				"• <code>/task [high] วิเคราะห์สถาปัตยกรรมและช่วยรีแฟกเตอร์</code>"
-			_, err := r.sendMessage(ctx, chatID, usageHTML, keyboard)
+			usageHTML := "🤖 <b>สร้างงานให้ Agent</b>\n" +
+				"ส่งคำสั่งในรูปแบบนี้:\n<code>/task [low|medium|high] &lt;สิ่งที่ต้องการ&gt;</code>\n\n" +
+				"ใช้ปุ่มคัดลอกตัวอย่าง แล้วแก้รายละเอียดก่อนส่งได้เลย"
+			_, err := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
 			return err
 		}
 
@@ -317,10 +318,9 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 				return sendErr
 			}
 			if errors.Is(err, ErrPromptEmpty) {
-				usageHTML := "💡 <b>วิธีใช้งาน /task:</b>\n<code>/task [low|medium|high] &lt;คำสั่งหรือคำถาม&gt;</code>\n\n" +
-					"ตัวอย่าง:\n" +
-					"• <code>/task [low] ตรวจสอบ disk และ memory</code>"
-				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, keyboard)
+				usageHTML := "🤖 <b>สร้างงานให้ Agent</b>\n<code>/task [low|medium|high] &lt;สิ่งที่ต้องการ&gt;</code>\n\n" +
+					"เลือกปุ่มตัวอย่างเพื่อคัดลอกข้อความ แล้วแก้ก่อนส่ง"
+				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
 				return sendErr
 			}
 			secHTML := "🛡️ <b>Security Warning:</b> คำสั่งถูกปฏิเสธเนื่องจากละเมิดนโยบายความปลอดภัย (Prompt Injection / Destructive Command)"
@@ -531,7 +531,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		return err
 
 	case "/reboot":
-		rebootMsg := "♻️ <b>Restarting Pocket Sentinel via PM2...</b>\n<i>Process will cleanly exit and restart within 3 seconds.</i>"
+		rebootMsg := "♻️ <b>กำลังรีสตาร์ต Pocket Sentinel</b>\n\n<i>ระบบจะปิดโปรเซสอย่างปลอดภัย และเริ่มทำงานใหม่ภายใน 3 วินาที</i>"
 		_, err := r.sendMessage(ctx, chatID, rebootMsg, nil)
 		if r.rebootFunc != nil {
 			go func() {

@@ -929,6 +929,13 @@ body.drawer-locked { overflow: hidden !important; }
 .field-wrap { display: flex; flex-direction: column; width: 100%; }
 .mt-12 { margin-top: 12px; }
 
+.relay-template-strip { display: flex; flex-direction: column; gap: 8px; margin: 0 0 10px; }
+.relay-template-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.relay-template-buttons { display: flex; gap: 7px; overflow-x: auto; padding: 1px 1px 5px; scrollbar-width: thin; }
+.relay-template-btn { flex: 0 0 auto; border: 1px solid var(--hairline); border-radius: 999px; padding: 7px 11px; background: rgba(120, 120, 128, 0.08); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; transition: background 0.18s, border-color 0.18s, transform 0.18s; }
+.relay-template-btn:hover { background: rgba(41, 151, 255, 0.12); border-color: var(--blue); transform: translateY(-1px); }
+.relay-template-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
 #relay-message-input {
   width: 100%;
   border-radius: 12px;

@@ -81,6 +81,14 @@
     <!-- Tab 1: Text Message -->
     <div class="relay-tab-content" x-show="activeTab === 'text'">
       <div class="field-wrap chat-composer">
+        <div class="relay-template-strip" aria-label="ข้อความสำเร็จรูป">
+          <span class="relay-template-label">เริ่มจากแม่แบบ</span>
+          <div class="relay-template-buttons">
+            <template x-for="template in messageTemplates" :key="template.label">
+              <button type="button" class="relay-template-btn" @click="useTemplate(template)" x-text="template.label"></button>
+            </template>
+          </div>
+        </div>
         <textarea id="relay-message-input" x-model="messageText" rows="5" placeholder="พิมพ์ข้อความของคุณ..." maxlength="4000"></textarea>
         <div class="textarea-footer">
           <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>

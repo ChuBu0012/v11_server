@@ -519,11 +519,11 @@ func main() {
 					var m runtime.MemStats
 					runtime.ReadMemStats(&m)
 					ramMB := float64(m.Alloc) / 1024 / 1024
-					bootMsg := fmt.Sprintf("🚀 <b>Pocket Sentinel ออนไลน์แล้ว!</b>\n"+
-						"📍 <b>Version:</b> 2.1 (Async Agent Bridge)\n"+
-						"🆔 <b>PID:</b> <code>%d</code>\n"+
-						"💾 <b>Process RAM:</b> <code>%.1f MB</code>\n"+
-						"🕒 <b>เวลา:</b> %s",
+					bootMsg := fmt.Sprintf("🚀 <b>Pocket Sentinel พร้อมใช้งาน</b>\n\n"+
+						"<b>เวอร์ชัน:</b> 2.1 · Async Agent Bridge\n"+
+						"<b>PID:</b> <code>%d</code>\n"+
+						"<b>หน่วยความจำ:</b> <code>%.1f MB</code>\n"+
+						"<b>เวลา:</b> %s",
 						os.Getpid(), ramMB, time.Now().Format("2006-01-02 15:04:05"))
 					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
@@ -544,9 +544,10 @@ func main() {
 	if app.botClient != nil && app.cfg.TelegramChatID != "" {
 		chatID, _ := strconv.ParseInt(app.cfg.TelegramChatID, 10, 64)
 		if chatID != 0 {
-			downMsg := fmt.Sprintf("⚠️ <b>Pocket Sentinel กำลังรีสตาร์ท / ปิดระบบ</b>\n"+
-				"🆔 <b>PID:</b> <code>%d</code> (Signal: %v)\n"+
-				"🕒 <b>เวลา:</b> %s",
+			downMsg := fmt.Sprintf("⚠️ <b>Pocket Sentinel กำลังหยุดทำงาน</b>\n\n"+
+				"<b>PID:</b> <code>%d</code>\n"+
+				"<b>Signal:</b> <code>%v</code>\n"+
+				"<b>เวลา:</b> %s",
 				os.Getpid(), sig, time.Now().Format("2006-01-02 15:04:05"))
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
