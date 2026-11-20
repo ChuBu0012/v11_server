@@ -31,6 +31,7 @@ type Router struct {
 	rebootFunc      func()
 	digestFunc      func(ctx context.Context) (string, error)
 	callbackHandler func(ctx context.Context, callback *CallbackQuery) error
+	callbackRoutes  map[string]func(ctx context.Context, callback *CallbackQuery) error
 
 	runner       *AgentRunner
 	guard        *PromptGuard
@@ -75,6 +76,16 @@ func (r *Router) SetLocationFunc(f func(ctx context.Context) (string, *InlineKey
 // WithCallbackHandler registers an application callback handler after owner authorization.
 func WithCallbackHandler(handler func(context.Context, *CallbackQuery) error) RouterOption {
 	return func(r *Router) { r.callbackHandler = handler }
+}
+
+// WithCallbackRoute registers a callback query handler for a specific data prefix.
+func WithCallbackRoute(prefix string, h func(ctx context.Context, q *CallbackQuery) error) RouterOption {
+	return func(r *Router) {
+		if r.callbackRoutes == nil {
+			r.callbackRoutes = make(map[string]func(ctx context.Context, callback *CallbackQuery) error)
+		}
+		r.callbackRoutes[prefix] = h
+	}
 }
 
 // RouterOption configures a Router.
@@ -152,13 +163,14 @@ func NewRouter(
 ) *Router {
 	keyboards := NewKeyboardsModule(client, statusProv, torch)
 	r := &Router{
-		client:     client,
-		sender:     client,
-		authorizer: authorizer,
-		torch:      torch,
-		executor:   executor,
-		keyboards:  keyboards,
-		statusProv: statusProv,
+		client:         client,
+		sender:         client,
+		authorizer:     authorizer,
+		torch:          torch,
+		executor:       executor,
+		keyboards:      keyboards,
+		statusProv:     statusProv,
+		callbackRoutes: make(map[string]func(ctx context.Context, callback *CallbackQuery) error),
 		rebootFunc: func() {
 			log.Printf("[bot] /reboot triggered: sending SIGTERM for graceful PM2 resurrection...")
 			p, err := os.FindProcess(os.Getpid())
@@ -261,6 +273,11 @@ func (r *Router) HandleUpdate(ctx context.Context, u Update) error {
 
 	// 2. Handle CallbackQuery (inline button clicks)
 	if u.CallbackQuery != nil {
+		for prefix, handler := range r.callbackRoutes {
+			if strings.HasPrefix(u.CallbackQuery.Data, prefix) {
+				return handler(ctx, u.CallbackQuery)
+			}
+		}
 		if r.callbackHandler != nil && strings.HasPrefix(u.CallbackQuery.Data, "qs:") {
 			return r.callbackHandler(ctx, u.CallbackQuery)
 		}
@@ -670,8 +687,10 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 				_, _ = r.sendMessage(bgCtx, chatID, fmt.Sprintf("❌ <b>สรุปข่าวไม่สำเร็จ:</b> %s", html.EscapeString(err.Error())), nil)
 				return
 			}
-			msg := fmt.Sprintf("📰 <b>Pocket Sentinel · สรุปข่าว AI &amp; รอบวัน</b>\n\n%s", res)
-			_, _ = r.sendMessage(bgCtx, chatID, msg, nil)
+			if strings.TrimSpace(res) != "" {
+				msg := fmt.Sprintf("📰 <b>Pocket Sentinel · สรุปข่าว AI &amp; รอบวัน</b>\n\n%s", res)
+				_, _ = r.sendMessage(bgCtx, chatID, msg, nil)
+			}
 		}()
 		return nil
 

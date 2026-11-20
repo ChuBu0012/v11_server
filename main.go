@@ -199,6 +199,35 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			routerOpts = append(routerOpts, bot.WithDeployer(bot.NewDeployer(cwd)))
 		}
 		if digestSvc != nil {
+			targetChatID, _ := strconv.ParseInt(cfg.TelegramChatID, 10, 64)
+			digestSvc.SetMessenger(&botDigestMessenger{
+				client: botClient,
+				chatID: targetChatID,
+			})
+			routerOpts = append(routerOpts, bot.WithCallbackRoute("dg:", func(ctx context.Context, q *bot.CallbackQuery) error {
+				text, buttons, ok := digestSvc.HandleCallback(ctx, q.Data)
+				if !ok {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ไม่พบข้อมูลสรุปข่าว", false)
+					return nil
+				}
+				var rows [][]bot.InlineKeyboardButton
+				for _, row := range buttons {
+					var btnRow []bot.InlineKeyboardButton
+					for _, b := range row {
+						btnRow = append(btnRow, bot.InlineKeyboardButton{
+							Text:         b.Text,
+							CallbackData: b.Data,
+						})
+					}
+					rows = append(rows, btnRow)
+				}
+				markup := &bot.InlineKeyboardMarkup{InlineKeyboard: rows}
+				if q.Message != nil {
+					_ = botClient.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, text, markup)
+				}
+				_ = botClient.AnswerCallbackQuery(ctx, q.ID, "", false)
+				return nil
+			}))
 			routerOpts = append(routerOpts, bot.WithDigestFunc(func(ctx context.Context) (string, error) {
 				rec, err := digestSvc.GenerateDigest(ctx, true)
 				if err != nil {
@@ -207,7 +236,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 				if rec == nil {
 					return "Digest was skipped (paused in settings).", nil
 				}
-				return rec.SummaryMD, nil
+				return "", nil
 			}))
 		}
 
@@ -614,4 +643,26 @@ func nextMondayAtThree(now time.Time, location *time.Location) time.Time {
 		next = next.AddDate(0, 0, 7)
 	}
 	return next
+}
+
+type botDigestMessenger struct {
+	client *bot.Client
+	chatID int64
+}
+
+func (m *botDigestMessenger) SendMenu(ctx context.Context, text string, buttons [][]digest.Button) error {
+	var rows [][]bot.InlineKeyboardButton
+	for _, row := range buttons {
+		var btnRow []bot.InlineKeyboardButton
+		for _, b := range row {
+			btnRow = append(btnRow, bot.InlineKeyboardButton{
+				Text:         b.Text,
+				CallbackData: b.Data,
+			})
+		}
+		rows = append(rows, btnRow)
+	}
+	markup := &bot.InlineKeyboardMarkup{InlineKeyboard: rows}
+	_, err := m.client.SendMessage(ctx, m.chatID, text, markup)
+	return err
 }
