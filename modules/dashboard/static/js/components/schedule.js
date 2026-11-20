@@ -97,7 +97,7 @@
   }
   function openForm(reminder=null,day=state.selected||currentKey()) {
     state.editID=reminder?reminder.id:null;$('#dialog-title').textContent=reminder?'แก้ไขการเตือน':'เพิ่มการเตือน';$('#form-error').textContent='';
-    $('#nl-block').hidden=Boolean(reminder);$('#delete-in-form').hidden=!reminder;showManualForm(true);
+    $('#nl-block').hidden=Boolean(reminder);$('#delete-in-form').hidden=!reminder;setManualVisible(Boolean(reminder),false);
     $('#reminder-title').value=reminder?.title||'';$('#reminder-details').value=reminder?.details||'';$('#reminder-recurrence').value=reminder?.recurrence||'once';
     $('#reminder-start').removeAttribute('min');
     if(reminder) $('#reminder-start').value=localDateTimeValue(reminderStart(reminder));
@@ -140,6 +140,7 @@
         auth: true
       });
 
+      if (data?.fallback) { showManualFallback(prompt); return; }
       const preview = data?.preview || {};
       const needsClarification = Boolean(data?.needs_clarification);
 
@@ -185,14 +186,12 @@
       const card = $('#nl-preview-card');
       if (card) {
         card.hidden = false;
-        showManualForm(false);
+        setManualVisible(false, false);
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     } catch (err) {
-      showToast('AI แปลผลไม่สำเร็จ — เปิดแบบฟอร์มปกติให้แล้ว');
-      openForm();
-      const titleEl = $('#reminder-title');
-      if (titleEl) titleEl.value = prompt;
+      if (/PIN/.test(err?.message || '')) return; // PIN dialog is already showing
+      showManualFallback(prompt);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = 'แปลผลด้วย AI'; }
     }
@@ -248,6 +247,7 @@
     if (card) card.hidden = true;
 
     openForm();
+    setManualVisible(true, false);
     if (title) $('#reminder-title').value = title;
     if (details) $('#reminder-details').value = details;
     if (recurrence) $('#reminder-recurrence').value = recurrence;
@@ -259,7 +259,10 @@
     }
   }
 
-  function showManualForm(show){$('#reminder-form').hidden=!show;$('#nl-or').hidden=!show||$('#nl-block').hidden;if(show)$('#nl-preview-card').hidden=true;}
+  // The manual form stays hidden for new reminders until AI parsing is unavailable
+  // (fallback/error) or the user asks for it from the preview card.
+  function setManualVisible(show,withNote){$('#reminder-form').hidden=!show;$('#nl-fallback-note').hidden=!(show&&withNote);if(show)$('#nl-preview-card').hidden=true;}
+  function showManualFallback(prompt){setManualVisible(true,true);const title=$('#reminder-title');if(prompt&&!title.value)title.value=prompt;title.focus();}
   function selectDay(key){state.selected=key;state.openRow=null;renderMonth();renderAgenda();}
   function moveMonth(delta){state.month+=delta;if(state.month<0){state.month=11;state.year--}if(state.month>11){state.month=0;state.year++}const prefix=`${state.year}-${String(state.month+1).padStart(2,'0')}`;if(!state.selected.startsWith(prefix))state.selected=prefix===currentKey().slice(0,7)?currentKey():`${prefix}-01`;state.openRow=null;renderMonth();renderAgenda();}
   function bind(){
@@ -280,8 +283,8 @@
     });
     $('#nl-confirm-save-btn')?.addEventListener('click', saveNLPreview);
     $('#nl-open-modal-btn')?.addEventListener('click', openManualFormFromNL);
-    $('#nl-cancel-btn')?.addEventListener('click', () => showManualForm(true));
-    $('#nl-discard-btn')?.addEventListener('click', () => showManualForm(true));
+    $('#nl-cancel-btn')?.addEventListener('click', () => { $('#nl-preview-card').hidden = true; });
+    $('#nl-discard-btn')?.addEventListener('click', () => { $('#nl-preview-card').hidden = true; });
     $('#delete-in-form').addEventListener('click',(event)=>{event.currentTarget.dataset.id=String(state.editID);$('#reminder-dialog').close();act(event.currentTarget)});
     $('#reminder-dialog').addEventListener('click',(event)=>{if(event.target===event.currentTarget)event.currentTarget.close()});
     $('#previous-month').addEventListener('click',()=>moveMonth(-1));$('#next-month').addEventListener('click',()=>moveMonth(1));$('#jump-today').addEventListener('click',()=>{const p=parts(new Date());state.year=Number(p.year);state.month=Number(p.month)-1;selectDay(currentKey())});

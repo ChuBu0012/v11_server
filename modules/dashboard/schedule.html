@@ -123,9 +123,9 @@
         </div>
         <button type="button" id="nl-open-modal-btn" class="btn btn-ghost btn-block">แก้ไขในแบบฟอร์มปกติ</button>
       </div>
-      <div class="nl-or" id="nl-or"><span>หรือกรอกเอง</span></div>
     </section>
 
+    <p id="nl-fallback-note" class="alert nl-fallback-note" role="status" hidden>AI ใช้งานไม่ได้ตอนนี้ — กรอกเองได้เลย</p>
     <form id="reminder-form" method="dialog" class="stack">
       <label class="field">อยากเตือนเรื่องอะไร<input id="reminder-title" name="title" maxlength="120" placeholder="เช่น โทรหาคุณแม่" required autocomplete="off"></label>
       <label class="field">วันและเวลา <small>เวลาไทย (UTC+7)</small><input id="reminder-start" name="starts_at" type="datetime-local" required></label>

@@ -59,8 +59,8 @@
 .nl-preview { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding: 14px; border: 1px solid var(--blue); border-radius: var(--r-md); background: var(--blue-soft); animation: fade-in .2s var(--ease); }
 .nl-preview-head { display: flex; align-items: center; justify-content: space-between; }
 .nl-preview .alert p { font-size: 13px; color: var(--muted); margin-top: 2px; }
-.nl-or { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; color: var(--muted); font-size: 12.5px; }
-.nl-or::before, .nl-or::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+.nl-fallback-note { margin: 14px 0; }
+#reminder-form:not([hidden]) { margin-top: 14px; }
 .fieldset { border: 0; padding: 0; margin: 0; }
 .fieldset legend { padding: 0; margin-bottom: 8px; }
 
