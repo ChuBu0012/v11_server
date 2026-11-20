@@ -373,6 +373,15 @@ document.addEventListener('alpine:init', () => {
 
     sheetPointerDown(event) {
       this.sheetDragStartY = event.clientY;
+      // Listen on window so a swipe that ends outside the handle still counts.
+      const finish = (e) => {
+        window.removeEventListener('pointerup', finish);
+        window.removeEventListener('pointercancel', finish);
+        if (e.type === 'pointercancel') { this.sheetDragStartY = null; return; }
+        this.sheetPointerUp(e);
+      };
+      window.addEventListener('pointerup', finish);
+      window.addEventListener('pointercancel', finish);
     },
 
     sheetPointerUp(event) {

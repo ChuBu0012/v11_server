@@ -79,7 +79,7 @@
 
   <!-- Bottom sheet -->
   <aside class="map-sheet" :class="{'is-expanded': sheetExpanded}" x-show="!pickingLocation" aria-label="ข้อมูลตำแหน่ง">
-    <button type="button" class="sheet-handle" @pointerdown="sheetPointerDown($event)" @pointerup="sheetPointerUp($event)" @keydown.enter.prevent="toggleSheet()" :aria-expanded="sheetExpanded" aria-label="ขยายหรือย่อรายละเอียด"><span class="sheet-grab"></span></button>
+    <button type="button" class="sheet-handle" @pointerdown="sheetPointerDown($event)" @keydown.enter.prevent="toggleSheet()" @keydown.space.prevent="toggleSheet()" :aria-expanded="sheetExpanded" aria-label="ขยายหรือย่อรายละเอียด"><span class="sheet-grab"></span></button>
 
     <div class="friend-row" aria-live="polite">
       <img class="friend-avatar" src="/static/img/avatar-furturia.png" alt="Furturia">
