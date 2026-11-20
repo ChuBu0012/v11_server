@@ -210,6 +210,46 @@ func (s *Store) CreateGeofence(ctx context.Context, input GeofenceInput) (Geofen
 		Radius: input.Radius, NotifyEnter: notifyEnter, NotifyExit: notifyExit, CreatedAt: now, UpdatedAt: now}, nil
 }
 
+// UpdateGeofence replaces a geofence's name, centre, radius, and (when non-nil)
+// notification flags. found is false when no geofence has the given id.
+func (s *Store) UpdateGeofence(ctx context.Context, id int64, input GeofenceInput) (Geofence, bool, error) {
+	if id <= 0 {
+		return Geofence{}, false, errors.New("geofence id must be positive")
+	}
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Name == "" || len([]rune(input.Name)) > 80 || !ValidCoordinates(input.Latitude, input.Longitude) ||
+		!finite(input.Radius) || input.Radius <= 0 || input.Radius > 100000 {
+		return Geofence{}, false, errors.New("invalid geofence name, coordinates, or radius")
+	}
+	ctx, cancel := s.operationContext(ctx)
+	defer cancel()
+	var zone Geofence
+	err := s.db.QueryRowContext(ctx, `SELECT id, name, latitude, longitude, radius_meters,
+		notify_enter, notify_exit, created_at, updated_at FROM location_geofences WHERE id=?`, id).
+		Scan(&zone.ID, &zone.Name, &zone.Latitude, &zone.Longitude, &zone.Radius,
+			&zone.NotifyEnter, &zone.NotifyExit, &zone.CreatedAt, &zone.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Geofence{}, false, nil
+	}
+	if err != nil {
+		return Geofence{}, false, fmt.Errorf("read geofence: %w", err)
+	}
+	zone.Name, zone.Latitude, zone.Longitude, zone.Radius = input.Name, input.Latitude, input.Longitude, input.Radius
+	if input.NotifyEnter != nil {
+		zone.NotifyEnter = *input.NotifyEnter
+	}
+	if input.NotifyExit != nil {
+		zone.NotifyExit = *input.NotifyExit
+	}
+	zone.UpdatedAt = time.Now().UTC()
+	if _, err := s.db.ExecContext(ctx, `UPDATE location_geofences SET name=?, latitude=?, longitude=?,
+		radius_meters=?, notify_enter=?, notify_exit=?, updated_at=? WHERE id=?`, zone.Name, zone.Latitude,
+		zone.Longitude, zone.Radius, zone.NotifyEnter, zone.NotifyExit, zone.UpdatedAt, id); err != nil {
+		return Geofence{}, false, fmt.Errorf("update geofence: %w", err)
+	}
+	return zone, true, nil
+}
+
 func (s *Store) ListGeofences(ctx context.Context) ([]Geofence, error) {
 	ctx, cancel := s.operationContext(ctx)
 	defer cancel()

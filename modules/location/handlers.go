@@ -42,6 +42,7 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/api/location/live", m.live)
 	r.GET("/api/location/geofences", m.requirePIN(), m.listGeofences)
 	r.POST("/api/location/geofences", m.requirePIN(), m.createGeofence)
+	r.PUT("/api/location/geofences/:id", m.requirePIN(), m.updateGeofence)
 	r.DELETE("/api/location/geofences/:id", m.requirePIN(), m.deleteGeofence)
 	r.PATCH("/api/location/settings", m.requirePIN(), m.updateSettings)
 }
@@ -161,6 +162,30 @@ func (m *Module) createGeofence(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, zone)
+}
+
+func (m *Module) updateGeofence(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "geofence id ไม่ถูกต้อง"})
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 8*1024)
+	var input GeofenceInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ข้อมูล geofence ไม่ถูกต้อง"})
+		return
+	}
+	zone, found, err := m.service.UpdateGeofence(c.Request.Context(), id, input)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if !found {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "ไม่พบ geofence"})
+		return
+	}
+	c.JSON(http.StatusOK, zone)
 }
 
 func (m *Module) deleteGeofence(c *gin.Context) {

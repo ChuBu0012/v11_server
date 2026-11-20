@@ -112,6 +112,33 @@ func (s *Service) ProcessPoint(ctx context.Context, point LocationPoint) ([]Noti
 	return events, nil
 }
 
+// UpdateGeofence saves the edit, then silently re-baselines each device's
+// inside/outside state against the new centre and radius. An edit is not
+// movement, so it must never produce an enter/exit notification.
+func (s *Service) UpdateGeofence(ctx context.Context, id int64, input GeofenceInput) (Geofence, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	zone, found, err := s.store.UpdateGeofence(ctx, id, input)
+	if err != nil || !found {
+		return zone, found, err
+	}
+	latest, err := s.store.LatestPoints(ctx)
+	if err != nil {
+		return zone, true, fmt.Errorf("read latest locations: %w", err)
+	}
+	now := s.clock()
+	for device, point := range latest {
+		if point == nil {
+			continue
+		}
+		inside := DistanceMeters(point.Latitude, point.Longitude, zone.Latitude, zone.Longitude) <= zone.Radius
+		if err := s.store.SetGeofenceState(ctx, GeofenceState{DeviceID: device, GeofenceID: zone.ID, IsInside: inside, LastTransition: now}); err != nil {
+			return zone, true, err
+		}
+	}
+	return zone, true, nil
+}
+
 func (s *Service) Live(ctx context.Context) (LiveResponse, error) {
 	latest, err := s.store.LatestPoints(ctx)
 	if err != nil {
