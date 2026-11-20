@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"net/http"
+	"regexp"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -309,6 +310,24 @@ func TestScheduleUsesMonthPlusDayLayout(t *testing.T) {
 	for _, gone := range []string{"agenda-view-button", "month-view-button", "schedule-next-title"} {
 		if strings.Contains(body, gone) {
 			t.Errorf("schedule page still contains retired %q", gone)
+		}
+	}
+}
+
+func TestShellAssetsAllExist(t *testing.T) {
+	sw := fetchPage(t, "/sw.js")
+	assets := regexp.MustCompile(`'(/static/[^']+)'`).FindAllStringSubmatch(sw, -1)
+	if len(assets) == 0 {
+		t.Fatal("no static shell assets found in sw.js")
+	}
+	for _, m := range assets {
+		if body := fetchPage(t, m[1]); body == "" {
+			t.Errorf("shell asset %s is empty", m[1])
+		}
+	}
+	for _, want := range []string{"/static/css/dashboard.css", "/static/css/relay.css"} {
+		if !strings.Contains(sw, want) {
+			t.Errorf("sw.js shell cache missing %s", want)
 		}
 	}
 }
