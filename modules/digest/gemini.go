@@ -141,16 +141,30 @@ func (g *GeminiClient) SummarizeNews(ctx context.Context, items []NewsItem) (str
 		}
 	}
 
+	return g.generateText(ctx, sb.String(), 0.7, 2048)
+}
+
+// Generate sends one system + user prompt and returns the model's text.
+// It lets other modules (e.g. the morning insight) reuse the Gemini client.
+func (g *GeminiClient) Generate(ctx context.Context, system, user string) (string, error) {
+	if g.apiKey == "" {
+		return "", fmt.Errorf("gemini: API key is not configured")
+	}
+	prompt := strings.TrimSpace(system) + "\n\n" + strings.TrimSpace(user)
+	return g.generateText(ctx, prompt, 0.3, 1024)
+}
+
+func (g *GeminiClient) generateText(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 	reqBody := geminiRequest{}
 	reqBody.Contents = []geminiContent{
 		{
 			Parts: []geminiPart{
-				{Text: sb.String()},
+				{Text: prompt},
 			},
 		},
 	}
-	reqBody.GenerationConfig.Temperature = 0.7
-	reqBody.GenerationConfig.MaxOutputTokens = 2048
+	reqBody.GenerationConfig.Temperature = temperature
+	reqBody.GenerationConfig.MaxOutputTokens = maxTokens
 
 	payloadBytes, err := json.Marshal(reqBody)
 	if err != nil {
