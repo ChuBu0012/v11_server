@@ -7,252 +7,167 @@
   <meta name="description" content="Forward notes, photos & files directly to your Telegram chat from Pocket Sentinel v11.">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0a0c10">
+  <meta name="theme-color" content="#13141a">
   <script>
     (() => {
       const savedTheme = localStorage.getItem('sentinel-theme');
       document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
     })();
   </script>
-
-  <!-- Remix Icon -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
-
-  <!-- Base Stylesheet -->
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="stylesheet" href="/static/css/relay.css">
-
-  <!-- Alpine.js Core & Component -->
   <script defer src="/static/js/components/relay.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="tele-bridge-page" x-data="relayComponent()">
-
-  <!-- Top Navigation Bar -->
-  <header class="app-header">
-    <div class="brand">
-      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
-        <span class="status-dot ok"></span>
-        <span class="brand-name">Pocket Sentinel</span>
-        <span class="brand-sub">v11</span>
-      </a>
-    </div>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 3.5V8h4.5M4 13a8 8 0 0 0 14.6 4.5M20 20.5V16h-4.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  </svg>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="status-dot" aria-hidden="true"></span><span class="brand-name">Telegram Bridge</span></a>
     <div class="topbar-actions">
-      <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN ตั้งค่าแล้ว (คลิกเพื่อเปลี่ยน)' : 'คลิกเพื่อตั้งค่า PIN'">
-        <i class="ri-shield-keyhole-line"></i>
-        <span x-text="isUnlocked ? 'PIN พร้อมใช้งาน' : 'ต้องการ PIN'"></span>
+      <button class="btn btn-sm pin-pill" :class="{ 'pin-ready': isUnlocked }" type="button" @click="showPinModal = !showPinModal">
+        <svg class="icon icon-sm"><use href="#i-lock"/></svg><span x-text="isUnlocked ? 'PIN พร้อม' : 'ต้องใช้ PIN'"></span>
       </button>
-      <button class="theme-toggle" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
-        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'"></i>
-      </button>
+      <button class="btn-icon theme-toggle-btn" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
     </div>
   </header>
 
-  <!-- Main Card Container -->
-  <main class="tele-card">
-    <div class="tele-title-wrap">
-      <div class="tele-icon-huge">
+  <main class="page relay-page">
+    <p class="relay-intro">ส่งข้อความ รูปภาพ หรือไฟล์เข้าแชท Telegram ของคุณ</p>
 
+    <!-- PIN setup -->
+    <section class="card pin-card" x-show="showPinModal" x-transition x-cloak>
+      <label class="field" for="relay-pin-input">PIN สำหรับ Relay <small>ตั้งค่าใน .env · จำไว้บนอุปกรณ์นี้</small></label>
+      <div class="pin-row">
+        <input class="input" type="password" id="relay-pin-input" x-model="tempPin" placeholder="PIN" maxlength="12" inputmode="numeric" @keydown.enter="savePin()">
+        <button type="button" class="btn btn-primary" @click="savePin()">บันทึก</button>
+        <button type="button" class="btn" @click="showPinModal = false" x-show="pin">ยกเลิก</button>
       </div>
-      <div>
-        <h1 class="tele-heading">Telegram Bridge</h1>
-        <p class="tele-subheading">ส่งข้อความ รูปภาพ และไฟล์ตรงเข้าแชท Telegram โดยไม่ต้องล็อกอินบน vivo v11</p>
-      </div>
+    </section>
+
+    <!-- Mode switch -->
+    <div class="segmented relay-tabs" role="tablist" aria-label="ประเภทที่จะส่ง">
+      <button class="relay-tab-btn" role="tab" :class="{ active: activeTab === 'text' }" :aria-selected="activeTab === 'text'" @click="activeTab = 'text'" type="button">ข้อความ</button>
+      <button class="relay-tab-btn" role="tab" :class="{ active: activeTab === 'file' }" :aria-selected="activeTab === 'file'" @click="activeTab = 'file'" type="button">ไฟล์ / รูปภาพ</button>
     </div>
 
-    <!-- PIN Setup Box (Conditional Modal / Inlined) -->
-    <div class="pin-setup-box" x-show="showPinModal" x-transition x-cloak>
-      <div class="pin-setup-row">
-        <label for="relay-pin-input"> รหัส PIN สำหรับ Relay:</label>
-        <div class="pin-input-group">
-          <input type="password" id="relay-pin-input" x-model="tempPin" placeholder="เช่น 1804" maxlength="12" @keydown.enter="savePin()">
-          <button type="button" class="pin-save-btn" @click="savePin()">บันทึก</button>
-          <button type="button" class="pin-cancel-btn" @click="showPinModal = false" x-show="pin">ยกเลิก</button>
+    <!-- Text mode -->
+    <section class="relay-tab-content" x-show="activeTab === 'text'">
+      <div class="template-strip" aria-label="ข้อความสำเร็จรูป">
+        <template x-for="template in messageTemplates" :key="template.label">
+          <button type="button" class="relay-template-btn" @click="useTemplate(template)" x-text="template.label"></button>
+        </template>
+      </div>
+      <div class="card composer">
+        <textarea id="relay-message-input" x-model="messageText" rows="6" placeholder="พิมพ์ข้อความของคุณ…" maxlength="4000"></textarea>
+        <div class="composer-bar">
+          <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
+          <button type="button" class="btn btn-sm proofread-btn" @click="proofreadText()" :disabled="isProofreading || !messageText.trim()" title="ตรวจทานภาษาและตัวสะกดด้วย AI">
+            <svg class="icon icon-sm"><use href="#i-sparkle"/></svg><span x-text="isProofreading ? 'กำลังตรวจ…' : 'ตรวจทาน'"></span>
+          </button>
+          <button class="btn btn-sm btn-primary composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
+            <svg class="icon icon-sm"><use href="#i-send"/></svg><span>ส่ง</span>
+          </button>
         </div>
       </div>
-      <p class="pin-hint">รหัสนี้ตั้งค่าใน <code>.env</code> (ค่าเริ่มต้นคือ <code>1804</code>) เบราว์เซอร์จะจำรหัสนี้บนอุปกรณ์นี้ให้โดยอัตโนมัติ</p>
-    </div>
+      <p class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</p>
 
-    <!-- Segmented Tab Controls with High-Contrast Active State -->
-    <div class="relay-tabs" role="tablist">
-      <button class="relay-tab-btn" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'" type="button">
-
-        <span>ข้อความ (Text)</span>
-        <span class="tab-indicator" x-show="activeTab === 'text'"></span>
-      </button>
-      <button class="relay-tab-btn" :class="{ active: activeTab === 'file' }" @click="activeTab = 'file'" type="button">
-
-        <span>ไฟล์ / รูปภาพ</span>
-        <span class="tab-indicator" x-show="activeTab === 'file'"></span>
-      </button>
-    </div>
-
-    <!-- Tab 1: Text Message -->
-    <div class="relay-tab-content" x-show="activeTab === 'text'">
-      <div class="field-wrap chat-composer">
-        <div class="relay-template-strip" aria-label="ข้อความสำเร็จรูป">
-          <span class="relay-template-label">เริ่มจากแม่แบบ</span>
-          <div class="relay-template-buttons">
-            <template x-for="template in messageTemplates" :key="template.label">
-              <button type="button" class="relay-template-btn" @click="useTemplate(template)" x-text="template.label"></button>
-            </template>
-          </div>
-        </div>
-        <textarea id="relay-message-input" x-model="messageText" rows="5" placeholder="พิมพ์ข้อความของคุณ..." maxlength="4000"></textarea>
-        <div class="textarea-footer">
-          <span class="shortcut-tip"><kbd>⌘</kbd> + <kbd>Enter</kbd> เพื่อส่งทันที</span>
-          <div class="composer-actions">
-            <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
-            <!-- Opt-in AI Proofread Button -->
-            <button type="button" class="proofread-btn" @click="proofreadText()" :disabled="isProofreading || !messageText.trim()" title="ตรวจทานภาษาและตัวสะกดด้วย AI (OpenRouter free)">
-
-              <span x-text="isProofreading ? 'กำลังตรวจทาน…' : 'AI Proofread (ตรวจทานภาษา)'"></span>
-            </button>
-            <button class="composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
-              <span>ส่ง</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Diff Comparison View (Shown when proofreading complete) -->
-      <div class="proofread-diff-card" x-show="showProofreadDiff" x-transition x-cloak>
+      <div class="card proofread-diff-card" x-show="showProofreadDiff" x-transition x-cloak>
         <div class="proofread-diff-header">
-          <span class="proofread-badge"> AI PROOFREAD PREVIEW</span>
-          <button type="button" class="btn-action" @click="cancelProofread()" style="border: none; padding: 2px 6px;">ปิด</button>
+          <span class="chip">AI PROOFREAD</span>
+          <button type="button" class="btn btn-ghost btn-sm" @click="cancelProofread()">ปิด</button>
         </div>
-
-        <div class="diff-blocks-grid">
-          <!-- Original Text -->
-          <div class="diff-block">
-            <div class="diff-block-title">
-              <span>ต้นฉบับ (Original)</span>
-              <span class="diff-badge-status unchanged">ข้อความเดิม</span>
-            </div>
-            <p class="diff-text" x-text="proofreadOriginal"></p>
-          </div>
-
-          <!-- Suggested Revision -->
-          <div class="diff-block">
-            <div class="diff-block-title">
-              <span>ข้อความที่แนะนำ (Suggested Revision)</span>
-              <span class="diff-badge-status" :class="proofreadHasChanges ? 'changed' : 'unchanged'"
-                    x-text="proofreadHasChanges ? 'มีการปรับปรุง' : 'ตรงกับต้นฉบับ'"></span>
-            </div>
-            <p class="diff-text" x-text="proofreadSuggested"></p>
-          </div>
+        <div class="diff-block">
+          <div class="diff-block-title"><span>ต้นฉบับ</span><span class="chip">ข้อความเดิม</span></div>
+          <p class="diff-text" x-text="proofreadOriginal"></p>
         </div>
-
-        <!-- Explicit Send Controls: Zero automatic sending -->
+        <div class="diff-block suggested">
+          <div class="diff-block-title"><span>ที่แนะนำ</span><span class="chip" :class="proofreadHasChanges ? 'warn' : 'ok'" x-text="proofreadHasChanges ? 'มีการปรับปรุง' : 'ตรงกับต้นฉบับ'"></span></div>
+          <p class="diff-text" x-text="proofreadSuggested"></p>
+        </div>
         <div class="proofread-controls">
-          <button type="button" class="btn-action" @click="editProofread()">
-             แก้ไขต่อ (Edit)
-          </button>
-          <button type="button" class="btn-action" @click="sendOriginal()" :disabled="isSending">
-             ส่งข้อความเดิม (Send Original)
-          </button>
-          <button type="button" class="app-action-btn primary" @click="sendRevised()" :disabled="isSending">
-             ส่งข้อความที่แนะนำ (Send Revised)
-          </button>
+          <button type="button" class="btn btn-primary btn-block" @click="sendRevised()" :disabled="isSending">ส่งข้อความที่แนะนำ</button>
+          <div class="proofread-secondary">
+            <button type="button" class="btn" @click="sendOriginal()" :disabled="isSending">ส่งข้อความเดิม</button>
+            <button type="button" class="btn" @click="editProofread()">แก้ไขต่อ</button>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 2: File & Photo Upload -->
-    <div class="relay-tab-content" x-show="activeTab === 'file'">
-      <!-- Drop Zone -->
-      <div class="drop-zone"
-           :class="{ 'dragging': isDragging, 'has-file': hasFile }"
-           @dragover="handleDragOver($event)"
-           @dragleave="handleDragLeave($event)"
-           @drop="handleDrop($event)"
+    <!-- File mode -->
+    <section class="relay-tab-content" x-show="activeTab === 'file'">
+      <div class="drop-zone" :class="{ 'dragging': isDragging, 'has-file': hasFile }"
+           @dragover="handleDragOver($event)" @dragleave="handleDragLeave($event)" @drop="handleDrop($event)"
            @click="if(!hasFile) document.getElementById('relay-file-input').click()">
-
         <template x-if="!hasFile">
           <div class="drop-prompt">
-            <div class="cloud-icon-bounce"></div>
-            <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>เลือกไฟล์</span></p>
-            <p class="drop-sub-text">รองรับรูปภาพ (พรีวิวในแชท), เอกสาร, PDF, Code ขนาดไม่เกิน 20 MB</p>
-            <div class="paste-badge"> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
+            <span class="drop-icon" aria-hidden="true"><svg class="icon"><use href="#i-plus"/></svg></span>
+            <p class="drop-main-text">แตะเพื่อเลือกไฟล์หรือรูปภาพ</p>
+            <p class="drop-sub-text">ไม่เกิน 20 MB · ลากวาง หรือกด ⌘+V เพื่อวางรูปจากคลิปบอร์ด</p>
           </div>
         </template>
-
-        <!-- Selected File Card -->
         <template x-if="hasFile">
           <div class="file-chip-card" @click.stop>
-            <template x-if="filePreviewUrl">
-              <img :src="filePreviewUrl" class="file-thumb" alt="Preview">
-            </template>
-            <template x-if="!filePreviewUrl">
-              <div class="file-icon-placeholder"></div>
-            </template>
-            <div class="file-chip-info">
-              <div class="file-chip-name" x-text="fileName"></div>
-              <div class="file-chip-meta" x-text="fileSizeFormatted + ' · ' + (isImageFile ? 'รูปภาพ' : 'เอกสาร')"></div>
+            <template x-if="filePreviewUrl"><img :src="filePreviewUrl" class="file-thumb" alt="Preview"></template>
+            <template x-if="!filePreviewUrl"><div class="file-icon-placeholder" aria-hidden="true">FILE</div></template>
+            <div class="grow file-chip-info">
+              <strong class="file-chip-name" x-text="fileName"></strong>
+              <small class="file-chip-meta" x-text="fileSizeFormatted + ' · ' + (isImageFile ? 'รูปภาพ' : 'เอกสาร')"></small>
             </div>
-            <button type="button" class="file-chip-remove" @click="removeFile()" title="ลบไฟล์">ลบ</button>
+            <button type="button" class="btn btn-sm btn-ghost btn-danger" @click="removeFile()">ลบ</button>
           </div>
         </template>
-
-        <input type="file" id="relay-file-input" style="display:none;" @change="handleFileSelect($event)">
+        <input type="file" id="relay-file-input" hidden @change="handleFileSelect($event)">
       </div>
+      <label class="field caption-field" x-show="hasFile">คำบรรยาย <small>ไม่บังคับ</small>
+        <input type="text" id="relay-caption-input" x-model="captionText" placeholder="คำบรรยายภาพหรือเอกสาร" maxlength="1024" @keydown.enter="submit()">
+      </label>
+      <button class="btn btn-primary btn-block relay-submit-btn" type="button" :disabled="isSending || !hasFile" @click="submit()">
+        <svg class="icon icon-sm"><use href="#i-send"/></svg><span x-text="isSending ? 'กำลังส่ง…' : 'ส่งเข้า Telegram'"></span>
+      </button>
+    </section>
 
-      <!-- Optional Caption -->
-      <div class="field-wrap mt-12" x-show="hasFile">
-        <label for="relay-caption-input" class="caption-label">คำบรรยายประกอบ (Caption):</label>
-        <input type="text" id="relay-caption-input" class="caption-input" x-model="captionText" placeholder="คำบรรยายภาพหรือเอกสาร (ไม่บังคับ)..." maxlength="1024" @keydown.enter="submit()">
-      </div>
-    </div>
-
-    <!-- Live send progress -->
-    <div class="relay-progress-card" x-show="isSending" x-transition x-cloak aria-live="polite">
+    <!-- Progress -->
+    <div class="card relay-progress-card" x-show="isSending" x-transition x-cloak aria-live="polite">
       <div class="relay-progress-heading">
-        <span class="relay-progress-label" x-text="progressText"></span>
-        <span class="relay-progress-value" x-show="uploadProgressMode === 'determinate'" x-text="uploadProgress + '%'" aria-hidden="true"></span>
+        <span x-text="progressText"></span>
+        <span x-show="uploadProgressMode === 'determinate'" x-text="uploadProgress + '%'" aria-hidden="true"></span>
       </div>
       <div class="relay-progress-track" :class="uploadProgressMode" role="progressbar" aria-label="ความคืบหน้าการส่ง" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="uploadProgressMode === 'determinate' ? uploadProgress : null">
         <span class="relay-progress-fill" :style="uploadProgressMode === 'determinate' ? `width: ${uploadProgress}%` : ''"></span>
       </div>
-      <p class="relay-progress-hint" x-text="uploadProgressMode === 'determinate' ? 'กำลังอัปโหลดไฟล์ไปยังเซิร์ฟเวอร์' : 'กำลังรอการตอบกลับจาก Telegram'" x-show="activeTab === 'file'"></p>
+      <small class="muted" x-text="uploadProgressMode === 'determinate' ? 'กำลังอัปโหลดไฟล์ไปยังเซิร์ฟเวอร์' : 'กำลังรอการตอบกลับจาก Telegram'" x-show="activeTab === 'file'"></small>
     </div>
 
-    <!-- Status Banner -->
-    <div class="relay-status-banner" :class="statusType" x-show="statusText && statusType !== 'info'" x-transition x-cloak>
+    <div class="relay-status-banner" :class="statusType" x-show="statusText && statusType !== 'info'" x-transition x-cloak role="status"><span x-text="statusText"></span></div>
 
-      <span x-text="statusText"></span>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="relay-footer" x-show="activeTab === 'file'">
-      <button class="relay-submit-btn" type="button" x-show="activeTab === 'file'" :disabled="isSending" @click="submit()">
-        <span x-show="!isSending"> ส่งเข้า Telegram</span>
-        <span x-show="isSending"> กำลังส่ง…</span>
-      </button>
-    </div>
+    <p class="page-footer">ไฟล์สูงสุด 20 MB · รูปภาพจะแสดงพรีวิวในแชท</p>
   </main>
 
-  <!-- Footer Information -->
-  <footer class="tele-footer-hint">
-    <p>Pocket Sentinel Telegram Bridge &bull; vivo 1804 (v11) &bull; เพดานขนาดไฟล์สูงสุด 20 MB &bull; รองรับ Auto-fallback ภาพความละเอียดสูง</p>
-  </footer>
-
   <nav class="task-nav" aria-label="หน้าหลัก">
-    <a class="task-link" href="/?tab=overview">
-      <i class="ri-dashboard-line"></i>
-      <span>ภาพรวม</span>
-    </a>
-    <a class="task-link" href="/schedule">
-      <i class="ri-calendar-line"></i>
-      <span>ตาราง</span>
-    </a>
-    <a class="task-link" href="/live">
-      <i class="ri-map-pin-line"></i>
-      <span>แผนที่</span>
-    </a>
-    <a class="task-link active" href="/relay" aria-current="page">
-      <i class="ri-send-plane-line"></i>
-      <span>Telegram</span>
-    </a>
+    <a class="task-link" href="/?tab=overview"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
+    <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
+    <a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
+    <a class="task-link active" href="/relay" aria-current="page"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>
   </nav>
 </body>
 </html>
