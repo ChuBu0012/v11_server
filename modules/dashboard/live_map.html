@@ -30,7 +30,7 @@
   <script defer src="/static/js/components/live-map.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
-<body class="live-map-body" :class="{'is-picking': pickingLocation}" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker(); else if (sheetExpanded) toggleSheet(false)">
+<body class="live-map-body" :class="{'is-picking': placeOpen}" x-data="liveMap" x-init="init()" @keydown.escape.window="if (placeOpen) closePlace(); else if (manageOpen) closeManage(); else if (sheetExpanded) toggleSheet(false)">
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
@@ -50,35 +50,29 @@
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
     <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-navigate" viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
+    <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
   </svg>
-  <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
-  <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
+  <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia กดค้างเพื่อเพิ่มสถานที่"></div>
   <div class="map-loading" x-show="!mapReady" x-cloak><span class="spinner"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span></div>
 
-  <!-- Floating status chip -->
-  <header class="map-status">
-    <button type="button" class="status-pill" @click="refresh()" aria-label="รีเฟรชตำแหน่ง">
-      <span class="live-dot" :class="{'is-live': connected}"></span>
-      <span class="status-main" x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
-      <span class="status-time" x-text="updatedText"></span>
-    </button>
-    <button class="btn-icon theme-toggle-btn map-glass" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
-  </header>
-  <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
-    <strong>เลื่อนแผนที่ให้จุดอยู่ใต้เป้า</strong>
-    <span x-text="newZone.latitude == null ? 'เลือกตำแหน่งอุปกรณ์หรือเลื่อนแผนที่' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></span>
-  </div>
-
-  <!-- Two floating controls -->
-  <div class="map-fabs" x-show="!pickingLocation">
+  <!-- Floating controls (top-right) -->
+  <div class="map-fabs">
+    <div class="map-fab-row">
+      <button type="button" class="btn-icon map-glass map-live-btn" @click="refresh()" :aria-label="connected ? `อัปเดตสด · ${updatedText} · แตะเพื่อรีเฟรช` : 'รอเชื่อมต่อ · แตะเพื่อรีเฟรช'" :title="connected ? updatedText : 'รอเชื่อมต่อ'"><span class="live-dot" :class="{'is-live': connected}"></span></button>
+      <button class="btn-icon theme-toggle-btn map-glass" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
+    </div>
+    <button type="button" class="btn-icon map-glass" :class="{'is-active': manageOpen}" @click="manageOpen ? closeManage() : openManage()" aria-label="จัดการสถานที่และการแจ้งเตือน" title="จัดการ"><svg class="icon"><use href="#i-gear"/></svg></button>
     <button type="button" class="btn-icon map-glass" @click="centerOnDevices()" aria-label="แสดงทั้งสองคน" title="แสดงทั้งสองคน"><svg class="icon"><use href="#i-users"/></svg></button>
     <button type="button" class="btn-icon map-glass" :class="{'is-active': showTrail}" @click="toggleTrail()" :aria-pressed="showTrail" aria-label="เส้นทางย้อนหลัง 24 ชม." title="เส้นทาง 24 ชม."><svg class="icon"><use href="#i-route"/></svg></button>
     <button type="button" class="btn-icon map-glass hover-only" @click="zoomIn()" aria-label="ซูมเข้า"><svg class="icon"><use href="#i-plus"/></svg></button>
     <button type="button" class="btn-icon map-glass hover-only" @click="zoomOut()" aria-label="ซูมออก"><svg class="icon"><use href="#i-minus"/></svg></button>
   </div>
 
-  <!-- Bottom sheet -->
-  <aside class="map-sheet" :class="{'is-expanded': sheetExpanded}" x-show="!pickingLocation" aria-label="ข้อมูลตำแหน่ง">
+  <!-- People sheet -->
+  <aside class="map-sheet" :class="{'is-expanded': sheetExpanded}" x-show="!placeOpen && !manageOpen" aria-label="ข้อมูลตำแหน่ง">
     <button type="button" class="sheet-handle" @pointerdown="sheetPointerDown($event)" @keydown.enter.prevent="toggleSheet()" @keydown.space.prevent="toggleSheet()" :aria-expanded="sheetExpanded" aria-label="ขยายหรือย่อรายละเอียด"><span class="sheet-grab"></span></button>
 
     <div class="friend-row" aria-live="polite">
@@ -88,15 +82,14 @@
         <small class="friend-sub" x-text="friendSubline()"></small>
       </div>
     </div>
-    <div class="me-row">
-      <span class="chip me-chip"><img src="/static/img/avatar-chubu.png" alt=""><span x-text="`ฉัน · ${connectionStatus(me).label}`"></span></span>
-      <button type="button" class="btn btn-ghost btn-sm" @click="toggleSheet()" x-text="sheetExpanded ? 'ย่อ' : 'รายละเอียด'"></button>
+    <div class="shortcut-row">
+      <button type="button" class="btn btn-sm" @click="navigateToFriend()" :disabled="!friend"><svg class="icon icon-sm"><use href="#i-navigate"/></svg>นำทาง</button>
+      <button type="button" class="btn btn-sm" @click="copyFriendCoords()" :disabled="!friend"><svg class="icon icon-sm"><use href="#i-copy"/></svg>คัดลอกพิกัด</button>
+      <button type="button" class="btn btn-ghost btn-sm more-btn" @click="toggleSheet()" x-text="sheetExpanded ? 'ย่อ' : 'เพิ่มเติม'"></button>
     </div>
 
     <div class="sheet-more">
       <p class="alert err" x-show="errorText" x-text="errorText" x-cloak></p>
-
-      <!-- Devices -->
       <section class="sheet-section" aria-label="ข้อมูลอุปกรณ์">
         <template x-for="d in [{key:'friend', name:'Furturia', img:'/static/img/avatar-furturia.png'}, {key:'me', name:'Chubu', img:'/static/img/avatar-chubu.png'}]" :key="d.key">
           <article class="device-card">
@@ -114,41 +107,6 @@
         </template>
       </section>
 
-      <!-- Places -->
-      <section class="sheet-section" aria-labelledby="places-title">
-        <div class="section-head"><h2 id="places-title">สถานที่ <small x-text="`(${geofences.length})`"></small></h2><button type="button" class="btn btn-sm" @click="startMapPicker()"><svg class="icon icon-sm"><use href="#i-plus"/></svg>เพิ่มสถานที่</button></div>
-        <p class="alert err" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
-        <template x-if="geofences.length === 0"><p class="empty">ยังไม่มีสถานที่ กด “เพิ่มสถานที่” เพื่อปักหมุด</p></template>
-        <ul class="list place-list">
-          <template x-for="zone in orderedGeofences" :key="zone.id">
-            <li class="list-item place-item">
-              <button type="button" class="grow place-main" @click="focusGeofence(zone)">
-                <strong x-text="zone.name"></strong>
-                <small x-text="`รัศมี ${zone.radius_meters} ม. · ${zone.notify_enter ? 'แจ้งเมื่อถึง' : ''}${zone.notify_enter && zone.notify_exit ? ' / ' : ''}${zone.notify_exit ? 'แจ้งเมื่อออก' : ''}`"></small>
-              </button>
-              <button type="button" class="btn btn-sm btn-ghost btn-danger" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button>
-            </li>
-          </template>
-        </ul>
-      </section>
-
-      <!-- Discord notifications -->
-      <section class="sheet-section" aria-labelledby="notify-title">
-        <div class="section-head"><h2 id="notify-title">แจ้งเตือน Discord</h2><small class="muted" x-text="settingsMessage"></small></div>
-        <div class="list">
-          <label class="list-item toggle-row"><span class="grow"><strong>พบกัน / แยกย้าย</strong><small>อยู่ด้วยกัน (≤ 80 ม.) หรือแยกกัน (≥ 250 ม.)</small></span><input class="switch" type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()"></label>
-          <label class="list-item toggle-row"><span class="grow"><strong>เข้า / ออกสถานที่</strong><small>เมื่อมาถึงหรือออกจากสถานที่ที่บันทึกไว้</small></span><input class="switch" type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()"></label>
-          <label class="list-item toggle-row"><span class="grow"><strong>แบตเตอรี่ต่ำ</strong><small>ต่ำกว่า 15% และไม่ได้ชาร์จ</small></span><input class="switch" type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
-        </div>
-        <div class="pin-row">
-          <label class="field grow">Relay PIN <small>เก็บไว้บนอุปกรณ์นี้เท่านั้น</small>
-            <span class="pin-input"><input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="PIN" autocomplete="current-password"><button type="button" class="btn btn-ghost btn-sm" @click="showPin = !showPin" x-text="showPin ? 'ซ่อน' : 'แสดง'"></button></span>
-          </label>
-          <button type="button" class="btn" @click="savePinExplicit()" x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก'"></button>
-        </div>
-      </section>
-
-      <!-- Ping log -->
       <details class="sheet-section card disclosure" :open="showLogs" @toggle="showLogs = $el.open">
         <summary>บันทึกพิกัดล่าสุด <small class="muted" x-text="`${recentLogs.length} รายการ`"></small></summary>
         <template x-if="recentLogs.length === 0"><p class="empty">กำลังรอพิกัดจากเครื่อง…</p></template>
@@ -162,161 +120,92 @@
           </template>
         </ul>
       </details>
-      <p class="sheet-footnote">รีเฟรชอัตโนมัติทุก 15 วินาที</p>
+      <p class="sheet-footnote">รีเฟรชอัตโนมัติทุก 15 วินาที · กดค้างบนแผนที่เพื่อเพิ่มสถานที่</p>
     </div>
   </aside>
 
-      <!-- Place Picker Panel (3-Step Guided Wizard) -->
-      <aside class="place-picker-panel" x-show="pickingLocation" x-transition.opacity x-cloak role="dialog" aria-modal="false" aria-labelledby="picker-title">
-        <div class="picker-panel-heading">
-          <div>
-            <span class="picker-eyebrow" x-text="`ขั้นตอนที่ ${pickerStep} จาก 3`"></span>
-            <h2 id="picker-title" tabindex="-1" x-text="pickerStepTitle"></h2>
-          </div>
-          <button type="button" class="picker-close-btn" @click="cancelMapPicker()" aria-label="ปิดหน้าต่างเพิ่มสถานที่">ปิด</button>
+  <!-- Manage sheet: places + notifications (rarely edited) -->
+  <aside class="manage-sheet bottom-panel" x-show="manageOpen" x-cloak role="dialog" aria-labelledby="manage-title">
+    <div class="panel-head">
+      <h2 id="manage-title">จัดการ</h2>
+      <button type="button" class="btn-icon" @click="closeManage()" aria-label="ปิด"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="segmented panel-tabs" role="tablist">
+      <button type="button" role="tab" :aria-selected="manageTab === 'places'" :class="{active: manageTab === 'places'}" @click="manageTab = 'places'">สถานที่ <span x-text="`(${geofences.length})`"></span></button>
+      <button type="button" role="tab" :aria-selected="manageTab === 'notify'" :class="{active: manageTab === 'notify'}" @click="manageTab = 'notify'">แจ้งเตือน</button>
+    </div>
+
+    <section x-show="manageTab === 'places'" class="panel-body">
+      <p class="alert err" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
+      <template x-if="geofences.length === 0"><p class="empty">ยังไม่มีสถานที่ · กดค้างบนแผนที่ หรือกดปุ่มด้านล่าง</p></template>
+      <ul class="list place-list">
+        <template x-for="zone in orderedGeofences" :key="zone.id">
+          <li><button type="button" class="list-item place-item" @click="openPlace(zone)">
+            <span class="grow"><strong x-text="zone.name"></strong><small x-text="`รัศมี ${zone.radius_meters} ม. · ${zone.notify_enter && zone.notify_exit ? 'แจ้งเมื่อถึงและออก' : zone.notify_enter ? 'แจ้งเมื่อถึง' : zone.notify_exit ? 'แจ้งเมื่อออก' : 'ไม่แจ้งเตือน'}`"></small></span>
+            <svg class="icon" style="color:var(--muted)"><use href="#i-right"/></svg>
+          </button></li>
+        </template>
+      </ul>
+      <button type="button" class="btn btn-primary btn-block" @click="openPlace()"><svg class="icon icon-sm"><use href="#i-plus"/></svg>เพิ่มสถานที่</button>
+    </section>
+
+    <section x-show="manageTab === 'notify'" class="panel-body">
+      <div class="list">
+        <label class="list-item toggle-row"><span class="grow"><strong>พบกัน / แยกย้าย</strong><small>อยู่ด้วยกัน (≤ 80 ม.) หรือแยกกัน (≥ 250 ม.)</small></span><input class="switch" type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()"></label>
+        <label class="list-item toggle-row"><span class="grow"><strong>เข้า / ออกสถานที่</strong><small>เมื่อมาถึงหรือออกจากสถานที่ที่บันทึกไว้</small></span><input class="switch" type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()"></label>
+        <label class="list-item toggle-row"><span class="grow"><strong>แบตเตอรี่ต่ำ</strong><small>ต่ำกว่า 15% และไม่ได้ชาร์จ</small></span><input class="switch" type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
+      </div>
+      <p class="muted settings-msg" x-show="settingsMessage" x-text="settingsMessage"></p>
+      <div class="pin-row">
+        <label class="field grow">Relay PIN <small>เก็บไว้บนอุปกรณ์นี้เท่านั้น</small>
+          <span class="pin-input"><input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="PIN" autocomplete="current-password"><button type="button" class="btn btn-ghost btn-sm" @click="showPin = !showPin" x-text="showPin ? 'ซ่อน' : 'แสดง'"></button></span>
+        </label>
+        <button type="button" class="btn" @click="savePinExplicit()" x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก'"></button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- Add / edit place (one step) -->
+  <aside class="place-sheet bottom-panel" x-show="placeOpen" x-cloak role="dialog" aria-labelledby="place-title">
+    <div class="panel-head">
+      <h2 id="place-title" x-text="placeEditId != null ? 'แก้ไขสถานที่' : 'เพิ่มสถานที่'"></h2>
+      <button type="button" class="btn-icon" @click="closePlace()" aria-label="ปิด"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="panel-body">
+      <div class="point-buttons">
+        <button type="button" class="btn btn-sm" @click="useDevicePoint('me')" :disabled="!me"><svg class="icon icon-sm"><use href="#i-crosshair"/></svg>ตรงที่ฉันอยู่</button>
+        <button type="button" class="btn btn-sm" @click="useDevicePoint('friend')" :disabled="!friend"><svg class="icon icon-sm"><use href="#i-crosshair"/></svg>ตรงที่ Furturia อยู่</button>
+      </div>
+      <form class="link-row" @submit.prevent="applyLink()">
+        <input class="input" type="text" x-model="linkInput" placeholder="วางลิงก์ Google Maps หรือ lat, lng" inputmode="url" autocomplete="off" @paste="$nextTick(() => applyLink())">
+        <button type="submit" class="btn" :disabled="linkBusy || !linkInput.trim()" x-text="linkBusy ? '…' : 'ใช้'"></button>
+      </form>
+      <p class="point-readout" x-text="newZone.latitude == null ? 'ยังไม่ได้เลือกตำแหน่ง · กดค้างบนแผนที่ได้เลย' : `พิกัด ${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)} · ลากหมุดเพื่อปรับ`"></p>
+
+      <label class="field">ชื่อ<input id="place-name" type="text" x-model="newZone.name" placeholder="เช่น บ้าน, ที่ทำงาน" maxlength="80" autocomplete="off"></label>
+
+      <div class="field">
+        <span class="radius-label">รัศมี <strong x-text="`${newZone.radius_meters} ม.`"></strong></span>
+        <input id="place-radius-slider" class="radius-range" type="range" min="50" max="2000" step="25" x-model.number="radiusSlider" @input="applyRadiusSlider()" :aria-valuetext="`${radiusSlider} เมตร`">
+      </div>
+
+      <div class="field">
+        <span>แจ้งเมื่อ</span>
+        <div class="choice-row">
+          <label><input type="checkbox" x-model="newZone.notify_enter"><span>มาถึง</span></label>
+          <label><input type="checkbox" x-model="newZone.notify_exit"><span>ออกไป</span></label>
         </div>
+      </div>
 
-        <!-- Step Indicator Pills -->
-        <ol class="picker-step-list" aria-label="ขั้นตอนการเพิ่มสถานที่">
-          <li :class="{'is-current': pickerStep === 1, 'is-complete': pickerStep > 1}">
-            <span>1</span><small>ตำแหน่ง &amp; รัศมี</small>
-          </li>
-          <li :class="{'is-current': pickerStep === 2, 'is-complete': pickerStep > 2}">
-            <span>2</span><small>ชื่อสถานที่</small>
-          </li>
-          <li :class="{'is-current': pickerStep === 3, 'is-complete': pickerStep > 3}">
-            <span>3</span><small>การแจ้งเตือน</small>
-          </li>
-        </ol>
+      <p class="form-error" x-text="placeError" role="alert"></p>
+      <div class="panel-actions">
+        <button type="button" class="btn btn-ghost btn-danger" x-show="placeEditId != null" @click="removePlace()">ลบ</button>
+        <button type="button" class="btn btn-primary grow" :disabled="savingZone" @click="savePlace()" x-text="savingZone ? 'กำลังบันทึก…' : 'บันทึก'"></button>
+      </div>
+    </div>
+  </aside>
 
-        <!-- Multi-step Form Content -->
-        <div class="picker-panel-form">
-          <!-- STEP 1: Select Location & Adjust Radius Directly on Map -->
-          <section class="picker-step-content" x-show="pickerStep === 1" aria-labelledby="picker-location-title">
-            <h3 id="picker-location-title">เลือกตำแหน่งและปรับขนาดรัศมี</h3>
-            <p>เลื่อนแผนที่ให้จุดศูนย์กลางอยู่ใต้เป้า และปรับรัศมีด้านล่าง วงสีเขียวบนแผนที่จะขยายตามทันที</p>
-
-            <div class="picker-device-shortcuts">
-              <button type="button" class="device-shortcut" @click="useDeviceLocation('me')" :disabled="!me">
-                <img src="/static/img/avatar-chubu.png" alt="" aria-hidden="true">
-                <span>
-                  <strong>จุดของ Chubu</strong>
-                  <small x-text="me ? deviceAge(me) : 'ไม่มีพิกัด'"></small>
-                </span>
-              </button>
-              <button type="button" class="device-shortcut" @click="useDeviceLocation('friend')" :disabled="!friend">
-                <img src="/static/img/avatar-furturia.png" alt="" aria-hidden="true">
-                <span>
-                  <strong>จุดของ Furturia</strong>
-                  <small x-text="friend ? deviceAge(friend) : 'ไม่มีพิกัด'"></small>
-                </span>
-              </button>
-            </div>
-
-            <div class="picker-coordinate-readout" x-show="newZone.latitude != null">
-
-              <span x-text="`พิกัด: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></span>
-            </div>
-
-            <!-- Radius Adjustment in Step 1 -->
-            <div class="picker-radius-section">
-              <div class="picker-radius-heading">
-                <label class="picker-field-label" for="place-radius-slider">รัศมีแจ้งเตือน</label>
-                <strong x-text="`${newZone.radius_meters} เมตร`"></strong>
-              </div>
-              <input id="place-radius-slider" class="radius-range" type="range" min="50" max="2000" step="25" x-model.number="radiusSlider" @input="applyRadiusSlider()" :aria-valuetext="`${radiusSlider} เมตร`">
-              <div class="radius-range-labels">
-                <span>50 ม.</span>
-                <span>500 ม.</span>
-                <span>2,000 ม.</span>
-              </div>
-
-              <!-- Quick Presets -->
-              <div class="picker-radius-presets" aria-label="ค่ารัศมีแนะนำ">
-                <template x-for="r in [50, 100, 200, 500, 1000]" :key="r">
-                  <button type="button" class="radius-pill" :class="{'is-active': newZone.radius_meters === r}" @click="setRadius(r)" x-text="`${r} ม.`"></button>
-                </template>
-              </div>
-
-              <!-- Custom Exact Radius Input -->
-              <div class="radius-exact-row">
-                <label class="picker-field-label" for="place-radius-exact">ระบุเองละเอียด</label>
-                <div class="radius-number-wrap">
-                  <input id="place-radius-exact" type="number" min="25" max="100000" step="1" x-model.number="newZone.radius_meters" @input="applyExactRadius()" @blur="normalizeExactRadius()" inputmode="numeric">
-                  <span>เมตร</span>
-                </div>
-              </div>
-            </div>
-
-            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
-          </section>
-
-          <!-- STEP 2: Place Name -->
-          <section class="picker-step-content" x-show="pickerStep === 2" aria-labelledby="picker-name-title" x-cloak>
-            <h3 id="picker-name-title">ตั้งชื่อสถานที่</h3>
-            <p>ใส่ชื่อเพื่อให้จำได้ง่าย หรือเลือกจากหมวดหมู่ที่ใช้บ่อยด้านล่าง</p>
-
-            <label class="picker-field-label" for="place-name">ชื่อสถานที่</label>
-            <input id="place-name" type="text" x-model.trim="newZone.name" class="picker-name-input" placeholder="เช่น บ้าน, ที่ทำงาน, มหาวิทยาลัย" maxlength="80" autocomplete="off">
-
-            <!-- Suggestion Chips -->
-            <div class="picker-chips-label">หมวดหมู่แนะนำ:</div>
-            <div class="picker-suggestion-chips">
-              <template x-for="chip in placeSuggestions" :key="chip">
-                <button type="button" class="suggestion-chip" @click="setPlaceSuggestion(chip)" x-text="chip"></button>
-              </template>
-            </div>
-
-            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
-          </section>
-
-          <!-- STEP 3: Notifications & Summary Review -->
-          <section class="picker-step-content" x-show="pickerStep === 3" aria-labelledby="picker-alerts-title" x-cloak>
-            <h3 id="picker-alerts-title">การแจ้งเตือนและการบันทึก</h3>
-            <p>เลือกเงื่อนไขการแจ้งเตือน Discord เมื่ออุปกรณ์เข้าหรือออกจากสถานที่นี้</p>
-
-            <div class="picker-alert-options">
-              <label class="picker-alert-option">
-                <span>
-                  <strong>เมื่อมาถึง (Enter)</strong>
-                  <small>ส่งการแจ้งเตือนเมื่ออุปกรณ์เข้ามาในรัศมีนี้</small>
-                </span>
-                <input type="checkbox" x-model="newZone.notify_enter" aria-label="แจ้งเมื่อมาถึง">
-              </label>
-              <label class="picker-alert-option">
-                <span>
-                  <strong>เมื่อออกไป (Exit)</strong>
-                  <small>ส่งการแจ้งเตือนเมื่ออุปกรณ์ออกนอกพื้นที่นี้</small>
-                </span>
-                <input type="checkbox" x-model="newZone.notify_exit" aria-label="แจ้งเมื่อออกไป">
-              </label>
-            </div>
-
-            <!-- Summary Card -->
-            <div class="picker-summary-card">
-              <strong x-text="newZone.name || 'ไม่ได้ระบุชื่อ'"></strong>
-              <span x-text="`รัศมี ${newZone.radius_meters} เมตร · ${newZone.notify_enter ? 'แจ้งเมื่อถึง' : ''}${newZone.notify_enter && newZone.notify_exit ? ' และ ' : ''}${newZone.notify_exit ? 'แจ้งเมื่อออก' : ''}`"></span>
-              <small x-text="newZone.latitude == null ? '' : `พิกัด ${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></small>
-            </div>
-
-            <!-- Relay PIN field if not saved -->
-            <div x-show="!pin" class="picker-pin-wrapper">
-              <label class="picker-field-label" for="place-pin">Relay PIN (ยืนยันสิทธิ์)</label>
-              <input id="place-pin" type="password" x-model="pin" inputmode="numeric" autocomplete="current-password" class="picker-pin-input" placeholder="กรอก PIN เพื่อบันทึก (เช่น 1804)">
-            </div>
-
-            <p class="picker-step-error" x-show="pickerError" x-text="pickerError" role="alert" x-cloak></p>
-          </section>
-
-          <!-- Footer Navigation Buttons -->
-          <div class="picker-panel-footer">
-            <button type="button" class="picker-cancel-action" @click="cancelMapPicker()">ยกเลิก</button>
-            <button type="button" class="picker-back-action" x-show="pickerStep > 1" @click="previousPickerStep()">ย้อนกลับ</button>
-            <button type="button" class="picker-next-action" :disabled="savingZone" @click="pickerStep < 3 ? nextPickerStep() : createGeofence()" x-text="pickerStep < 3 ? 'ถัดไป' : (savingZone ? 'กำลังบันทึก…' : 'บันทึกสถานที่')"></button>
-          </div>
-        </div>
-      </aside>
-
+  <div class="toast" :class="{show: toastText}" x-text="toastText" role="status" aria-live="polite"></div>
   <nav class="task-nav" aria-label="หน้าหลัก">
     <a class="task-link" href="/?tab=overview"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
     <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>

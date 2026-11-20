@@ -71,12 +71,13 @@ func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
 			t.Errorf("embedded live map page missing %q", want)
 		}
 	}
-	for _, want := range []string{`class="map-sheet`, "friendHeadline()", "map-status"} {
+	for _, want := range []string{`class="map-sheet`, "friendHeadline()", `class="manage-sheet`, `class="place-sheet`, "map-live-btn",
+		"navigateToFriend()", "copyFriendCoords()", "applyLink()", "theme-toggle-btn"} {
 		if !strings.Contains(response.Body.String(), want) {
 			t.Errorf("live map page missing layout A element %q", want)
 		}
 	}
-	for _, gone := range []string{"map-controls-group", "live-summary"} {
+	for _, gone := range []string{"map-controls-group", "live-summary", "picker-step-list", "picker-suggestion-chips", `class="map-status"`, "picker-reticle"} {
 		if strings.Contains(response.Body.String(), gone) {
 			t.Errorf("live map page still contains retired %q", gone)
 		}
