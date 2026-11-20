@@ -3,6 +3,7 @@ package digest
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -40,13 +41,18 @@ func (s *Store) initTables() error {
 		status TEXT NOT NULL,
 		summary_md TEXT,
 		error_message TEXT,
-		items_count INTEGER DEFAULT 0
+		items_count INTEGER DEFAULT 0,
+		gold_json TEXT
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_digest_history_started ON digest_history(started_at DESC);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+	// Migrate existing tables if gold_json column is missing
+	_, _ = s.db.Exec("ALTER TABLE digest_history ADD COLUMN gold_json TEXT")
+	return nil
 }
 
 func parseSQLiteTime(s string) time.Time {
@@ -109,10 +115,14 @@ func (s *Store) RecordStart(ctx context.Context) (int64, error) {
 }
 
 // RecordSuccess updates a digest run as successfully completed.
-func (s *Store) RecordSuccess(ctx context.Context, id int64, summaryMD string, itemsCount int) error {
+func (s *Store) RecordSuccess(ctx context.Context, id int64, summaryMD string, itemsCount int, goldJSON ...string) error {
+	var gj sql.NullString
+	if len(goldJSON) > 0 && goldJSON[0] != "" {
+		gj = sql.NullString{String: goldJSON[0], Valid: true}
+	}
 	_, err := s.db.ExecContext(ctx,
-		"UPDATE digest_history SET finished_at = CURRENT_TIMESTAMP, status = 'success', summary_md = ?, items_count = ? WHERE id = ?",
-		summaryMD, itemsCount, id)
+		"UPDATE digest_history SET finished_at = CURRENT_TIMESTAMP, status = 'success', summary_md = ?, items_count = ?, gold_json = ? WHERE id = ?",
+		summaryMD, itemsCount, gj, id)
 	return err
 }
 
@@ -131,15 +141,65 @@ func (s *Store) RecordSkipped(ctx context.Context) error {
 	return err
 }
 
+// GetRun returns a specific digest run by ID.
+func (s *Store) GetRun(ctx context.Context, id int64) (*RunRecord, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, started_at, COALESCE(finished_at, started_at), status, COALESCE(summary_md, ''), COALESCE(error_message, ''), items_count, COALESCE(gold_json, '')
+		FROM digest_history WHERE id = ?`, id)
+
+	var r RunRecord
+	var startedStr, finishedStr string
+	if err := row.Scan(&r.ID, &startedStr, &finishedStr, &r.Status, &r.SummaryMD, &r.ErrorMessage, &r.ItemsCount, &r.GoldJSON); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	r.StartedAt = parseSQLiteTime(startedStr)
+	r.FinishedAt = parseSQLiteTime(finishedStr)
+	return &r, nil
+}
+
+// PreviousGold retrieves the most recent gold quote from a successful run prior to beforeID.
+func (s *Store) PreviousGold(ctx context.Context, beforeID int64) (*GoldQuote, error) {
+	var row *sql.Row
+	if beforeID > 0 {
+		row = s.db.QueryRowContext(ctx, `
+			SELECT gold_json FROM digest_history
+			WHERE id < ? AND status = 'success' AND gold_json IS NOT NULL AND gold_json != ''
+			ORDER BY id DESC LIMIT 1`, beforeID)
+	} else {
+		row = s.db.QueryRowContext(ctx, `
+			SELECT gold_json FROM digest_history
+			WHERE status = 'success' AND gold_json IS NOT NULL AND gold_json != ''
+			ORDER BY id DESC LIMIT 1`)
+	}
+	var goldJSON string
+	if err := row.Scan(&goldJSON); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if strings.TrimSpace(goldJSON) == "" {
+		return nil, nil
+	}
+	var q GoldQuote
+	if err := json.Unmarshal([]byte(goldJSON), &q); err != nil {
+		return nil, err
+	}
+	return &q, nil
+}
+
 // GetLatestRun returns the most recent digest run.
 func (s *Store) GetLatestRun(ctx context.Context) (*RunRecord, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, started_at, COALESCE(finished_at, started_at), status, COALESCE(summary_md, ''), COALESCE(error_message, ''), items_count
+		SELECT id, started_at, COALESCE(finished_at, started_at), status, COALESCE(summary_md, ''), COALESCE(error_message, ''), items_count, COALESCE(gold_json, '')
 		FROM digest_history ORDER BY id DESC LIMIT 1`)
 
 	var r RunRecord
 	var startedStr, finishedStr string
-	if err := row.Scan(&r.ID, &startedStr, &finishedStr, &r.Status, &r.SummaryMD, &r.ErrorMessage, &r.ItemsCount); err != nil {
+	if err := row.Scan(&r.ID, &startedStr, &finishedStr, &r.Status, &r.SummaryMD, &r.ErrorMessage, &r.ItemsCount, &r.GoldJSON); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -156,7 +216,7 @@ func (s *Store) GetHistory(ctx context.Context, limit int) ([]RunRecord, error) 
 		limit = 10
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, started_at, COALESCE(finished_at, started_at), status, COALESCE(summary_md, ''), COALESCE(error_message, ''), items_count
+		SELECT id, started_at, COALESCE(finished_at, started_at), status, COALESCE(summary_md, ''), COALESCE(error_message, ''), items_count, COALESCE(gold_json, '')
 		FROM digest_history ORDER BY id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
@@ -167,7 +227,7 @@ func (s *Store) GetHistory(ctx context.Context, limit int) ([]RunRecord, error) 
 	for rows.Next() {
 		var r RunRecord
 		var startedStr, finishedStr string
-		if err := rows.Scan(&r.ID, &startedStr, &finishedStr, &r.Status, &r.SummaryMD, &r.ErrorMessage, &r.ItemsCount); err == nil {
+		if err := rows.Scan(&r.ID, &startedStr, &finishedStr, &r.Status, &r.SummaryMD, &r.ErrorMessage, &r.ItemsCount, &r.GoldJSON); err == nil {
 			r.StartedAt = parseSQLiteTime(startedStr)
 			r.FinishedAt = parseSQLiteTime(finishedStr)
 			list = append(list, r)

@@ -109,7 +109,14 @@ func (g *GeminiClient) SummarizeNews(ctx context.Context, items []NewsItem) (str
 
 	var sb strings.Builder
 	sb.WriteString("คุณคือ Pocket Sentinel AI ผู้ช่วยสรุปข่าวสารและเกร็ดความรู้ประจำวันสำหรับมือถือ\n")
-	sb.WriteString("เป้าหมาย: สรุปให้อ่านง่าย สบายตา ไม่ยาวเกินไป โดยแบ่งออกเป็น 3 ส่วนอย่างชัดเจน และต้องใส่แท็กกำกับส่วนดังนี้:\n\n")
+	sb.WriteString("เป้าหมาย: สรุปให้อ่านง่าย สบายตา ไม่ยาวเกินไป โดยแบ่งออกเป็นส่วน ๆ อย่างชัดเจน และต้องใส่แท็กกำกับส่วนดังนี้:\n\n")
+
+	sb.WriteString("===SECTION:OVERVIEW===\n")
+	sb.WriteString("สรุปภาพรวมสั้นกระชับ โดยให้มีบรรทัดสำหรับแต่ละหมวดอย่างละ 1 บรรทัดเท่านั้น:\n")
+	sb.WriteString("📈 หุ้น: (1 บรรทัดสรุปภาพรวมตลาดหุ้นหรือประเด็นหุ้นสำคัญ)\n")
+	sb.WriteString("🤖 AI: (1 บรรทัดสรุปความเคลื่อนไหวสำคัญของ AI)\n")
+	sb.WriteString("🏛️ การเมือง: (1 บรรทัดสรุปประเด็นการเมืองสำคัญ)\n")
+	sb.WriteString("💡 สาระ: (1 บรรทัดสรุปเกร็ดสาระน่ารู้)\n\n")
 
 	sb.WriteString("===SECTION:AI===\n")
 	sb.WriteString("🤖 **อัปเดตวงการ AI & เทคโนโลยีเด่น**\n")
@@ -123,13 +130,23 @@ func (g *GeminiClient) SummarizeNews(ctx context.Context, items []NewsItem) (str
 	sb.WriteString("รูปแบบของแต่ละประเด็น:\n")
 	sb.WriteString("* **พาดหัวประเด็น:** สรุปเนื้อหาสำคัญและผลกระทบที่เกิดขึ้น (ความยาวไม่เกิน 2 บรรทัดต่อประเด็น)\n\n")
 
+	sb.WriteString("===SECTION:STOCKS===\n")
+	sb.WriteString("📈 **สรุปข่าวตลาดหุ้น & การเงิน**\n")
+	sb.WriteString("คัดเลือก 2-3 ข่าวหุ้นหรือตลาดการเงินที่สำคัญ รายงานเฉพาะข้อเท็จจริง\n")
+	sb.WriteString("กฎเหล็กด้านการลงทุน: ห้ามแนะนำหุ้นที่น่าซื้อ ห้ามแนะนำให้ซื้อ/ขาย/ถือ และห้ามให้ราคาเป้าหมายเด็ดขาด ให้รายงานเฉพาะข่าวและข้อเท็จจริงของตลาดเท่านั้น\n\n")
+
+	sb.WriteString("===SECTION:GOLD===\n")
+	sb.WriteString("🥇 **ข่าวทองคำ & ตลาดทอง**\n")
+	sb.WriteString("คัดเลือก 1-2 ข่าวเกี่ยวกับสถานการณ์ทองคำหรือปัจจัยกระทบราคาทองคำ รายงานเฉพาะข้อเท็จจริง (ห้ามให้คำแนะนำการลงทุน)\n\n")
+
 	sb.WriteString("===SECTION:TRIVIA===\n")
 	sb.WriteString("💡 **สาระน่ารู้ & เกร็ดความรู้ประจำวัน (Bite-sized Trivia)**\n")
 	sb.WriteString("คัดเลือก 1-2 เกร็ดความรู้สั้น ๆ ชวนคิด (วิทยาศาสตร์, เทคโนโลยี, หรือบทเรียนรอบตัว)\n")
 	sb.WriteString("รูปแบบของแต่ละประเด็น:\n")
 	sb.WriteString("* **ประเด็นชวนรู้:** ข้อคิดหรือเกร็ดความรู้สั้น ๆ (ไม่เกิน 2 บรรทัด)\n\n")
 
-	sb.WriteString("กฎสำคัญ: ต้องมีแท็ก ===SECTION:AI===, ===SECTION:POLITICS===, ===SECTION:TRIVIA=== คั่นแต่ละส่วนเสมอ\n\n")
+	sb.WriteString("กฎสำคัญ: ต้องมีแท็ก ===SECTION:OVERVIEW===, ===SECTION:AI===, ===SECTION:POLITICS===, ===SECTION:STOCKS===, ===SECTION:GOLD===, ===SECTION:TRIVIA=== คั่นแต่ละส่วนเสมอ\n")
+	sb.WriteString("ข้อห้ามเด็ดขาด: ห้ามแนะนำการลงทุน ห้ามระบุว่าหุ้นตัวไหนน่าซื้อหรือควรเข้าซื้อเด็ดขาด\n\n")
 
 	sb.WriteString("=== รายการข่าวสดที่รวบรวมมาได้ ===\n")
 	if len(items) == 0 {

@@ -30,4 +30,5 @@ type RunRecord struct {
 	SummaryMD    string    `json:"summary_md"`
 	ErrorMessage string    `json:"error_message,omitempty"`
 	ItemsCount   int       `json:"items_count"`
+	GoldJSON     string    `json:"gold_json,omitempty"`
 }

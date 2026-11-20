@@ -209,7 +209,7 @@ func TestServiceGenerateDigest(t *testing.T) {
 	gc := NewGeminiClient("KEY", WithBaseURL("http://mock.gemini"), WithHTTPClient(client))
 	notifier := &mockNotifier{}
 
-	svc := NewService(store, gc, notifier, WithFeeds(nil)) // no external feeds for deterministic test
+	svc := NewService(store, gc, notifier, WithFeeds(nil), WithGoldSource(fakeGold{})) // no external feeds or prices for deterministic test
 
 	// 1. Force run
 	record, err := svc.GenerateDigest(context.Background(), true)
@@ -258,7 +258,7 @@ func TestDigestHTTPHandlers(t *testing.T) {
 	})
 
 	gc := NewGeminiClient("KEY", WithBaseURL("http://mock.gemini"), WithHTTPClient(client))
-	svc := NewService(store, gc, nil, WithFeeds(nil))
+	svc := NewService(store, gc, nil, WithFeeds(nil), WithGoldSource(fakeGold{}))
 	mod := New(svc)
 
 	r := gin.New()

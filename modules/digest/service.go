@@ -2,6 +2,7 @@ package digest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,7 +20,7 @@ type FeedSource struct {
 	MaxItems int
 }
 
-// DefaultCuratedFeeds contains recommended AI and political feeds.
+// DefaultCuratedFeeds contains recommended AI, political, and financial feeds.
 var DefaultCuratedFeeds = []FeedSource{
 	{
 		Category: "AI & Tech",
@@ -45,6 +46,18 @@ var DefaultCuratedFeeds = []FeedSource{
 		URL:      "https://thestandard.co/category/news/politics/feed/",
 		MaxItems: 4,
 	},
+	{
+		Category: "Stocks",
+		Name:     "Kaohoon",
+		URL:      "https://www.kaohoon.com/feed",
+		MaxItems: 4,
+	},
+	{
+		Category: "Stocks",
+		Name:     "Prachachat Finance",
+		URL:      "https://www.prachachat.net/finance/feed",
+		MaxItems: 4,
+	},
 }
 
 // Service coordinates fetching feeds, invoking Gemini, updating SQLite, and dispatching to Telegram.
@@ -54,6 +67,8 @@ type Service struct {
 	notifier   alerts.Notifier
 	httpClient *http.Client
 	feeds      []FeedSource
+	goldSource GoldSource
+	messenger  Messenger
 }
 
 // NewService creates a digest Service instance.
@@ -64,6 +79,7 @@ func NewService(store *Store, gemini *GeminiClient, notifier alerts.Notifier, op
 		notifier:   notifier,
 		httpClient: &http.Client{Timeout: 12 * time.Second},
 		feeds:      DefaultCuratedFeeds,
+		goldSource: NewGoldFetcher(nil),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -82,6 +98,21 @@ func WithFeeds(feeds []FeedSource) ServiceOption {
 // WithHTTPClient sets a custom HTTP client for feed fetching.
 func WithServiceHTTPClient(client *http.Client) ServiceOption {
 	return func(s *Service) { s.httpClient = client }
+}
+
+// WithGoldSource sets custom gold source (useful for unit testing).
+func WithGoldSource(g GoldSource) ServiceOption {
+	return func(s *Service) { s.goldSource = g }
+}
+
+// WithMessenger sets custom messenger for menu buttons dispatching.
+func WithMessenger(m Messenger) ServiceOption {
+	return func(s *Service) { s.messenger = m }
+}
+
+// SetMessenger sets the messenger on an existing service instance.
+func (s *Service) SetMessenger(m Messenger) {
+	s.messenger = m
 }
 
 // CollectFeedItems fetches all configured news items concurrently.
@@ -131,9 +162,17 @@ func (s *Service) GenerateDigest(ctx context.Context, force bool) (*RunRecord, e
 		return nil, fmt.Errorf("failed to record digest start: %w", err)
 	}
 
-	// 1. Gather RSS News Items
-	items := s.CollectFeedItems(ctx)
-	log.Printf("[digest] Collected %d news items from RSS feeds", len(items))
+	// 1. Gather RSS News Items & Recategorize Gold
+	rawItems := s.CollectFeedItems(ctx)
+	items := recategorizeGold(rawItems)
+	log.Printf("[digest] Collected %d news items from RSS feeds (after gold categorization)", len(items))
+
+	// Fetch Gold Quotes & Previous Run
+	var goldQuote GoldQuote
+	if s.goldSource != nil {
+		goldQuote = s.goldSource.Fetch(ctx)
+	}
+	prevGold, _ := s.store.PreviousGold(ctx, 0)
 
 	// 2. Call Gemini for Summarization
 	geminiCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -146,41 +185,43 @@ func (s *Service) GenerateDigest(ctx context.Context, force bool) (*RunRecord, e
 		return nil, fmt.Errorf("gemini summarization failed: %w", err)
 	}
 
+	// 2.1 Inject Gold prices into Summary
+	summary = injectGold(summary, goldQuote, prevGold)
+	goldJSONBytes, _ := json.Marshal(goldQuote)
+	goldJSON := string(goldJSONBytes)
+
 	// 3. Save Success Record to SQLite
-	if err := s.store.RecordSuccess(ctx, runID, summary, len(items)); err != nil {
+	if err := s.store.RecordSuccess(ctx, runID, summary, len(items), goldJSON); err != nil {
 		log.Printf("[digest] Warning: failed to record success in store: %v", err)
 	}
 
-	// 4. Dispatch to Telegram (if configured)
-	if s.notifier != nil {
-		sections := SplitSections(summary)
-		if len(sections) > 1 {
-			for i, sec := range sections {
-				secMsg := FormatTelegramSection(sec, i+1, len(sections))
-				teleCtx, teleCancel := context.WithTimeout(ctx, 20*time.Second)
-				if err := s.notifier.Send(teleCtx, secMsg); err != nil {
-					log.Printf("[digest:telegram] Warning: dispatch section %d/%d failed: %v", i+1, len(sections), err)
-				} else {
-					log.Printf("[digest:telegram] ✅ Sent section %d/%d (%s) to Telegram", i+1, len(sections), sec.Title)
-				}
-				teleCancel()
-				if i < len(sections)-1 {
-					time.Sleep(600 * time.Millisecond) // Smooth pacing between messages
-				}
-			}
+	record, err := s.store.GetRun(ctx, runID)
+	if err != nil || record == nil {
+		record, _ = s.store.GetLatestRun(ctx)
+	}
+
+	// 4. Dispatch to Telegram (single message with buttons or fallback to notifier)
+	if s.messenger != nil {
+		overviewMsg := RenderView(record, "overview", prevGold)
+		buttons := MenuButtons(runID, "overview")
+		teleCtx, teleCancel := context.WithTimeout(ctx, 25*time.Second)
+		defer teleCancel()
+		if err := s.messenger.SendMenu(teleCtx, overviewMsg, buttons); err != nil {
+			log.Printf("[digest:messenger] Warning: dispatch menu failed: %v", err)
 		} else {
-			telegramMsg := FormatTelegramDigest(summary)
-			teleCtx, teleCancel := context.WithTimeout(ctx, 25*time.Second)
-			defer teleCancel()
-			if err := s.notifier.Send(teleCtx, telegramMsg); err != nil {
-				log.Printf("[digest:telegram] Warning: dispatch to Telegram failed: %v", err)
-			} else {
-				log.Printf("[digest:telegram] ✅ Sent daily digest to Telegram successfully")
-			}
+			log.Printf("[digest:messenger] ✅ Sent single daily digest menu to Telegram")
+		}
+	} else if s.notifier != nil {
+		overviewMsg := RenderView(record, "overview", prevGold)
+		teleCtx, teleCancel := context.WithTimeout(ctx, 25*time.Second)
+		defer teleCancel()
+		if err := s.notifier.Send(teleCtx, overviewMsg); err != nil {
+			log.Printf("[digest:telegram] Warning: dispatch to Telegram failed: %v", err)
+		} else {
+			log.Printf("[digest:telegram] ✅ Sent daily digest to Telegram successfully")
 		}
 	}
 
-	record, _ := s.store.GetLatestRun(ctx)
 	return record, nil
 }
 

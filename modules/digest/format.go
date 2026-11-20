@@ -125,6 +125,10 @@ func extractSectionTitle(secKey, content string) string {
 		return "🤖 AI & เทคโนโลยีเด่น"
 	case "politics":
 		return "🏛️ การเมือง & ประเด็นรอบวัน"
+	case "stocks":
+		return "📈 ข่าวหุ้น & การเงิน"
+	case "gold":
+		return "🥇 ข่าวทองคำ & ตลาดทอง"
 	case "trivia":
 		return "💡 สาระน่ารู้ประจำวัน"
 	default:
@@ -133,13 +137,10 @@ func extractSectionTitle(secKey, content string) string {
 }
 
 // FormatTelegramSection formats a single section into a crisp, readable Telegram HTML message.
-func FormatTelegramSection(sec DigestSection, partNum, totalParts int) string {
-	if strings.TrimSpace(sec.Content) == "" {
-		return ""
-	}
-
+// sectionBodyHTML converts one section's markdown into Telegram HTML lines.
+func sectionBodyHTML(content string) string {
 	// 1. Escape HTML special characters (&, <, >)
-	text := strings.ReplaceAll(sec.Content, "\r\n", "\n")
+	text := strings.ReplaceAll(content, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
 	text = strings.ReplaceAll(text, "&", "&amp;")
 	text = strings.ReplaceAll(text, "<", "&lt;")
@@ -191,6 +192,15 @@ func FormatTelegramSection(sec DigestSection, partNum, totalParts int) string {
 	}
 
 	body := strings.Join(bodyLines, "\n\n")
+	return body
+}
+
+func FormatTelegramSection(sec DigestSection, partNum, totalParts int) string {
+	if strings.TrimSpace(sec.Content) == "" {
+		return ""
+	}
+
+	body := sectionBodyHTML(sec.Content)
 
 	// Header & footer assembly
 	nowStr := time.Now().Format("15:04 น.")
