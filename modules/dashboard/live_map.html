@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
+  <meta name="theme-color" content="#13141a">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,96 +16,155 @@
         const theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
         document.documentElement.setAttribute('data-theme', theme);
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1220' : '#f4f6fa');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#13141a' : '#f6f6f9');
       } catch (_) {}
     })();
   </script>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png">
-  <title>Location &amp; Rendezvous — Pocket Sentinel</title>
+  <title>แผนที่ — Pocket Sentinel</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="stylesheet" href="/static/css/live-map.css">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
   <script defer src="/static/js/components/live-map.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
-<body class="live-map-body" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
-  <!-- Unified Topbar -->
-  <header class="app-header">
-    <div class="brand">
-      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
-        <span class="status-dot ok" aria-hidden="true"></span>
-        <span class="brand-name">Pocket Sentinel</span>
-        <span class="brand-sub">v11</span>
-      </a>
-    </div>
-    <div class="topbar-actions">
-      <span class="connection-pill" :class="{'is-live': connected}">
-        <span class="pulse-indicator"></span>
-        <span x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
-      </span>
-      <button class="theme-toggle theme-toggle-btn" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
-        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'"></i>
-      </button>
-    </div>
+<body class="live-map-body" :class="{'is-picking': pickingLocation}" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker(); else if (sheetExpanded) toggleSheet(false)">
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 3.5V8h4.5M4 13a8 8 0 0 0 14.6 4.5M20 20.5V16h-4.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  </svg>
+  <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
+  <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
+  <div class="map-loading" x-show="!mapReady" x-cloak><span class="spinner"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span></div>
+
+  <!-- Floating status chip -->
+  <header class="map-status">
+    <button type="button" class="status-pill" @click="refresh()" aria-label="รีเฟรชตำแหน่ง">
+      <span class="live-dot" :class="{'is-live': connected}"></span>
+      <span class="status-main" x-text="connected ? 'อัปเดตสด' : 'รอเชื่อมต่อ'"></span>
+      <span class="status-time" x-text="updatedText"></span>
+    </button>
+    <button class="btn-icon theme-toggle-btn map-glass" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
   </header>
+  <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
+    <strong>เลื่อนแผนที่ให้จุดอยู่ใต้เป้า</strong>
+    <span x-text="newZone.latitude == null ? 'เลือกตำแหน่งอุปกรณ์หรือเลื่อนแผนที่' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></span>
+  </div>
 
-  <!-- Unified Sub-Nav Bar -->
+  <!-- Two floating controls -->
+  <div class="map-fabs" x-show="!pickingLocation">
+    <button type="button" class="btn-icon map-glass" @click="centerOnDevices()" aria-label="แสดงทั้งสองคน" title="แสดงทั้งสองคน"><svg class="icon"><use href="#i-users"/></svg></button>
+    <button type="button" class="btn-icon map-glass" :class="{'is-active': showTrail}" @click="toggleTrail()" :aria-pressed="showTrail" aria-label="เส้นทางย้อนหลัง 24 ชม." title="เส้นทาง 24 ชม."><svg class="icon"><use href="#i-route"/></svg></button>
+    <button type="button" class="btn-icon map-glass hover-only" @click="zoomIn()" aria-label="ซูมเข้า"><svg class="icon"><use href="#i-plus"/></svg></button>
+    <button type="button" class="btn-icon map-glass hover-only" @click="zoomOut()" aria-label="ซูมออก"><svg class="icon"><use href="#i-minus"/></svg></button>
+  </div>
 
-  <main class="wrap map-tab">
-    <!-- Tracking Overview (Hero Status Banner) -->
-    <section class="live-summary" aria-live="polite">
-      <div class="summary-left">
-        <span class="status-badge" :class="isColocated ? 'is-colocated' : 'is-separated'">
-          <span class="status-badge-dot"></span>
-          <span x-text="proximityText"></span>
-        </span>
-        <span class="summary-distance-chip" x-show="distanceText" x-text="distanceText"></span>
+  <!-- Bottom sheet -->
+  <aside class="map-sheet" :class="{'is-expanded': sheetExpanded}" x-show="!pickingLocation" aria-label="ข้อมูลตำแหน่ง">
+    <button type="button" class="sheet-handle" @pointerdown="sheetPointerDown($event)" @pointerup="sheetPointerUp($event)" @keydown.enter.prevent="toggleSheet()" :aria-expanded="sheetExpanded" aria-label="ขยายหรือย่อรายละเอียด"><span class="sheet-grab"></span></button>
+
+    <div class="friend-row" aria-live="polite">
+      <img class="friend-avatar" src="/static/img/avatar-furturia.png" alt="Furturia">
+      <div class="grow">
+        <strong class="friend-headline" x-text="friendHeadline()">ยังไม่มีพิกัดของ Furturia</strong>
+        <small class="friend-sub" x-text="friendSubline()"></small>
       </div>
-      <div class="summary-right">
-        <span class="summary-time"> <span x-text="updatedText"></span></span>
-        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">อัปเดต
-        </button>
-        <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
+    </div>
+    <div class="me-row">
+      <span class="chip me-chip"><img src="/static/img/avatar-chubu.png" alt=""><span x-text="`ฉัน · ${connectionStatus(me).label}`"></span></span>
+      <button type="button" class="btn btn-ghost btn-sm" @click="toggleSheet()" x-text="sheetExpanded ? 'ย่อ' : 'รายละเอียด'"></button>
+    </div>
 
-          <span>เพิ่มสถานที่</span>
-        </button>
-      </div>
-    </section>
+    <div class="sheet-more">
+      <p class="alert err" x-show="errorText" x-text="errorText" x-cloak></p>
 
-    <!-- Map & Place Picker Container -->
-    <div class="map-picker-layout" :class="{'is-picker-open': pickingLocation}">
-      <section class="map-shell" aria-label="แผนที่แสดงตำแหน่ง">
-        <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
+      <!-- Devices -->
+      <section class="sheet-section" aria-label="ข้อมูลอุปกรณ์">
+        <template x-for="d in [{key:'friend', name:'Furturia', img:'/static/img/avatar-furturia.png'}, {key:'me', name:'Chubu', img:'/static/img/avatar-chubu.png'}]" :key="d.key">
+          <article class="device-card">
+            <div class="device-head">
+              <img :src="d.img" :alt="d.name">
+              <div class="grow"><strong x-text="d.name"></strong><small x-text="deviceAge(d.key === 'me' ? me : friend)"></small></div>
+              <span class="chip" :class="{'ok': connectionStatus(d.key === 'me' ? me : friend).class === 'live', 'warn': connectionStatus(d.key === 'me' ? me : friend).class === 'stale'}" x-text="connectionStatus(d.key === 'me' ? me : friend).label"></span>
+            </div>
+            <div class="device-metrics">
+              <div><span>แบต</span><strong x-text="batteryText(d.key === 'me' ? me : friend)"></strong><div class="batt-track"><div class="batt-fill" :class="batteryBarClass(d.key === 'me' ? me : friend)" :style="`width:${batteryPercent(d.key === 'me' ? me : friend)}%`"></div></div></div>
+              <div><span>ความเร็ว</span><strong x-text="speedText(d.key === 'me' ? me : friend)"></strong></div>
+              <div><span>ความแม่นยำ</span><strong x-text="accuracyText(d.key === 'me' ? me : friend)"></strong></div>
+            </div>
+          </article>
+        </template>
+      </section>
 
-        <!-- Picker Reticle & Floating Guidance -->
-        <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
-        <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
-          <strong>เลื่อนแผนที่ให้จุดศูนย์กลางอยู่ใต้เป้า</strong>
-          <span x-text="newZone.latitude == null ? 'เลือกตำแหน่งอุปกรณ์หรือเลื่อนแผนที่' : `${newZone.latitude.toFixed(5)}, ${newZone.longitude.toFixed(5)}`"></span>
+      <!-- Places -->
+      <section class="sheet-section" aria-labelledby="places-title">
+        <div class="section-head"><h2 id="places-title">สถานที่ <small x-text="`(${geofences.length})`"></small></h2><button type="button" class="btn btn-sm" @click="startMapPicker()"><svg class="icon icon-sm"><use href="#i-plus"/></svg>เพิ่มสถานที่</button></div>
+        <p class="alert err" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
+        <template x-if="geofences.length === 0"><p class="empty">ยังไม่มีสถานที่ กด “เพิ่มสถานที่” เพื่อปักหมุด</p></template>
+        <ul class="list place-list">
+          <template x-for="zone in orderedGeofences" :key="zone.id">
+            <li class="list-item place-item">
+              <button type="button" class="grow place-main" @click="focusGeofence(zone)">
+                <strong x-text="zone.name"></strong>
+                <small x-text="`รัศมี ${zone.radius_meters} ม. · ${zone.notify_enter ? 'แจ้งเมื่อถึง' : ''}${zone.notify_enter && zone.notify_exit ? ' / ' : ''}${zone.notify_exit ? 'แจ้งเมื่อออก' : ''}`"></small>
+              </button>
+              <button type="button" class="btn btn-sm btn-ghost btn-danger" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`">ลบ</button>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- Discord notifications -->
+      <section class="sheet-section" aria-labelledby="notify-title">
+        <div class="section-head"><h2 id="notify-title">แจ้งเตือน Discord</h2><small class="muted" x-text="settingsMessage"></small></div>
+        <div class="list">
+          <label class="list-item toggle-row"><span class="grow"><strong>พบกัน / แยกย้าย</strong><small>อยู่ด้วยกัน (≤ 80 ม.) หรือแยกกัน (≥ 250 ม.)</small></span><input class="switch" type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()"></label>
+          <label class="list-item toggle-row"><span class="grow"><strong>เข้า / ออกสถานที่</strong><small>เมื่อมาถึงหรือออกจากสถานที่ที่บันทึกไว้</small></span><input class="switch" type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()"></label>
+          <label class="list-item toggle-row"><span class="grow"><strong>แบตเตอรี่ต่ำ</strong><small>ต่ำกว่า 15% และไม่ได้ชาร์จ</small></span><input class="switch" type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
         </div>
-
-        <div class="map-loading" x-show="!mapReady" x-cloak>
-          <span class="loading-orbit"></span><span x-text="mapError || 'กำลังเตรียมแผนที่…'"></span>
-        </div>
-
-        <!-- Grouped Floating Map Controls (Top-Right Toolbar) -->
-        <div class="map-controls-group">
-          <button type="button" class="map-ctrl-btn" @click="centerOnDevices()" title="จัดตำแหน่งกึ่งกลางผู้ใช้">กึ่งกลาง</button>
-          <button type="button" class="map-ctrl-btn" :class="{'is-active': showTrail}" @click="toggleTrail()" title="เปิด/ปิดเส้นทางย้อนหลัง 24 ชม.">เส้นทาง</button>
-          <div class="map-ctrl-divider"></div>
-          <button type="button" class="map-ctrl-btn" @click="zoomIn()" title="ซูมเข้า">+</button>
-          <button type="button" class="map-ctrl-btn" @click="zoomOut()" title="ซูมออก">−</button>
-        </div>
-
-        <!-- Compact Floating Legend (Bottom-Left) -->
-        <div class="map-legend">
-          <span class="legend-item"><img src="/static/img/avatar-chubu.png" alt="Chubu" class="legend-avatar"> Chubu</span>
-          <span class="legend-item"><img src="/static/img/avatar-furturia.png" alt="Furturia" class="legend-avatar"> Furturia</span>
+        <div class="pin-row">
+          <label class="field grow">Relay PIN <small>เก็บไว้บนอุปกรณ์นี้เท่านั้น</small>
+            <span class="pin-input"><input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="PIN" autocomplete="current-password"><button type="button" class="btn btn-ghost btn-sm" @click="showPin = !showPin" x-text="showPin ? 'ซ่อน' : 'แสดง'"></button></span>
+          </label>
+          <button type="button" class="btn" @click="savePinExplicit()" x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก'"></button>
         </div>
       </section>
+
+      <!-- Ping log -->
+      <details class="sheet-section card disclosure" :open="showLogs" @toggle="showLogs = $el.open">
+        <summary>บันทึกพิกัดล่าสุด <small class="muted" x-text="`${recentLogs.length} รายการ`"></small></summary>
+        <template x-if="recentLogs.length === 0"><p class="empty">กำลังรอพิกัดจากเครื่อง…</p></template>
+        <ul class="log-list">
+          <template x-for="log in recentLogs" :key="log.id + '-' + log.device">
+            <li class="log-item">
+              <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png' : '/static/img/avatar-furturia.png'" :alt="log.name">
+              <div class="grow"><strong x-text="log.name"></strong><small x-text="formatTimeDetail(log.recorded_at)"></small></div>
+              <small class="log-meta" x-text="`${log.battery_level}% · ${log.speed < 1 ? 'นิ่ง' : log.speed + ' km/h'} · ±${Math.round(log.accuracy)} ม.`"></small>
+            </li>
+          </template>
+        </ul>
+      </details>
+      <p class="sheet-footnote">รีเฟรชอัตโนมัติทุก 15 วินาที</p>
+    </div>
+  </aside>
 
       <!-- Place Picker Panel (3-Step Guided Wizard) -->
       <aside class="place-picker-panel" x-show="pickingLocation" x-transition.opacity x-cloak role="dialog" aria-modal="false" aria-labelledby="picker-title">
@@ -257,274 +316,12 @@
           </div>
         </div>
       </aside>
-    </div>
 
-    <!-- Tracked User Cards: Compact 3-Column Metric Layout -->
-    <section class="device-grid" aria-label="ข้อมูลอุปกรณ์">
-      <!-- Device Card: Chubu -->
-      <article class="device-card device-card-me">
-        <div class="device-card-header">
-          <img class="device-avatar-img" src="/static/img/avatar-chubu.png" alt="Chubu">
-          <div class="device-card-info">
-            <div class="device-card-name-row">
-              <strong>Chubu</strong>
-              <span class="device-status-badge" :class="connectionStatus(me).class">
-                <span class="device-status-dot" :class="connectionStatus(me).dot"></span>
-                <span x-text="connectionStatus(me).label"></span>
-              </span>
-            </div>
-            <small x-text="deviceAge(me)"></small>
-          </div>
-        </div>
-        <div class="device-metrics-grid">
-          <!-- Metric 1: Battery -->
-          <div class="metric-cell">
-            <span class="metric-label">แบตเตอรี่</span>
-            <strong class="metric-value">
-              <span x-text="`${batteryPercent(me)}%`"></span>
-              <span x-show="isCharging(me)" class="charging-icon">กำลังชาร์จ</span>
-            </strong>
-            <div class="metric-bar-track">
-              <div class="metric-bar-fill" :class="batteryBarClass(me)" :style="`width: ${batteryPercent(me)}%`"></div>
-            </div>
-          </div>
-          <!-- Metric 2: Speed -->
-          <div class="metric-cell">
-            <span class="metric-label">ความเร็ว</span>
-            <strong class="metric-value" x-text="speedText(me)"></strong>
-            <small class="metric-sub" x-text="me && me.speed >= 1 ? 'กำลังเคลื่อนที่' : 'อยู่นิ่ง'"></small>
-          </div>
-          <!-- Metric 3: Accuracy -->
-          <div class="metric-cell">
-            <span class="metric-label">ความแม่นยำ</span>
-            <strong class="metric-value" x-text="accuracyText(me)"></strong>
-            <small class="metric-sub">GPS</small>
-          </div>
-        </div>
-      </article>
-
-      <!-- Device Card: Furturia -->
-      <article class="device-card device-card-friend">
-        <div class="device-card-header">
-          <img class="device-avatar-img" src="/static/img/avatar-furturia.png" alt="Furturia">
-          <div class="device-card-info">
-            <div class="device-card-name-row">
-              <strong>Furturia</strong>
-              <span class="device-status-badge" :class="connectionStatus(friend).class">
-                <span class="device-status-dot" :class="connectionStatus(friend).dot"></span>
-                <span x-text="connectionStatus(friend).label"></span>
-              </span>
-            </div>
-            <small x-text="deviceAge(friend)"></small>
-          </div>
-        </div>
-        <div class="device-metrics-grid">
-          <!-- Metric 1: Battery -->
-          <div class="metric-cell">
-            <span class="metric-label">แบตเตอรี่</span>
-            <strong class="metric-value">
-              <span x-text="`${batteryPercent(friend)}%`"></span>
-              <span x-show="isCharging(friend)" class="charging-icon">กำลังชาร์จ</span>
-            </strong>
-            <div class="metric-bar-track">
-              <div class="metric-bar-fill" :class="batteryBarClass(friend)" :style="`width: ${batteryPercent(friend)}%`"></div>
-            </div>
-          </div>
-          <!-- Metric 2: Speed -->
-          <div class="metric-cell">
-            <span class="metric-label">ความเร็ว</span>
-            <strong class="metric-value" x-text="speedText(friend)"></strong>
-            <small class="metric-sub" x-text="friend && friend.speed >= 1 ? 'กำลังเคลื่อนที่' : 'อยู่นิ่ง'"></small>
-          </div>
-          <!-- Metric 3: Accuracy -->
-          <div class="metric-cell">
-            <span class="metric-label">ความแม่นยำ</span>
-            <strong class="metric-value" x-text="accuracyText(friend)"></strong>
-            <small class="metric-sub">GPS</small>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- Compact Real-time Location Log Feed (Collapsible Accordion) -->
-    <section class="logs-section" aria-label="ประวัติการส่งพิกัดล่าสุด">
-      <div class="logs-card">
-        <div class="logs-header" @click="showLogs = !showLogs">
-          <div class="logs-title">
-
-            <span>บันทึกพิกัดล่าสุด (Live Ping Log)</span>
-            <span class="logs-count-badge" x-text="recentLogs.length + ' รายการ'"></span>
-          </div>
-          <button type="button" class="icon-button logs-collapse-btn" :aria-expanded="showLogs"><span x-text="showLogs ? 'ย่อ' : 'ขยาย'"></span></button>
-        </div>
-        <div class="logs-body" x-show="showLogs" x-transition>
-          <template x-if="recentLogs.length === 0">
-            <p class="empty-state-text">กำลังรอพิกัดจากเครื่อง...</p>
-          </template>
-          <ul class="logs-list">
-            <template x-for="log in recentLogs" :key="log.id + '-' + log.device">
-              <li class="log-item">
-                <div class="log-device">
-                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png' : '/static/img/avatar-furturia.png'" :alt="log.name" class="log-avatar">
-                  <div>
-                    <strong x-text="log.name"></strong>
-                    <small x-text="formatTimeDetail(log.recorded_at)"></small>
-                  </div>
-                </div>
-                <div class="log-meta">
-                  <span class="log-badge batt" x-text="'🔋 ' + log.battery_level + '%'"></span>
-                  <span class="log-badge speed" x-text="log.speed < 1 ? 'หยุดนิ่ง' : log.speed + ' km/h'"></span>
-                  <span class="log-badge" x-text="'±' + Math.round(log.accuracy) + ' ม.'"></span>
-                </div>
-              </li>
-            </template>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Compact Geofences & Discord Notifications Management Section -->
-    <section class="management-section" aria-label="จัดการสถานที่และการแจ้งเตือน">
-      <!-- Geofences Card -->
-      <div class="management-card">
-        <div class="management-card-header">
-          <div class="management-title">
-
-            <span>สถานที่ทั้งหมด (Geofences)</span>
-            <span class="logs-count-badge" x-text="geofences.length + ' แห่ง'"></span>
-          </div>
-          <button type="button" class="add-geofence-trigger-btn" @click="startMapPicker()">
-
-            <span>เพิ่มสถานที่</span>
-          </button>
-        </div>
-        <div class="management-card-body">
-          <template x-if="geofences.length === 0">
-            <p class="empty-state-text">ยังไม่มีสถานที่ที่บันทึกไว้ กดปุ่ม "เพิ่มสถานที่" เพื่อเริ่มสร้าง</p>
-          </template>
-          <p class="geofence-error" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
-
-          <!-- Compact List of Locations -->
-          <ul class="geofence-inline-list">
-            <template x-for="zone in orderedGeofences" :key="zone.id">
-              <li class="geofence-inline-item">
-                <div class="geofence-item-main" @click="toggleGeofenceDetails(zone.id)">
-                  <div class="geofence-info-col">
-                    <div class="geofence-title-row">
-                      <strong x-text="zone.name"></strong>
-                      <span class="geofence-radius-badge" x-text="`${zone.radius_meters} ม.`"></span>
-                      <span class="geofence-alert-pill" :class="{'is-active': zone.notify_enter}" title="แจ้งเตือนเมื่อมาถึง">ถึง</span>
-                      <span class="geofence-alert-pill" :class="{'is-active': zone.notify_exit}" title="แจ้งเตือนเมื่อออกไป">ออก</span>
-                    </div>
-                    <!-- Collapsible Coordinates & Info -->
-                    <div class="geofence-details-row" x-show="expandedGeofenceId === zone.id" x-transition>
-                      <small class="geofence-coordinates" x-text="`พิกัด: ${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}`"></small>
-                    </div>
-                  </div>
-                  <button type="button" class="geofence-chevron-btn" :aria-expanded="expandedGeofenceId === zone.id" title="ดูรายละเอียดพิกัด"><span x-text="expandedGeofenceId === zone.id ? 'ย่อ' : 'ดู'"></span></button>
-                </div>
-                <div class="geofence-actions-col">
-                  <button type="button" class="geofence-focus-btn" @click.stop="focusGeofence(zone)" title="ดูตำแหน่งบนแผนที่">
-
-                    <span>ดูบนแผนที่</span>
-                  </button>
-                  <button type="button" class="delete-zone-btn" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`" title="ลบสถานที่">ลบ</button>
-                </div>
-              </li>
-            </template>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Discord Notification Settings Card -->
-      <div class="management-card">
-        <div class="management-card-header">
-          <div class="management-title">
-
-            <span>การแจ้งเตือน Discord</span>
-          </div>
-          <span class="settings-status-text" x-text="settingsMessage"></span>
-        </div>
-        <div class="management-card-body">
-          <div class="toggle-group">
-            <label class="toggle-switch-card">
-              <div class="toggle-info">
-                <strong>พบกัน / แยกย้าย</strong>
-                <small>แจ้งเตือนเมื่ออยู่ด้วยกัน (≤ 80 ม.) หรือแยกย้าย (≥ 250 ม.)</small>
-              </div>
-              <span class="toggle-switch">
-                <input type="checkbox" x-model="settings.notify_colocation" @change="saveSettings()">
-                <span class="slider"></span>
-              </span>
-            </label>
-            <label class="toggle-switch-card">
-              <div class="toggle-info">
-                <strong>เข้า / ออกจากสถานที่</strong>
-                <small>แจ้งเตือนเมื่ออุปกรณ์มาถึงหรือออกจาก Geofence ที่บันทึกไว้</small>
-              </div>
-              <span class="toggle-switch">
-                <input type="checkbox" x-model="settings.notify_geofence" @change="saveSettings()">
-                <span class="slider"></span>
-              </span>
-            </label>
-            <label class="toggle-switch-card">
-              <div class="toggle-info">
-                <strong>แบตเตอรี่ต่ำ</strong>
-                <small>แจ้งเตือนเมื่อแบตเตอรี่ต่ำกว่า 15% และไม่ได้เสียบสายชาร์จ</small>
-              </div>
-              <span class="toggle-switch">
-                <input type="checkbox" x-model="settings.notify_battery" @change="saveSettings()">
-                <span class="slider"></span>
-              </span>
-            </label>
-          </div>
-
-          <!-- Advanced Security: Relay PIN Management -->
-          <div class="advanced-pin-section">
-            <div class="advanced-pin-header">
-
-              <div>
-                <strong>Relay PIN (รหัสความปลอดภัย)</strong>
-                <small>จัดเก็บเฉพาะบนอุปกรณ์นี้เพื่อใช้ยืนยันการตั้งค่าและจัดการสถานที่</small>
-              </div>
-            </div>
-            <div class="advanced-pin-row">
-              <div class="pin-input-group">
-                <input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="เช่น 1804" class="pin-field-input" autocomplete="current-password">
-                <button type="button" class="pin-visibility-btn" @click="showPin = !showPin" :title="showPin ? 'ซ่อน PIN' : 'แสดง PIN'"><span x-text="showPin ? 'ซ่อน' : 'แสดง'"></span></button>
-              </div>
-              <button type="button" class="pin-save-btn" @click="savePinExplicit()">
-                <span x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก PIN'"></span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <p class="live-error" x-show="errorText" x-text="errorText" x-cloak></p>
-    <footer class="live-footer">
-      <span>รีเฟรชข้อมูลตำแหน่งอัตโนมัติทุก 15 วินาที</span>
-      <span>ข้อมูลจัดเก็บปลอดภัยใน Pocket Sentinel</span>
-    </footer>
-  </main>
   <nav class="task-nav" aria-label="หน้าหลัก">
-    <a class="task-link" href="/?tab=overview">
-      <i class="ri-dashboard-line"></i>
-      <span>ภาพรวม</span>
-    </a>
-    <a class="task-link" href="/schedule">
-      <i class="ri-calendar-line"></i>
-      <span>ตาราง</span>
-    </a>
-    <a class="task-link active" href="/live" aria-current="page">
-      <i class="ri-map-pin-line"></i>
-      <span>แผนที่</span>
-    </a>
-    <a class="task-link" href="/relay">
-      <i class="ri-send-plane-line"></i>
-      <span>Telegram</span>
-    </a>
+    <a class="task-link" href="/?tab=overview"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
+    <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
+    <a class="task-link active" href="/live" aria-current="page"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
+    <a class="task-link" href="/relay"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>
   </nav>
 </body>
 </html>

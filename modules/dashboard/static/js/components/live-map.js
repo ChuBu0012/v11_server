@@ -314,7 +314,9 @@ document.addEventListener('alpine:init', () => {
     pickerError: '',
     radiusSlider: 150,
     geofenceError: '',
-    showLogs: true,
+    showLogs: false,
+    sheetExpanded: false,
+    sheetDragStartY: null,
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     showPin: false,
     pinSavedNotice: false,
@@ -358,6 +360,41 @@ document.addEventListener('alpine:init', () => {
       this.newZone.name = cleaned;
       this.pickerError = '';
       this.$nextTick(() => document.getElementById('place-name')?.focus());
+    },
+
+    toggleSheet(force) {
+      this.sheetExpanded = typeof force === 'boolean' ? force : !this.sheetExpanded;
+      if (!this.sheetExpanded) {
+        const sheet = document.querySelector('.map-sheet');
+        if (sheet) sheet.scrollTop = 0;
+      }
+      this.$nextTick(() => liveMapState.map?.invalidateSize({ pan: false }));
+    },
+
+    sheetPointerDown(event) {
+      this.sheetDragStartY = event.clientY;
+    },
+
+    sheetPointerUp(event) {
+      if (this.sheetDragStartY == null) return;
+      const delta = event.clientY - this.sheetDragStartY;
+      this.sheetDragStartY = null;
+      if (delta < -40) this.toggleSheet(true);
+      else if (delta > 40) this.toggleSheet(false);
+      else this.toggleSheet();
+    },
+
+    friendHeadline() {
+      if (!this.friend) return 'ยังไม่มีพิกัดของ Furturia';
+      if (this.isColocated) return 'อยู่ด้วยกันกับ Furturia';
+      if (this.distanceMeters == null) return 'Furturia · รอตำแหน่งของคุณ';
+      return `Furturia ห่าง ${this.distanceText}`;
+    },
+
+    friendSubline() {
+      if (!this.friend) return 'รอให้เครื่องของ Furturia ส่งตำแหน่งเข้ามา';
+      const moving = this.friend.speed >= 1 ? 'กำลังเคลื่อนที่' : 'อยู่นิ่ง';
+      return `${this.deviceAge(this.friend)} · ${moving} · แบต ${this.batteryText(this.friend)}`;
     },
 
     zoomIn() {
@@ -412,7 +449,8 @@ document.addEventListener('alpine:init', () => {
       if (!window.L || !canvasEl) {
         if (!window.L) this.mapError = 'โหลดแผนที่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต';
       } else if (!liveMapState.map) {
-        liveMapState.map = L.map('live-map-canvas', { zoomControl: false, preferCanvas: true }).setView([13.6516, 100.4939], 15);
+        liveMapState.map = L.map('live-map-canvas', { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([13.6516, 100.4939], 15);
+        L.control.attribution({ position: 'topleft', prefix: false }).addTo(liveMapState.map);
 
         // Google Maps Clean Roadmap tiles with Esri fallback
         const baseLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -581,10 +619,7 @@ document.addEventListener('alpine:init', () => {
       this.pickerError = '';
       this.geofenceError = '';
       this.pickingLocation = true;
-      const mapEl = document.getElementById('live-map-canvas');
-      if (mapEl) {
-        mapEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      this.sheetExpanded = false;
       const container = liveMapState.map?.getContainer();
       if (container) container.classList.add('map-picking-cursor');
 

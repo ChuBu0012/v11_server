@@ -70,6 +70,16 @@ func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
 			t.Errorf("embedded live map page missing %q", want)
 		}
 	}
+	for _, want := range []string{`class="map-sheet`, "friendHeadline()", "map-status"} {
+		if !strings.Contains(response.Body.String(), want) {
+			t.Errorf("live map page missing layout A element %q", want)
+		}
+	}
+	for _, gone := range []string{"map-controls-group", "live-summary"} {
+		if strings.Contains(response.Body.String(), gone) {
+			t.Errorf("live map page still contains retired %q", gone)
+		}
+	}
 	if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("Referrer-Policy") != "strict-origin-when-cross-origin" {
 		t.Error("live map response must not be cached and should use strict-origin-when-cross-origin")
 	}
