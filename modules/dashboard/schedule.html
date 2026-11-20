@@ -40,7 +40,6 @@
   <header class="topbar">
     <a class="brand" href="/"><span class="status-dot" aria-hidden="true"></span><span class="brand-name">ตารางของฉัน</span></a>
     <div class="topbar-actions">
-      <button class="btn btn-sm pin-button" id="pin-open" type="button"><svg class="icon icon-sm"><use href="#i-lock"/></svg><span id="pin-state">ตั้งค่า PIN</span></button>
       <button class="btn-icon theme-toggle-btn" id="theme-toggle" type="button" aria-label="สลับโหมดสว่าง/มืด"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
     </div>
   </header>
@@ -145,17 +144,6 @@
         <button class="btn btn-primary" id="save-reminder" type="submit">บันทึกการเตือน</button>
       </div>
       <button class="btn btn-ghost btn-danger btn-block" id="delete-in-form" type="button" data-action="delete" hidden>ลบการเตือนนี้</button>
-    </form>
-  </dialog>
-
-  <dialog class="sheet pin-dialog" id="pin-dialog" aria-labelledby="pin-title">
-    <form id="pin-form" method="dialog" class="stack">
-      <div class="sheet-grab" aria-hidden="true"></div>
-      <div class="sheet-head"><h2 id="pin-title">PIN สำหรับจัดการตาราง</h2><button class="btn-icon" id="pin-close" type="button" aria-label="ปิด"><svg class="icon"><use href="#i-close"/></svg></button></div>
-      <p class="muted">ใช้ REMINDER_PIN จากไฟล์ .env เพื่อเพิ่ม แก้ไข หรือลบรายการ ดูตารางได้โดยไม่ต้องใช้ PIN</p>
-      <label class="field">PIN<input id="reminder-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="กรอก PIN"></label>
-      <p class="form-error" id="pin-error" role="alert"></p>
-      <div class="sheet-actions"><button class="btn" id="forget-pin" type="button">ลืม PIN นี้</button><button class="btn btn-primary" type="submit">ใช้ PIN</button></div>
     </form>
   </dialog>
 

@@ -1,7 +1,6 @@
 package reminders
 
 import (
-	"crypto/subtle"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,42 +8,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Module serves the schedule API. Writes are intentionally public (no PIN);
+// the owner chose convenience over a PIN for this personal server.
 type Module struct {
 	store         *Store
-	pin           string
 	telegramReady bool
 }
 
-func NewModule(store *Store, pin string, telegramReady bool) *Module {
-	return &Module{store: store, pin: pin, telegramReady: telegramReady}
+func NewModule(store *Store, telegramReady bool) *Module {
+	return &Module{store: store, telegramReady: telegramReady}
 }
 func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/api/schedule/status", m.status)
 	r.GET("/api/schedule/reminders", m.list)
 	r.GET("/api/schedule/upcoming", m.upcoming)
 	r.GET("/api/schedule/history", m.history)
-	r.POST("/api/schedule/reminders", m.authorize(), m.create)
-	r.PUT("/api/schedule/reminders/:id", m.authorize(), m.update)
-	r.POST("/api/schedule/reminders/:id/pause", m.authorize(), m.pause)
-	r.POST("/api/schedule/reminders/:id/resume", m.authorize(), m.resume)
-	r.DELETE("/api/schedule/reminders/:id", m.authorize(), m.delete)
-	r.POST("/api/schedule/complete", m.authorize(), m.complete)
+	r.POST("/api/schedule/reminders", m.create)
+	r.PUT("/api/schedule/reminders/:id", m.update)
+	r.POST("/api/schedule/reminders/:id/pause", m.pause)
+	r.POST("/api/schedule/reminders/:id/resume", m.resume)
+	r.DELETE("/api/schedule/reminders/:id", m.delete)
+	r.POST("/api/schedule/complete", m.complete)
 }
 
 func (m *Module) status(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"telegram_ready": m.telegramReady, "timezone": timezone})
 }
 
-func (m *Module) authorize() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		provided := c.GetHeader("X-Reminder-PIN")
-		if m.pin == "" || len(provided) != len(m.pin) || subtle.ConstantTimeCompare([]byte(provided), []byte(m.pin)) != 1 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่า REMINDER_PIN"})
-			return
-		}
-		c.Next()
-	}
-}
 func (m *Module) list(c *gin.Context) {
 	items, err := m.store.List(c.Request.Context())
 	if err != nil {

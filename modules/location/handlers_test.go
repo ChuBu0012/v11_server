@@ -29,7 +29,7 @@ func newLocationTestRouter(t *testing.T) (*gin.Engine, *Module, string, string) 
 		t.Fatal(err)
 	}
 	service := NewService(store, nil)
-	module := NewModule(store, service, "1804")
+	module := NewModule(store, service)
 	router := gin.New()
 	module.RegisterRoutes(router)
 	router.GET("/live/:token", module.ViewerPage(func(c *gin.Context) { c.String(http.StatusOK, "viewer page") }))
@@ -131,10 +131,10 @@ func TestLocationManagementAPIsRequirePIN(t *testing.T) {
 		router.ServeHTTP(response, req)
 		return response
 	}
-	if response := post("wrong", http.MethodGet, "/api/location/geofences", ""); response.Code != http.StatusUnauthorized {
-		t.Fatalf("wrong PIN status = %d, want 401", response.Code)
+	if response := post("", http.MethodGet, "/api/location/geofences", ""); response.Code != http.StatusOK {
+		t.Fatalf("no-PIN list status = %d, want 200 (management APIs are public)", response.Code)
 	}
-	created := post("1804", http.MethodPost, "/api/location/geofences", `{"name":"บ้าน","latitude":13.7,"longitude":100.5,"radius_meters":150}`)
+	created := post("", http.MethodPost, "/api/location/geofences", `{"name":"บ้าน","latitude":13.7,"longitude":100.5,"radius_meters":150}`)
 	if created.Code != http.StatusCreated || !strings.Contains(created.Body.String(), `"notify_enter":true`) {
 		t.Fatalf("create geofence response = %d %s", created.Code, created.Body.String())
 	}

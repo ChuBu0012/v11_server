@@ -2,8 +2,8 @@ package dashboard
 
 import (
 	"net/http"
-	"regexp"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -329,6 +329,19 @@ func TestShellAssetsAllExist(t *testing.T) {
 	for _, want := range []string{"/static/css/dashboard.css", "/static/css/relay.css"} {
 		if !strings.Contains(sw, want) {
 			t.Errorf("sw.js shell cache missing %s", want)
+		}
+	}
+}
+
+func TestPagesHaveNoPINPrompts(t *testing.T) {
+	paths := []string{"/schedule", "/relay", "/live-page",
+		"/static/js/components/schedule.js", "/static/js/components/relay.js", "/static/js/components/live-map.js"}
+	for _, path := range paths {
+		body := fetchPage(t, path)
+		for _, gone := range []string{"X-Relay-PIN", "X-Reminder-PIN", "pin-dialog", "showPinModal", "savePinExplicit"} {
+			if strings.Contains(body, gone) {
+				t.Errorf("%s still contains PIN artefact %q", path, gone)
+			}
 		}
 	}
 }

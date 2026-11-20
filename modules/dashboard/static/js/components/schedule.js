@@ -5,7 +5,7 @@
   const dateFormatter = new Intl.DateTimeFormat('th-TH', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' });
   const timeFormatter = new Intl.DateTimeFormat('th-TH', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
   const partsFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-  const state = { reminders: [], deliveries: [], history: [], year: 0, month: 0, selected: '', openRow: null, editID: null, pin: localStorage.getItem('reminder-pin') || '', loadFailed: false, telegramReady: false };
+  const state = { reminders: [], deliveries: [], history: [], year: 0, month: 0, selected: '', openRow: null, editID: null, loadFailed: false, telegramReady: false };
 
   function parts(value) { return Object.fromEntries(partsFormatter.formatToParts(value).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value])); }
   function dateKey(value) { const p = parts(value); return `${p.year}-${p.month}-${p.day}`; }
@@ -17,9 +17,8 @@
   function monthDate(year, month, day) { return new Date(Date.UTC(year, month, day, 12)); }
   function showToast(message) { const toast = $('#schedule-toast'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
   async function api(path, options = {}) {
-    const headers = { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.auth ? { 'X-Reminder-PIN': state.pin } : {}), ...options.headers };
+    const headers = { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers };
     const response = await fetch(path, { ...options, headers, cache: 'no-store' });
-    if (response.status === 401) { $('#pin-error').textContent = 'PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่าในเซิร์ฟเวอร์'; $('#pin-dialog').showModal(); throw new Error('กรุณาตรวจสอบ PIN'); }
     if (!response.ok) { let message = `เกิดข้อผิดพลาด (${response.status})`; try { message = (await response.json()).error || message; } catch (_) {} throw new Error(message); }
     if (response.status === 204) return null;
     return response.json();
@@ -105,13 +104,12 @@
     const offsets=reminder?.offsets||[0];document.querySelectorAll('input[name="offsets"]').forEach(input=>input.checked=offsets.includes(Number(input.value)));
     if(!$('#reminder-dialog').open)$('#reminder-dialog').showModal();
   }
-  function getPin() { if(state.pin)return true;$('#pin-error').textContent='';$('#pin-dialog').showModal();return false; }
   async function save(event) {
-    event.preventDefault();$('#form-error').textContent='';if(!getPin())return;
+    event.preventDefault();$('#form-error').textContent='';
     const local=$('#reminder-start').value;if(!local){$('#form-error').textContent='เลือกวันและเวลาก่อนนะ';return;}
     const body={title:$('#reminder-title').value.trim(),details:$('#reminder-details').value.trim(),starts_at:`${local}:00+07:00`,recurrence:$('#reminder-recurrence').value,offsets:[...document.querySelectorAll('input[name="offsets"]:checked')].map((input)=>Number(input.value))};
     const button=$('#save-reminder');button.disabled=true;button.textContent='กำลังบันทึก…';
-    try{await api(`/api/schedule/reminders${state.editID?`/${state.editID}`:''}`,{method:state.editID?'PUT':'POST',body:JSON.stringify(body),auth:true});$('#reminder-dialog').close();showToast(state.editID?'อัปเดตการเตือนแล้ว':'เพิ่มการเตือนแล้ว');await load();}
+    try{await api(`/api/schedule/reminders${state.editID?`/${state.editID}`:''}`,{method:state.editID?'PUT':'POST',body:JSON.stringify(body)});$('#reminder-dialog').close();showToast(state.editID?'อัปเดตการเตือนแล้ว':'เพิ่มการเตือนแล้ว');await load();}
     catch(error){$('#form-error').textContent=error.message;}
     finally{button.disabled=false;button.textContent='บันทึกการเตือน';}
   }
@@ -119,16 +117,13 @@
     const action=button.dataset.action,id=Number(button.dataset.id);if(action==='edit'){openForm(state.reminders.find(r=>r.id===id));return;}
     if(action==='delete'&&!confirm('ลบการเตือนนี้และการแจ้งเตือนที่ยังไม่ส่งหรือไม่?'))return;
     if(action==='done'&&!confirm('ทำเครื่องหมายรายการนี้ว่าเสร็จแล้วหรือไม่?'))return;
-    if(!getPin())return;
-    try{if(action==='delete')await api(`/api/schedule/reminders/${id}`,{method:'DELETE',auth:true});else if(action==='pause'||action==='resume')await api(`/api/schedule/reminders/${id}/${action}`,{method:'POST',auth:true});else await api('/api/schedule/complete',{method:'POST',auth:true,body:JSON.stringify({reminder_id:id,event_at:button.dataset.event})});showToast(action==='delete'?'ลบรายการแล้ว':action==='pause'?'พักการเตือนไว้แล้ว':action==='resume'?'เปิดการเตือนแล้ว':'ทำเครื่องหมายเสร็จแล้ว');await load();}
+    try{if(action==='delete')await api(`/api/schedule/reminders/${id}`,{method:'DELETE'});else if(action==='pause'||action==='resume')await api(`/api/schedule/reminders/${id}/${action}`,{method:'POST'});else await api('/api/schedule/complete',{method:'POST',body:JSON.stringify({reminder_id:id,event_at:button.dataset.event})});showToast(action==='delete'?'ลบรายการแล้ว':action==='pause'?'พักการเตือนไว้แล้ว':action==='resume'?'เปิดการเตือนแล้ว':'ทำเครื่องหมายเสร็จแล้ว');await load();}
     catch(error){showToast(error.message)}
   }
-  async function savePin(event){event.preventDefault();const value=$('#reminder-pin').value.trim();if(!value){$('#pin-error').textContent='กรอก PIN ก่อน';return;}state.pin=value;localStorage.setItem('reminder-pin',value);$('#pin-dialog').close();$('#pin-state').textContent='PIN พร้อมใช้';$('#pin-open').classList.add('pin-ready');$('#reminder-pin').value='';if($('#reminder-dialog').open)await save(new Event('submit',{cancelable:true}));}
 
   async function parseNLPrompt() {
     const prompt = $('#nl-prompt-input')?.value?.trim();
     if (!prompt) { showToast('พิมพ์ข้อความที่ต้องการเตือนก่อนนะ'); $('#nl-prompt-input')?.focus(); return; }
-    if (!getPin()) return;
 
     const btn = $('#nl-parse-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'กำลังวิเคราะห์...'; }
@@ -136,8 +131,7 @@
     try {
       const data = await api('/api/schedule/parse', {
         method: 'POST',
-        body: JSON.stringify({ prompt }),
-        auth: true
+        body: JSON.stringify({ prompt })
       });
 
       if (data?.fallback) { showManualFallback(prompt); return; }
@@ -190,7 +184,6 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     } catch (err) {
-      if (/PIN/.test(err?.message || '')) return; // PIN dialog is already showing
       showManualFallback(prompt);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = 'แปลผลด้วย AI'; }
@@ -198,7 +191,6 @@
   }
 
   async function saveNLPreview() {
-    if (!getPin()) return;
     const titleInput = $('#nl-field-title');
     const local = $('#nl-field-starts-at')?.value;
     if (!titleInput?.value?.trim()) { showToast('กรุณาระบุเรื่องที่ต้องการเตือน'); titleInput?.focus(); return; }
@@ -219,8 +211,7 @@
     try {
       await api('/api/schedule/reminders', {
         method: 'POST',
-        body: JSON.stringify(body),
-        auth: true
+        body: JSON.stringify(body)
       });
       const card = $('#nl-preview-card');
       if (card) card.hidden = true;
@@ -275,7 +266,6 @@
         localStorage.setItem('sentinel-theme', next);
       });
     }
-    const pinLabel=()=>{$('#pin-state').textContent=state.pin?'PIN พร้อมใช้':'ตั้งค่า PIN';$('#pin-open').classList.toggle('pin-ready',Boolean(state.pin))};pinLabel();$('#pin-open').addEventListener('click',()=>{$('#pin-error').textContent='';$('#reminder-pin').value=state.pin;$('#pin-dialog').showModal()});$('#pin-close').addEventListener('click',()=>$('#pin-dialog').close());$('#pin-form').addEventListener('submit',savePin);$('#forget-pin').addEventListener('click',()=>{state.pin='';localStorage.removeItem('reminder-pin');pinLabel();$('#pin-dialog').close();showToast('ล้าง PIN ที่บันทึกในอุปกรณ์แล้ว')});
     $('#add-reminder').addEventListener('click',()=>openForm());$('#dialog-close').addEventListener('click',()=>$('#reminder-dialog').close());$('#cancel-form').addEventListener('click',()=>$('#reminder-dialog').close());$('#reminder-form').addEventListener('submit',save);
     $('#nl-parse-btn')?.addEventListener('click', parseNLPrompt);
     $('#nl-prompt-input')?.addEventListener('keydown', (e) => {

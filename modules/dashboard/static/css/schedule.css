@@ -1,9 +1,5 @@
 /* Pocket Sentinel — Schedule (layout B: compact month + selected-day list) */
 
-.pin-button { gap: 6px; }
-.pin-button.pin-ready { color: var(--green); }
-@media (max-width: 380px) { .pin-button span { display: none; } .pin-button { width: 44px; padding: 0; } }
-
 /* Month card */
 .calendar { margin-top: 12px; padding: 8px 8px 10px; }
 .month-bar { display: flex; align-items: center; gap: 2px; margin-bottom: 4px; }

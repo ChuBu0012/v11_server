@@ -149,7 +149,8 @@ Icons are a small **inline SVG sprite** (`<symbol id="i-…">`) pasted at the to
 | Nav: Overview / Schedule / Map / Telegram | `i-overview` / `i-calendar` / `i-pin` / `i-send` |
 | Add, close, more, chevrons | `i-plus`, `i-close`, `i-more`, `i-left`, `i-right` |
 | Map controls | `i-users` (show both), `i-route` (trail) |
-| Refresh, PIN, AI | `i-refresh`, `i-lock`, `i-sparkle` |
+| Refresh, AI | `i-refresh`, `i-sparkle` |
+| Map manage / navigate / copy / set point | `i-gear`, `i-navigate`, `i-copy`, `i-crosshair` |
 
 When adding an icon, add the symbol to every page's sprite.
 

@@ -126,8 +126,8 @@ func TestResolveLinkEndpoint(t *testing.T) {
 		router.ServeHTTP(rr, req)
 		return rr
 	}
-	if rr := post("wrong", `{"url":"13.7,100.5"}`); rr.Code != http.StatusUnauthorized {
-		t.Fatalf("wrong PIN = %d", rr.Code)
+	if rr := post("", `{"url":"13.7,100.5"}`); rr.Code != http.StatusOK {
+		t.Fatalf("no-PIN resolve = %d, want 200", rr.Code)
 	}
 	if rr := post("1804", `{"url":"13.7563, 100.5018"}`); rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"latitude":13.7563`) {
 		t.Fatalf("plain coords = %d %s", rr.Code, rr.Body.String())

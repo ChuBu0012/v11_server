@@ -339,9 +339,6 @@ document.addEventListener('alpine:init', () => {
     showLogs: false,
     sheetExpanded: false,
     sheetDragStartY: null,
-    pin: localStorage.getItem('sentinel-relay-pin') || '',
-    showPin: false,
-    pinSavedNotice: false,
     theme: localStorage.getItem('sentinel-theme') || 'dark',
     settingsMessage: '',
     savingZone: false,
@@ -360,15 +357,6 @@ document.addEventListener('alpine:init', () => {
       if (meta) meta.setAttribute('content', this.theme === 'dark' ? '#0c0d10' : '#f5f5f7');
       try { localStorage.setItem('sentinel-theme', this.theme); } catch (_) {}
       window.dispatchEvent(new CustomEvent('sentinel:theme-changed', { detail: { theme: this.theme } }));
-    },
-
-    savePinExplicit() {
-      if (!this.pin) return;
-      try {
-        localStorage.setItem('sentinel-relay-pin', this.pin);
-        this.pinSavedNotice = true;
-        setTimeout(() => { this.pinSavedNotice = false; }, 2500);
-      } catch (_) {}
     },
 
     toggleSheet(force) {
@@ -749,7 +737,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const response = await fetch('/api/location/resolve-link', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': this.relayPin() },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: raw }),
         });
         const data = await response.json().catch(() => ({}));
@@ -774,10 +762,6 @@ document.addEventListener('alpine:init', () => {
       this.updatePickerRadius();
     },
 
-    relayPin() {
-      return this.pin || localStorage.getItem('sentinel-relay-pin') || '1804';
-    },
-
     async savePlace() {
       const zone = this.newZone;
       if (!Number.isFinite(zone.latitude) || !Number.isFinite(zone.longitude)) {
@@ -794,22 +778,19 @@ document.addEventListener('alpine:init', () => {
         this.placeError = `รัศมีต้องอยู่ระหว่าง ${PICKER_RADIUS_MIN} ถึง ${PICKER_RADIUS_MAX} เมตร`;
         return;
       }
-      const pin = this.relayPin();
       const editing = this.placeEditId != null;
       this.savingZone = true;
       this.placeError = '';
       try {
         const response = await fetch(editing ? `/api/location/geofences/${encodeURIComponent(this.placeEditId)}` : '/api/location/geofences', {
           method: editing ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': pin },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...zone, name: zone.name.trim(), radius_meters: radius }),
         });
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(response.status === 401 ? 'PIN ไม่ถูกต้อง' : (errData.error || 'บันทึกสถานที่ไม่สำเร็จ'));
+          throw new Error(errData.error || 'บันทึกสถานที่ไม่สำเร็จ');
         }
-        this.pin = pin;
-        localStorage.setItem('sentinel-relay-pin', pin);
         this.closePlace();
         this.showToast(editing ? 'อัปเดตสถานที่แล้ว' : 'เพิ่มสถานที่แล้ว');
         await this.refresh();
@@ -866,21 +847,18 @@ document.addEventListener('alpine:init', () => {
     },
 
     async saveSettings() {
-      const pin = this.relayPin();
       try {
         const response = await fetch('/api/location/settings', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'X-Relay-PIN': pin },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             notify_colocation: this.settings.notify_colocation,
             notify_geofence: this.settings.notify_geofence,
             notify_battery: this.settings.notify_battery,
           }),
         });
-        if (!response.ok) throw new Error('บันทึกไม่สำเร็จ ตรวจสอบ PIN');
+        if (!response.ok) throw new Error('บันทึกไม่สำเร็จ');
         this.settings = { ...this.settings, ...(await response.json()) };
-        this.pin = pin;
-        localStorage.setItem('sentinel-relay-pin', pin);
         this.settingsMessage = '✅ บันทึกการตั้งค่าแล้ว';
         setTimeout(() => { this.settingsMessage = ''; }, 3000);
       } catch (error) {
@@ -897,17 +875,13 @@ document.addEventListener('alpine:init', () => {
     },
 
     async deleteGeofence(id) {
-      const pin = this.relayPin();
       if (!window.confirm('คุณต้องการลบสถานที่นี้ใช่หรือไม่?')) return false;
       this.geofenceError = '';
       try {
         const response = await fetch(`/api/location/geofences/${encodeURIComponent(id)}`, {
           method: 'DELETE',
-          headers: { 'X-Relay-PIN': pin },
         });
-        if (!response.ok) throw new Error('ลบไม่สำเร็จ ตรวจสอบ PIN');
-        this.pin = pin;
-        localStorage.setItem('sentinel-relay-pin', pin);
+        if (!response.ok) throw new Error('ลบไม่สำเร็จ');
         this.showToast('ลบสถานที่แล้ว');
         await this.refresh();
         return true;

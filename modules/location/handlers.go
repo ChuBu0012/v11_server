@@ -22,12 +22,11 @@ const (
 type Module struct {
 	store        *Store
 	service      *Service
-	pin          string
 	linkResolver *LinkResolver
 }
 
-func NewModule(store *Store, service *Service, pin string) *Module {
-	return &Module{store: store, service: service, pin: pin, linkResolver: NewLinkResolver()}
+func NewModule(store *Store, service *Service) *Module {
+	return &Module{store: store, service: service, linkResolver: NewLinkResolver()}
 }
 
 // ViewerToken returns the active viewer token string.
@@ -42,12 +41,12 @@ func (m *Module) ViewerToken() string {
 func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.POST("/api/location/report", m.report)
 	r.GET("/api/location/live", m.live)
-	r.GET("/api/location/geofences", m.requirePIN(), m.listGeofences)
-	r.POST("/api/location/geofences", m.requirePIN(), m.createGeofence)
-	r.PUT("/api/location/geofences/:id", m.requirePIN(), m.updateGeofence)
-	r.DELETE("/api/location/geofences/:id", m.requirePIN(), m.deleteGeofence)
-	r.PATCH("/api/location/settings", m.requirePIN(), m.updateSettings)
-	r.POST("/api/location/resolve-link", m.requirePIN(), m.resolveLink)
+	r.GET("/api/location/geofences", m.listGeofences)
+	r.POST("/api/location/geofences", m.createGeofence)
+	r.PUT("/api/location/geofences/:id", m.updateGeofence)
+	r.DELETE("/api/location/geofences/:id", m.deleteGeofence)
+	r.PATCH("/api/location/settings", m.updateSettings)
+	r.POST("/api/location/resolve-link", m.resolveLink)
 }
 
 func (m *Module) ViewerPage(page gin.HandlerFunc) gin.HandlerFunc {
@@ -222,32 +221,6 @@ func (m *Module) updateSettings(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, settings)
-}
-
-func (m *Module) requirePIN() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if m.pin == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "ยังไม่ได้ตั้งค่า PIN"})
-			return
-		}
-		provided := c.GetHeader("X-Relay-PIN")
-		if provided == "" {
-			provided = c.GetHeader("X-PIN")
-		}
-		if provided == "" {
-			if auth := c.GetHeader("Authorization"); strings.HasPrefix(strings.ToLower(auth), "bearer ") {
-				provided = strings.TrimSpace(auth[7:])
-			}
-		}
-		if provided == "" {
-			provided = c.Query("pin")
-		}
-		if !constantTimeEqual(provided, m.pin) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง"})
-			return
-		}
-		c.Next()
-	}
 }
 
 func constantTimeEqual(provided, expected string) bool {

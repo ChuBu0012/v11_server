@@ -1,13 +1,7 @@
 /* Pocket Sentinel — Telegram Relay composer */
 
-.pin-pill.pin-ready { color: var(--green); }
-@media (max-width: 380px) { .pin-pill span { display: none; } .pin-pill { width: 44px; padding: 0; } }
-
 .relay-page { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
 .relay-intro { color: var(--muted); font-size: 14px; }
-.pin-card { display: flex; flex-direction: column; gap: 8px; }
-.pin-row { display: flex; gap: 8px; }
-.pin-row .input { flex: 1; min-width: 0; }
 
 .relay-tabs { display: flex; width: 100%; }
 .relay-tabs button { flex: 1; min-height: 40px; font-size: 14px; }

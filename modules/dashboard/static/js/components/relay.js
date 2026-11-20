@@ -14,10 +14,6 @@ document.addEventListener('alpine:init', () => {
     isEmbeddedTab: window.location.pathname === '/' || window.location.pathname === '',
     activeTab: 'text', // 'text' | 'file'
     theme: localStorage.getItem('sentinel-theme') || 'dark',
-    pin: localStorage.getItem('sentinel-relay-pin') || '',
-    isUnlocked: Boolean(localStorage.getItem('sentinel-relay-pin')),
-    tempPin: '',
-    showPinModal: false,
 
     toggleTheme() {
       this.theme = this.theme === 'dark' ? 'light' : 'dark';
@@ -64,11 +60,6 @@ document.addEventListener('alpine:init', () => {
       }
 
       if (params.get('tab') === 'telegram') this.open();
-
-      // If standalone page and no PIN configured, prompt setup
-      if (this.isStandalonePage && !this.pin) {
-        this.showPinModal = true;
-      }
 
       // 2. Global paste listener for instant clipboard screenshot capture
       window.addEventListener('paste', (e) => {
@@ -121,12 +112,8 @@ document.addEventListener('alpine:init', () => {
       if (!this.isStandalonePage && !this.isEmbeddedTab) {
         document.body.classList.add('drawer-locked');
       }
-      if (!this.pin) {
-        this.showPinModal = true;
-      }
       this.$nextTick(() => {
-        const textarea = document.getElementById('relay-message-input');
-        if (textarea && !this.showPinModal) textarea.focus();
+        document.getElementById('relay-message-input')?.focus();
       });
     },
 
@@ -150,31 +137,8 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => document.getElementById('relay-message-input')?.focus());
     },
 
-    savePin() {
-      const trimmed = this.tempPin.trim();
-      if (!trimmed) return;
-      this.pin = trimmed;
-      this.isUnlocked = true;
-      localStorage.setItem('sentinel-relay-pin', trimmed);
-      this.showPinModal = false;
-      this.tempPin = '';
-      this.showNotice('🔓 บันทึก PIN สำเร็จ (จำบนอุปกรณ์นี้แล้ว)', 'success');
-    },
-
-    clearPin() {
-      this.pin = '';
-      this.isUnlocked = false;
-      localStorage.removeItem('sentinel-relay-pin');
-      this.showPinModal = true;
-    },
-
     async proofreadText() {
       if (this.isProofreading) return;
-      if (!this.pin) {
-        this.showPinModal = true;
-        this.showNotice('กรุณาตั้งค่าหรือกรอกรหัส PIN ก่อนใช้งาน AI Proofread', 'error');
-        return;
-      }
       const text = this.messageText.trim();
       if (!text) {
         this.showNotice('กรุณากรอกข้อความที่ต้องการตรวจทานก่อน', 'error');
@@ -188,17 +152,11 @@ document.addEventListener('alpine:init', () => {
         const resp = await fetch('/api/relay/proofread', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-Relay-PIN': this.pin
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ text })
         });
 
-        if (resp.status === 401) {
-          this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN', 'error');
-          this.showPinModal = true;
-          return;
-        }
 
         if (!resp.ok) {
           const errData = await resp.json().catch(() => ({}));
@@ -351,7 +309,6 @@ document.addEventListener('alpine:init', () => {
         const request = new XMLHttpRequest();
         relayUploadRequest = request;
         request.open('POST', '/api/relay/send');
-        request.setRequestHeader('X-Relay-PIN', this.pin);
         request.timeout = 90000;
         request.upload.addEventListener('progress', (event) => {
           if (!event.lengthComputable) return;
@@ -383,12 +340,6 @@ document.addEventListener('alpine:init', () => {
     async submit() {
       if (this.isSending) return;
 
-      if (!this.pin) {
-        this.showPinModal = true;
-        this.showNotice('กรุณาตั้งค่าหรือกรอกรหัส PIN ก่อนส่ง', 'error');
-        return;
-      }
-
       if (this.activeTab === 'text') {
         const text = this.messageText.trim();
         if (!text) {
@@ -406,8 +357,7 @@ document.addEventListener('alpine:init', () => {
           const resp = await fetch('/api/relay/send', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'X-Relay-PIN': this.pin
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ message: text })
           });
@@ -434,12 +384,7 @@ document.addEventListener('alpine:init', () => {
             }, 1400);
           }
         } catch (err) {
-          if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN (ค่าเริ่มต้นคือ 1804)', 'error');
-            this.showPinModal = true;
-          } else {
-            this.showNotice(`❌ ส่งไม่สำเร็จ: ${err.message}`, 'error');
-          }
+          this.showNotice(`❌ ส่งไม่สำเร็จ: ${err.message}`, 'error');
         } finally {
           this.isSending = false;
           this.uploadProgress = 0;
@@ -494,12 +439,7 @@ document.addEventListener('alpine:init', () => {
             }, 1400);
           }
         } catch (err) {
-          if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-            this.showNotice('❌ PIN ไม่ถูกต้อง กรุณาตรวจสอบรหัส PIN (ค่าเริ่มต้นคือ 1804)', 'error');
-            this.showPinModal = true;
-          } else {
-            this.showNotice(`❌ อัปโหลดไม่สำเร็จ: ${err.message}`, 'error');
-          }
+          this.showNotice(`❌ อัปโหลดไม่สำเร็จ: ${err.message}`, 'error');
         } finally {
           this.isSending = false;
           this.uploadProgress = 0;

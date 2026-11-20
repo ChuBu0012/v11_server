@@ -44,8 +44,6 @@ func setupTestApp(t *testing.T) (*App, *gin.Engine, func()) {
 		BatteryThreshold: 20,
 		DiskThresholdGB:  5.0,
 		TelegramTimeout:  2 * time.Second,
-		RelayPIN:         "1804",
-		ReminderPIN:      "1804",
 		WatchtowerPIN:    "1804",
 	}
 
@@ -350,20 +348,19 @@ func TestScheduleNLParse_Integration(t *testing.T) {
 	_, router, cleanup := setupTestApp(t)
 	defer cleanup()
 
-	// 1. Without PIN -> 401
+	// 1. Without PIN -> allowed (endpoints are public)
 	reqNoPin := httptest.NewRequest(http.MethodPost, "/api/schedule/parse", strings.NewReader(`{"prompt":"ประชุมทีม"}`))
 	reqNoPin.Header.Set("Content-Type", "application/json")
 	rrNoPin := httptest.NewRecorder()
 	router.ServeHTTP(rrNoPin, reqNoPin)
 
-	if rrNoPin.Code != http.StatusUnauthorized {
-		t.Fatalf("Expected 401 without PIN, got %d", rrNoPin.Code)
+	if rrNoPin.Code != http.StatusOK {
+		t.Fatalf("Expected 200 without PIN, got %d: %s", rrNoPin.Code, rrNoPin.Body.String())
 	}
 
 	// 2. Empty prompt -> 400
 	reqEmpty := httptest.NewRequest(http.MethodPost, "/api/schedule/parse", strings.NewReader(`{"prompt":""}`))
 	reqEmpty.Header.Set("Content-Type", "application/json")
-	reqEmpty.Header.Set("X-Reminder-PIN", "1804")
 	rrEmpty := httptest.NewRecorder()
 	router.ServeHTTP(rrEmpty, reqEmpty)
 
@@ -417,20 +414,19 @@ func TestRelayProofread_Integration(t *testing.T) {
 	_, router, cleanup := setupTestApp(t)
 	defer cleanup()
 
-	// 1. Without PIN -> 401
+	// 1. Without PIN -> allowed (endpoints are public)
 	reqNoPin := httptest.NewRequest(http.MethodPost, "/api/relay/proofread", strings.NewReader(`{"text":"สวัสดีครับ"}`))
 	reqNoPin.Header.Set("Content-Type", "application/json")
 	rrNoPin := httptest.NewRecorder()
 	router.ServeHTTP(rrNoPin, reqNoPin)
 
-	if rrNoPin.Code != http.StatusUnauthorized {
-		t.Fatalf("Expected 401 without PIN, got %d", rrNoPin.Code)
+	if rrNoPin.Code == http.StatusUnauthorized {
+		t.Fatalf("Expected proofread to be public, got 401")
 	}
 
 	// 2. Empty text -> 400
 	reqEmpty := httptest.NewRequest(http.MethodPost, "/api/relay/proofread", strings.NewReader(`{"text":""}`))
 	reqEmpty.Header.Set("Content-Type", "application/json")
-	reqEmpty.Header.Set("X-Relay-PIN", "1804")
 	rrEmpty := httptest.NewRecorder()
 	router.ServeHTTP(rrEmpty, reqEmpty)
 
@@ -455,5 +451,18 @@ func TestRelayProofread_Integration(t *testing.T) {
 	}
 	if !strings.Contains(proofResp["original"].(string), "เซิร์ฟเวอร์ออนไลน์พร้อมใช้งาน") {
 		t.Errorf("Expected original text preserved, got %v", proofResp["original"])
+	}
+}
+
+func TestReminderWritesNeedNoPIN(t *testing.T) {
+	_, router, cleanup := setupTestApp(t)
+	defer cleanup()
+	body := `{"title":"โทรหาแม่","details":"","starts_at":"2030-01-02T09:00:00+07:00","recurrence":"once","offsets":[0]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/schedule/reminders", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated && rr.Code != http.StatusOK {
+		t.Fatalf("create reminder without PIN = %d %s", rr.Code, rr.Body.String())
 	}
 }

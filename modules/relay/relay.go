@@ -27,60 +27,19 @@ type TelegramSender interface {
 type Module struct {
 	sender         TelegramSender
 	chatID         int64
-	pin            string
 	maxUploadBytes int64
 }
 
 // New creates a new Relay module instance.
-func New(sender TelegramSender, chatIDStr string, pin string) *Module {
+func New(sender TelegramSender, chatIDStr string) *Module {
 	var chatID int64
 	if chatIDStr != "" {
 		chatID, _ = strconv.ParseInt(chatIDStr, 10, 64)
 	}
-	if pin == "" {
-		pin = "1804"
-	}
 	return &Module{
 		sender:         sender,
 		chatID:         chatID,
-		pin:            pin,
 		maxUploadBytes: 20 * 1024 * 1024, // 20 MB cap
-	}
-}
-
-// RequirePIN verifies that the caller provides the correct PIN via header, query, or form/body.
-func (m *Module) RequirePIN() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 1. Check Headers: X-Relay-PIN or Authorization: Bearer <pin>
-		providedPIN := c.GetHeader("X-Relay-PIN")
-		if providedPIN == "" {
-			providedPIN = c.GetHeader("X-PIN")
-		}
-		if providedPIN == "" {
-			authHeader := c.GetHeader("Authorization")
-			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
-				providedPIN = strings.TrimSpace(authHeader[7:])
-			}
-		}
-
-		// 2. Check Query parameter: ?pin=...
-		if providedPIN == "" {
-			providedPIN = c.Query("pin")
-		}
-
-		// 3. Check Form value (for multipart / urlencoded form posts)
-		if providedPIN == "" {
-			providedPIN = c.PostForm("pin")
-		}
-
-		if providedPIN == "" || providedPIN != m.pin {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":   "Unauthorized: missing or invalid PIN",
-				"success": false,
-			})
-			return
-		}
-		c.Next()
 	}
 }
 
@@ -90,7 +49,7 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/api/relay/status", m.handleStatus)
 
 	// Protected Relay Endpoints
-	api := r.Group("/api/relay", m.RequirePIN())
+	api := r.Group("/api/relay") // public: no PIN by owner's choice
 	{
 		api.POST("/send", m.handleSend)
 		api.POST("/message", m.handleTextMessage)

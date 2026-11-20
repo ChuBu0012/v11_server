@@ -31,12 +31,6 @@ type Config struct {
 	// Gemini AI
 	GeminiAPIKey string // ENV: GEMINI_API_KEY
 
-	// Relay
-	RelayPIN string // ENV: RELAY_PIN (default: "1804")
-
-	// Quiet Schedule
-	ReminderPIN string // ENV: REMINDER_PIN
-
 	// Personal Watchtower
 	WatchtowerPIN string // ENV: WATCHTOWER_PIN
 
@@ -133,15 +127,8 @@ func Load() (*Config, error) {
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
 	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
-	cfg.ReminderPIN = os.Getenv("REMINDER_PIN")
 	cfg.WatchtowerPIN = os.Getenv("WATCHTOWER_PIN")
 	cfg.OpenRouterAPIKey = os.Getenv("OPENROUTER_API_KEY")
-
-	if pin := os.Getenv("RELAY_PIN"); pin != "" {
-		cfg.RelayPIN = pin
-	} else {
-		cfg.RelayPIN = "1804"
-	}
 
 	var err error
 	if cfg.LocationSecretToken, cfg.LocationSecretTokenExplicit, err = configuredLocationToken("LOCATION_SECRET_TOKEN"); err != nil {
@@ -209,10 +196,10 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, RelayPIN:****, ReminderPIN:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
-		token, chatID, c.TelegramTimeout, geminiKey, secretState(c.ReminderPIN), secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
+		token, chatID, c.TelegramTimeout, geminiKey, secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
 		secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
 	)
 }

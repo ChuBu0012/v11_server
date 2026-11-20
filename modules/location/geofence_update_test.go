@@ -109,10 +109,7 @@ func TestUpdateGeofenceEndpoint(t *testing.T) {
 	}
 	path := fmt.Sprintf("/api/location/geofences/%d", zone.ID)
 	good := `{"name":"คอนโด","latitude":13.75,"longitude":100.55,"radius_meters":200}`
-	if rr := put("wrong", path, good); rr.Code != http.StatusUnauthorized {
-		t.Fatalf("wrong PIN = %d", rr.Code)
-	}
-	if rr := put("1804", path, good); rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "คอนโด") {
+	if rr := put("", path, good); rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "คอนโด") {
 		t.Fatalf("update = %d %s", rr.Code, rr.Body.String())
 	}
 	if rr := put("1804", fmt.Sprintf("/api/location/geofences/%d", zone.ID+50), good); rr.Code != http.StatusNotFound {

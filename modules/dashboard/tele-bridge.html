@@ -47,25 +47,12 @@
   <header class="topbar">
     <a class="brand" href="/"><span class="status-dot" aria-hidden="true"></span><span class="brand-name">Telegram Bridge</span></a>
     <div class="topbar-actions">
-      <button class="btn btn-sm pin-pill" :class="{ 'pin-ready': isUnlocked }" type="button" @click="showPinModal = !showPinModal">
-        <svg class="icon icon-sm"><use href="#i-lock"/></svg><span x-text="isUnlocked ? 'PIN พร้อม' : 'ต้องใช้ PIN'"></span>
-      </button>
       <button class="btn-icon theme-toggle-btn" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
     </div>
   </header>
 
   <main class="page relay-page">
     <p class="relay-intro">ส่งข้อความ รูปภาพ หรือไฟล์เข้าแชท Telegram ของคุณ</p>
-
-    <!-- PIN setup -->
-    <section class="card pin-card" x-show="showPinModal" x-transition x-cloak>
-      <label class="field" for="relay-pin-input">PIN สำหรับ Relay <small>ตั้งค่าใน .env · จำไว้บนอุปกรณ์นี้</small></label>
-      <div class="pin-row">
-        <input class="input" type="password" id="relay-pin-input" x-model="tempPin" placeholder="PIN" maxlength="12" inputmode="numeric" @keydown.enter="savePin()">
-        <button type="button" class="btn btn-primary" @click="savePin()">บันทึก</button>
-        <button type="button" class="btn" @click="showPinModal = false" x-show="pin">ยกเลิก</button>
-      </div>
-    </section>
 
     <!-- Mode switch -->
     <div class="segmented relay-tabs" role="tablist" aria-label="ประเภทที่จะส่ง">

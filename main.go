@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"log"
@@ -232,7 +231,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	}
 	var reminderMod *reminders.Module
 	if reminderStore != nil {
-		reminderMod = reminders.NewModule(reminderStore, cfg.ReminderPIN, reminderTelegramReady)
+		reminderMod = reminders.NewModule(reminderStore, reminderTelegramReady)
 	}
 
 	// OpenRouter AI client initialization
@@ -251,7 +250,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	} else {
 		locationNotifier := location.NewDiscordNotifier(os.Getenv("DISCORD_WEBHOOK_URL"), 8*time.Second)
 		locationService = location.NewService(locationStore, locationNotifier)
-		locationModule = location.NewModule(locationStore, locationService, cfg.RelayPIN)
+		locationModule = location.NewModule(locationStore, locationService)
 		if botRouter != nil {
 			_, viewerToken := locationStore.Tokens()
 			liveURL := "https://spindle-said-hemstitch.ngrok-free.dev/live/" + viewerToken
@@ -287,7 +286,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botPoller:         botPoller,
 		botClient:         botClient,
 		digest:            digestMod,
-		relay:             relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
+		relay:             relay.New(botClient, cfg.TelegramChatID),
 		reminders:         reminderMod,
 		reminderService:   reminderService,
 		locationModule:    locationModule,
@@ -350,7 +349,7 @@ func setupRouter(app *App) *gin.Engine {
 		})
 	}
 	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
-	r.POST("/api/schedule/parse", requirePINAuth(app.cfg.ReminderPIN, "X-Reminder-PIN"), func(c *gin.Context) {
+	r.POST("/api/schedule/parse", func(c *gin.Context) {
 		var req struct {
 			Prompt string `json:"prompt"`
 		}
@@ -371,7 +370,7 @@ func setupRouter(app *App) *gin.Engine {
 	})
 
 	// Mount Telegram Bridge proofread endpoint: POST /api/relay/proofread (PIN protected)
-	r.POST("/api/relay/proofread", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
+	r.POST("/api/relay/proofread", func(c *gin.Context) {
 		var req struct {
 			Text string `json:"text"`
 		}
@@ -405,37 +404,6 @@ func redactedRequestPath(path string) string {
 		return "/api/location/live?[redacted]"
 	}
 	return path
-}
-
-func requirePINAuth(configuredPIN, headerName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if configuredPIN == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง หรือยังไม่ได้ตั้งค่า PIN"})
-			return
-		}
-
-		provided := c.GetHeader(headerName)
-		if provided == "" {
-			provided = c.GetHeader("X-PIN")
-		}
-		if provided == "" {
-			authHeader := c.GetHeader("Authorization")
-			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
-				provided = strings.TrimSpace(authHeader[7:])
-			}
-		}
-		if provided == "" {
-			provided = c.Query("pin")
-		}
-
-		if len(provided) != len(configuredPIN) ||
-			subtle.ConstantTimeCompare([]byte(provided), []byte(configuredPIN)) != 1 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "PIN ไม่ถูกต้อง หรือไม่ได้รับอนุญาต"})
-			return
-		}
-
-		c.Next()
-	}
 }
 
 func main() {

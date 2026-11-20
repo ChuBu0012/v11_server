@@ -45,7 +45,7 @@
 ## 6. Telegram Relay & Gateway API
 - **Active Endpoint:** `https://spindle-said-hemstitch.ngrok-free.dev`
 - **Unified Relay Endpoint:** `POST /api/relay/send`
-- **Auth (PIN Protection):** ต้องส่ง PIN ผ่าน Header `X-Relay-PIN: 1804`, Query `?pin=1804`, หรือ `Authorization: Bearer 1804` (Default PIN คือ `1804` ตั้งค่าผ่าน `RELAY_PIN` ใน `.env`)
+- **Auth:** ไม่มี PIN แล้ว (เจ้าของเลือกให้เป็น public ตั้งแต่ 2026-11-20) — Relay, Schedule และ Location management API เรียกได้โดยไม่ต้องส่ง PIN; header `X-Relay-PIN` เดิมถูกละเลย ส่วน OwnTracks secret token (`/api/location/report`) และ viewer token (`/live/<token>`) ยังคงใช้อยู่
 - **Auto Detection:**
   - รูปภาพ (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`) ส่งเป็น Telegram Photo พร้อมพรีวิวในแชท
   - ไฟล์เอกสารทั่วไป (PDF, zip, text, code) ส่งเป็น Telegram Document พร้อมชื่อไฟล์เดิม

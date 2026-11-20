@@ -156,12 +156,6 @@
         <label class="list-item toggle-row"><span class="grow"><strong>แบตเตอรี่ต่ำ</strong><small>ต่ำกว่า 15% และไม่ได้ชาร์จ</small></span><input class="switch" type="checkbox" x-model="settings.notify_battery" @change="saveSettings()"></label>
       </div>
       <p class="muted settings-msg" x-show="settingsMessage" x-text="settingsMessage"></p>
-      <div class="pin-row">
-        <label class="field grow">Relay PIN <small>เก็บไว้บนอุปกรณ์นี้เท่านั้น</small>
-          <span class="pin-input"><input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="PIN" autocomplete="current-password"><button type="button" class="btn btn-ghost btn-sm" @click="showPin = !showPin" x-text="showPin ? 'ซ่อน' : 'แสดง'"></button></span>
-        </label>
-        <button type="button" class="btn" @click="savePinExplicit()" x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก'"></button>
-      </div>
     </section>
   </aside>
 

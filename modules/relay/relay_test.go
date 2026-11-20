@@ -55,73 +55,39 @@ func (m *mockSender) SendDocument(ctx context.Context, chatID int64, filename st
 	return &bot.Message{MessageID: 102}, nil
 }
 
-func setupTestRelay(sender TelegramSender, pin string) *gin.Engine {
+func setupTestRelay(sender TelegramSender) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	mod := New(sender, "123456", pin)
+	mod := New(sender, "123456")
 	mod.RegisterRoutes(r)
 	return r
 }
 
-func TestRelay_PIN_Auth(t *testing.T) {
+func TestRelay_SendNeedsNoPIN(t *testing.T) {
 	sender := &mockSender{}
-	r := setupTestRelay(sender, "1804")
+	r := setupTestRelay(sender)
 
-	// 1. Missing PIN -> 401
-	req, _ := http.NewRequest(http.MethodPost, "/api/relay/send", strings.NewReader(`{"message":"hello"}`))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401 Unauthorized, got %d", w.Code)
+	// The relay is public: no PIN header, and a stale PIN header, both succeed.
+	for _, stale := range []string{"", "9999"} {
+		req, _ := http.NewRequest(http.MethodPost, "/api/relay/send", strings.NewReader(`{"message":"hello public"}`))
+		req.Header.Set("Content-Type", "application/json")
+		if stale != "" {
+			req.Header.Set("X-Relay-PIN", stale)
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("pin=%q: expected 200, got %d: %s", stale, w.Code, w.Body.String())
+		}
 	}
-
-	// 2. Wrong PIN -> 401
-	req, _ = http.NewRequest(http.MethodPost, "/api/relay/send", strings.NewReader(`{"message":"hello"}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Relay-PIN", "9999")
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401 Unauthorized for wrong PIN, got %d", w.Code)
-	}
-
-	// 3. Valid PIN via Header -> 200
-	req, _ = http.NewRequest(http.MethodPost, "/api/relay/send", strings.NewReader(`{"message":"hello from header"}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Relay-PIN", "1804")
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK for valid header PIN, got %d: %s", w.Code, w.Body.String())
-	}
-	if !strings.Contains(sender.sentText, "hello from header") {
-		t.Errorf("expected sent text to contain 'hello from header', got %s", sender.sentText)
-	}
-
-	// 4. Valid PIN via Query param -> 200
-	req, _ = http.NewRequest(http.MethodPost, "/api/relay/send?pin=1804", strings.NewReader(`{"message":"hello from query"}`))
-	req.Header.Set("Content-Type", "application/json")
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK for valid query PIN, got %d", w.Code)
-	}
-
-	// 5. Valid PIN via Bearer -> 200
-	req, _ = http.NewRequest(http.MethodPost, "/api/relay/send", strings.NewReader(`{"message":"hello from bearer"}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer 1804")
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK for valid Bearer PIN, got %d", w.Code)
+	if !strings.Contains(sender.sentText, "hello public") {
+		t.Errorf("expected sent text to contain 'hello public', got %s", sender.sentText)
 	}
 }
 
 func TestRelay_FileUpload_PhotoAndDocument(t *testing.T) {
 	sender := &mockSender{}
-	r := setupTestRelay(sender, "1804")
+	r := setupTestRelay(sender)
 
 	// 1. Upload Photo (.png)
 	var body bytes.Buffer
@@ -171,7 +137,7 @@ func TestRelay_FileUpload_PhotoAndDocument(t *testing.T) {
 
 func TestRelay_Status(t *testing.T) {
 	sender := &mockSender{}
-	r := setupTestRelay(sender, "1804")
+	r := setupTestRelay(sender)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/relay/status", nil)
 	w := httptest.NewRecorder()
@@ -193,7 +159,7 @@ func TestRelay_Status(t *testing.T) {
 
 func TestRelay_PhotoFallbackToDocument(t *testing.T) {
 	sender := &mockSender{photoFails: true} // Simulate Telegram rejecting SendPhoto (e.g. dimensions > 10,000 px)
-	r := setupTestRelay(sender, "1804")
+	r := setupTestRelay(sender)
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -224,7 +190,7 @@ func TestRelay_UploadLimit(t *testing.T) {
 	sender := &mockSender{}
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	mod := New(sender, "123456", "1804")
+	mod := New(sender, "123456")
 	mod.maxUploadBytes = 100 // Set tiny limit: 100 bytes
 	mod.RegisterRoutes(r)
 
