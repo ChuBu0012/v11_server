@@ -3,6 +3,7 @@ package location
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -19,13 +20,14 @@ const (
 )
 
 type Module struct {
-	store   *Store
-	service *Service
-	pin     string
+	store        *Store
+	service      *Service
+	pin          string
+	linkResolver *LinkResolver
 }
 
 func NewModule(store *Store, service *Service, pin string) *Module {
-	return &Module{store: store, service: service, pin: pin}
+	return &Module{store: store, service: service, pin: pin, linkResolver: NewLinkResolver()}
 }
 
 // ViewerToken returns the active viewer token string.
@@ -45,6 +47,7 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.PUT("/api/location/geofences/:id", m.requirePIN(), m.updateGeofence)
 	r.DELETE("/api/location/geofences/:id", m.requirePIN(), m.deleteGeofence)
 	r.PATCH("/api/location/settings", m.requirePIN(), m.updateSettings)
+	r.POST("/api/location/resolve-link", m.requirePIN(), m.resolveLink)
 }
 
 func (m *Module) ViewerPage(page gin.HandlerFunc) gin.HandlerFunc {
@@ -249,4 +252,27 @@ func (m *Module) requirePIN() gin.HandlerFunc {
 
 func constantTimeEqual(provided, expected string) bool {
 	return len(provided) == len(expected) && subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
+}
+
+func (m *Module) resolveLink(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2*1024)
+	var input struct {
+		URL string `json:"url"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || strings.TrimSpace(input.URL) == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "รองรับเฉพาะลิงก์ Google Maps หรือพิกัด lat, lng"})
+		return
+	}
+	lat, lng, err := m.linkResolver.Resolve(c.Request.Context(), input.URL)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, gin.H{"latitude": lat, "longitude": lng})
+	case errors.Is(err, ErrLinkNoCoordinates):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": "ลิงก์นี้ไม่มีพิกัด ลองกดค้างบนแผนที่แทน"})
+	case errors.Is(err, ErrLinkNotSupported):
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "รองรับเฉพาะลิงก์ Google Maps หรือพิกัด lat, lng"})
+	default:
+		log.Printf("[location] resolve link failed: %v", err)
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "เปิดลิงก์ไม่สำเร็จ ลองใหม่อีกครั้ง"})
+	}
 }
