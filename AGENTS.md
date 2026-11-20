@@ -58,3 +58,12 @@
 - ใช้ Telegram HTML และ Discord Markdown ให้ตรงกับ sender, escape dynamic content ตาม platform และให้ปุ่ม task คัดลอก draft เพื่อให้เจ้าของตรวจทานก่อนส่ง
 
 
+
+## 8. Feature Completion: Reachable, Not Just Written
+Feature จะนับว่า **เสร็จ** เมื่อเจ้าของ *reachable* ได้จริงจากทุกช่องทางที่ feature นั้นสัญญาไว้ หลัง deploy:
+- **คำสั่ง Telegram:** มี `case` ใน `modules/bot/router.go` + บรรทัดใน `/help` + เทสต์ใน `modules/bot/*_test.go`; ถ้าใช้บ่อยให้เพิ่มปุ่มใน `MakeHelpKeyboard()` ด้วย
+- **หน้าเว็บ / UI:** มีทางเข้าจากหน้าที่เจ้าของเปิดอยู่จริง (task nav, การ์ดในหน้าภาพรวม หรือปุ่มบนหน้านั้น) และไฟล์ static ใหม่อยู่ใน `SHELL_ASSETS` ของ `sw.js`
+- **งานตามเวลา:** worker ถูก start ใน `main.go` และส่งผลไปยังช่องทางที่สัญญาไว้ (Telegram / dashboard)
+- **โค้ดฝั่ง server** (เช่น AI helper ใน `shared/ai/`) จะนับเป็น feature ก็ต่อเมื่อถูกเรียกจาก route, worker หรือคำสั่งแล้ว — ตัวอย่าง: `shared/ai/monitor_insight.go` มีโค้ดแต่ยังไม่ถูกต่อสาย จึงยังไม่ใช่ feature
+
+ในข้อความสรุปงานถึงเจ้าของ ให้แยกสองหัวข้อชัดเจน: **ใช้ได้แล้ว** (พร้อมคำสั่งหรือ URL ที่ลองได้ทันทีหลัง deploy) และ **ยังไม่ได้ทำ / อยู่ในแผน** — งานที่ยังคุยออกแบบอยู่ห้ามเขียนปนกับงานที่ส่งมอบแล้ว
