@@ -352,9 +352,6 @@ func setupRouter(app *App) *gin.Engine {
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
 	app.relay.RegisterRoutes(r)
-	if app.insight != nil {
-		app.insight.RegisterRoutes(r)
-	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
 	}

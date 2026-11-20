@@ -2,15 +2,12 @@ package insight
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"v11-server/shared/db"
 )
 
@@ -115,30 +112,5 @@ func TestServiceCooldown(t *testing.T) {
 	now = now.Add(time.Minute)
 	if _, cached, _ := svc.Generate(ctx, KindManual); cached {
 		t.Fatal("cooldown must expire after 60 s")
-	}
-}
-
-func TestInsightRoutes(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	now := time.Date(2026, 11, 21, 9, 0, 0, 0, bkk)
-	svc, _ := newTestService(t, &now, nil)
-	r := gin.New()
-	svc.RegisterRoutes(r)
-	do := func(method, path string) *httptest.ResponseRecorder {
-		rr := httptest.NewRecorder()
-		r.ServeHTTP(rr, httptest.NewRequest(method, path, nil))
-		return rr
-	}
-	if rr := do(http.MethodGet, "/api/insight/latest"); rr.Code != http.StatusNotFound {
-		t.Fatalf("latest before run = %d", rr.Code)
-	}
-	if rr := do(http.MethodPost, "/api/insight/run"); rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"source":"template"`) {
-		t.Fatalf("run = %d %s", rr.Code, rr.Body.String())
-	}
-	if rr := do(http.MethodGet, "/api/insight/latest"); rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "text_html") {
-		t.Fatalf("latest = %d %s", rr.Code, rr.Body.String())
-	}
-	if rr := do(http.MethodPost, "/api/insight/run"); rr.Code != http.StatusTooManyRequests || !strings.Contains(rr.Body.String(), "text_html") {
-		t.Fatalf("second run = %d %s", rr.Code, rr.Body.String())
 	}
 }

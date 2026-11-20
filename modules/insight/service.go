@@ -7,11 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"sync"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 // Report kinds.
@@ -143,9 +140,6 @@ func NewService(store *Store, src Sources, providers []Provider, sender Sender, 
 	return s
 }
 
-// Latest returns the most recent report.
-func (s *Service) Latest(ctx context.Context) (Report, bool, error) { return s.store.latest(ctx) }
-
 // Generate builds and stores a report. Manual runs within 60 s of the last
 // report return that report instead (cached=true) without calling any AI.
 func (s *Service) Generate(ctx context.Context, kind string) (Report, bool, error) {
@@ -270,32 +264,4 @@ func (s *Service) RunScheduler(ctx context.Context) {
 			}
 		}
 	}
-}
-
-// ---------------------------------------------------------------- HTTP
-
-// RegisterRoutes mounts the public insight API.
-func (s *Service) RegisterRoutes(r *gin.Engine) {
-	r.GET("/api/insight/latest", func(c *gin.Context) {
-		rep, ok, err := s.Latest(c.Request.Context())
-		switch {
-		case err != nil:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "โหลดสรุปไม่สำเร็จ"})
-		case !ok:
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "ยังไม่มีสรุป"})
-		default:
-			c.JSON(http.StatusOK, rep)
-		}
-	})
-	r.POST("/api/insight/run", func(c *gin.Context) {
-		rep, cached, err := s.Generate(c.Request.Context(), KindManual)
-		switch {
-		case err != nil:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "สร้างสรุปไม่สำเร็จ"})
-		case cached:
-			c.JSON(http.StatusTooManyRequests, rep)
-		default:
-			c.JSON(http.StatusOK, rep)
-		}
-	})
 }
