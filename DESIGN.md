@@ -123,11 +123,11 @@ Shadows are minimal and serve structural hierarchy, not decoration.
 
 ### Navigation (Bottom Tab Bar)
 - Fixed bottom, blurred background. 4-column icon grid.
-- Each tab: icon (Remix Icon) + Thai label. Active: `--blue` tint.
+- Each tab: inline SVG icon + Thai label. Active: `--blue` tint.
 - No numbered marks — icons only.
 
 ### Theme Toggle
-- Circular icon button (34px). Sun/moon Remix Icon.
+- Circular icon button (34px). Sun/moon SVG icon.
 - No text label — icon communicates mode.
 
 ### Inputs & Textareas
@@ -141,11 +141,26 @@ Shadows are minimal and serve structural hierarchy, not decoration.
 
 ## Icons
 
-The dashboard uses **Remix Icon** (`remixicon@4.5.0`) via CDN. Prefer line-weight variants (`ri-*-line`) for consistency. Use filled variants (`ri-*-fill`) only for active / selected states.
+Icons are a small **inline SVG sprite** (`<symbol id="i-…">`) pasted at the top of each page's `<body>` — no icon font or CDN. Use them as `<svg class="icon"><use href="#i-name"/></svg>`; stroke follows `currentColor`.
 
-Key icon mappings:
-| Context | Icon |
+| Context | Symbol |
 |---|---|
+| Theme toggle | `i-sun` / `i-moon` (CSS swaps by `data-theme`) |
+| Nav: Overview / Schedule / Map / Telegram | `i-overview` / `i-calendar` / `i-pin` / `i-send` |
+| Add, close, more, chevrons | `i-plus`, `i-close`, `i-more`, `i-left`, `i-right` |
+| Map controls | `i-users` (show both), `i-route` (trail) |
+| Refresh, PIN, AI | `i-refresh`, `i-lock`, `i-sparkle` |
+
+When adding an icon, add the symbol to every page's sprite.
+
+## Mobile layout rules
+
+- Shared components live in `static/css/styles.css` (`.topbar`, `.task-nav`, `.card`, `.list-item`, `.btn*`, `.sheet`, `.fab`, `.field`, `.chip`). Page CSS only adds what is unique to that page.
+- Buttons never wrap (`white-space: nowrap`), touch targets ≥ 44px, and content clears the bottom nav + safe area.
+- Schedule: compact month grid + selected-day list; add/edit is a bottom sheet behind the `+` FAB.
+- Map: full-screen map, floating status chip, two map controls, friend bottom sheet (swipe/tap to expand).
+
+---|---|
 | Theme: dark → light | `ri-sun-line` |
 | Theme: light → dark | `ri-moon-line` |
 | Nav: Overview | `ri-dashboard-line` |
@@ -160,7 +175,7 @@ Key icon mappings:
 
 1. **Do** keep contrast gentle — avoid pure #000 on #fff or #fff on #000.
 2. **Do** use `var(--radius)` for all cards and sections; smaller radius for nested elements.
-3. **Do** use icons from Remix Icon for navigation and toggles.
+3. **Do** use the inline SVG sprite for navigation and toggles.
 4. **Don't** add decorative gradients, glassmorphism, or neon glow.
 5. **Don't** use thick borders (>1px) as the primary visual organiser.
 6. **Do** let spacing and typography create hierarchy — not color saturation or border weight.
