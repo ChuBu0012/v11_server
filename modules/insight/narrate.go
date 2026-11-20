@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"html"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -51,12 +52,15 @@ func Narrate(ctx context.Context, f Facts, providers []Provider) (string, string
 		out, err := p.Gen.Generate(callCtx, narrationSystem, tpl)
 		cancel()
 		if err != nil {
+			log.Printf("[insight] %s failed, trying next: %v", p.Name, err)
 			continue
 		}
 		out = strings.TrimSpace(stripCodeFence(out))
-		if validNarration(out, tpl) {
-			return out, p.Name
+		if reason := narrationProblem(out, tpl); reason != "" {
+			log.Printf("[insight] %s narration rejected, trying next: %s", p.Name, reason)
+			continue
 		}
+		return out, p.Name
 	}
 	return tpl, sourceTemplate
 }
@@ -67,23 +71,27 @@ var (
 	allowedTag  = regexp.MustCompile(`^</?(b|i|code)>$`)
 )
 
-// validNarration accepts AI text only when it is short enough, uses only
-// b/i/code tags, and still contains every number token of the template.
-func validNarration(ai, template string) bool {
-	if ai == "" || len([]rune(ai)) > maxNarration {
-		return false
+// narrationProblem explains why AI text is unusable ("" means it is fine):
+// it must be short enough, use only b/i/code tags, and keep every number
+// token of the template.
+func narrationProblem(ai, template string) string {
+	if ai == "" {
+		return "empty text"
+	}
+	if n := len([]rune(ai)); n > maxNarration {
+		return fmt.Sprintf("too long (%d runes)", n)
 	}
 	for _, tag := range anyTag.FindAllString(ai, -1) {
 		if !allowedTag.MatchString(tag) {
-			return false
+			return "disallowed tag " + tag
 		}
 	}
 	for _, num := range numberToken.FindAllString(template, -1) {
 		if !strings.Contains(ai, num) {
-			return false
+			return "missing number " + num
 		}
 	}
-	return true
+	return ""
 }
 
 func stripCodeFence(s string) string {

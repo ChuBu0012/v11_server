@@ -3,6 +3,7 @@ package insight
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -87,5 +88,22 @@ func TestNarratorRejectsDisallowedTags(t *testing.T) {
 	_, source := Narrate(context.Background(), f, []Provider{{Name: "openrouter", Gen: &stubGen{out: withLink}, Timeout: time.Second}})
 	if source != "template" {
 		t.Fatalf("source = %s, want template (disallowed tag)", source)
+	}
+}
+
+func TestNarratorLogsWhyProvidersFailed(t *testing.T) {
+	var buf strings.Builder
+	prev := log.Writer()
+	log.SetOutput(&buf)
+	defer log.SetOutput(prev)
+	f := sampleFacts()
+	bad := strings.Replace(Template(f), "18.4", "19.0", 1)
+	Narrate(context.Background(), f, []Provider{
+		{Name: "openrouter", Gen: &stubGen{err: errors.New("429 rate limited")}, Timeout: time.Second},
+		{Name: "gemini", Gen: &stubGen{out: bad}, Timeout: time.Second},
+	})
+	out := buf.String()
+	if !strings.Contains(out, "openrouter") || !strings.Contains(out, "429 rate limited") || !strings.Contains(out, "gemini") || !strings.Contains(out, "18.4") {
+		t.Fatalf("log does not explain the fallbacks:\n%s", out)
 	}
 }
