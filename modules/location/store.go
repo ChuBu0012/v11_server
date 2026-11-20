@@ -178,6 +178,33 @@ func (s *Store) Breadcrumbs(ctx context.Context, since time.Time, limitPerDevice
 	return result, nil
 }
 
+// PointsBetween returns one device's points in [from, to), oldest first.
+// It is capped at 20000 rows (about two weeks at one point per minute).
+func (s *Store) PointsBetween(ctx context.Context, device string, from, to time.Time) ([]LocationPoint, error) {
+	if !validDevice(device) {
+		return nil, fmt.Errorf("unknown device %q", device)
+	}
+	ctx, cancel := s.operationContext(ctx)
+	defer cancel()
+	rows, err := s.db.QueryContext(ctx, `SELECT id, device_id, latitude, longitude, accuracy,
+		speed, altitude, course, battery_level, battery_status, recorded_at
+		FROM location_points WHERE device_id=? AND recorded_at>=? AND recorded_at<?
+		ORDER BY recorded_at ASC LIMIT 20000`, device, from.UTC(), to.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("query %s points: %w", device, err)
+	}
+	defer rows.Close()
+	points := []LocationPoint{}
+	for rows.Next() {
+		point, err := scanPoint(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan %s point: %w", device, err)
+		}
+		points = append(points, point)
+	}
+	return points, rows.Err()
+}
+
 func (s *Store) CreateGeofence(ctx context.Context, input GeofenceInput) (Geofence, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	if input.Name == "" || len([]rune(input.Name)) > 80 || !ValidCoordinates(input.Latitude, input.Longitude) ||

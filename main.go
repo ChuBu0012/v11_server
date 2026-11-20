@@ -22,6 +22,7 @@ import (
 	"v11-server/modules/bot"
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
+	"v11-server/modules/insight"
 	"v11-server/modules/location"
 	"v11-server/modules/logs"
 	"v11-server/modules/relay"
@@ -97,6 +98,7 @@ type App struct {
 	locationStore     *location.Store
 	locationRetention *worker.Worker
 	aiClient          *ai.Client
+	insight           *insight.Service
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -276,6 +278,35 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		})
 	}
 
+	// Morning insight: deterministic facts, narrated by OpenRouter → Gemini → template.
+	var insightSvc *insight.Service
+	if insightStore, err := insight.NewStore(dbConn); err != nil {
+		log.Printf("Warning: failed to initialize insight store: %v", err)
+	} else {
+		var providers []insight.Provider
+		if aiClient.HasAPIKey() {
+			providers = append(providers, insight.Provider{Name: "openrouter", Gen: aiClient, Timeout: 15 * time.Second})
+		}
+		if strings.TrimSpace(cfg.GeminiAPIKey) != "" {
+			providers = append(providers, insight.Provider{Name: "gemini", Gen: digest.NewGeminiClient(cfg.GeminiAPIKey), Timeout: 30 * time.Second})
+		}
+		var locStore *location.Store
+		if locationErr == nil {
+			locStore = locationStore
+		}
+		var remStore *reminders.Store
+		if reminderErr == nil {
+			remStore = reminderStore
+		}
+		insightSvc = insight.NewService(insightStore, insight.NewSources(telemetryRepo, locStore, remStore), providers, notifier)
+		if botRouter != nil {
+			botRouter.SetInsightFunc(func(ctx context.Context) (string, error) {
+				rep, _, err := insightSvc.Generate(ctx, insight.KindManual)
+				return rep.TextHTML, err
+			})
+		}
+	}
+
 	return &App{
 		cfg:               cfg,
 		db:                dbConn,
@@ -297,6 +328,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationStore:     locationStore,
 		locationRetention: locationRetention,
 		aiClient:          aiClient,
+		insight:           insightSvc,
 	}
 }
 
@@ -320,6 +352,9 @@ func setupRouter(app *App) *gin.Engine {
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
 	app.relay.RegisterRoutes(r)
+	if app.insight != nil {
+		app.insight.RegisterRoutes(r)
+	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
 	}
@@ -444,6 +479,9 @@ func main() {
 	// Start background worker with cancellable context
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
+	if app.insight != nil {
+		go app.insight.RunScheduler(workerCtx)
+	}
 	if app.locationRetention != nil {
 		app.locationRetention.Start(workerCtx)
 	}

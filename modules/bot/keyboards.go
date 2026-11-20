@@ -64,6 +64,10 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 				copyCommand("📰 Digest", "/digest"),
 				copyCommand("💾 Disk", "/exec df -h"),
 			},
+			{
+				copyCommand("☀️ Insight", "/insight"),
+				copyCommand("🚀 Deploy", "/deploy"),
+			},
 		},
 	}
 }

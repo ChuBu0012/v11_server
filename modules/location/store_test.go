@@ -177,3 +177,22 @@ func TestStoreSettingsPatchAndCoLocationState(t *testing.T) {
 		t.Fatalf("GetCoLocationState = %+v, err=%v", got, err)
 	}
 }
+
+func TestStorePointsBetween(t *testing.T) {
+	_, store := openLocationTestStore(t)
+	ctx := context.Background()
+	base := time.Date(2026, 11, 20, 1, 0, 0, 0, time.UTC)
+	for i := 0; i < 5; i++ {
+		if err := store.SavePoint(ctx, samplePoint(DeviceMe, base.Add(time.Duration(i)*time.Hour), 13.7)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = store.SavePoint(ctx, samplePoint(DeviceFriend, base.Add(2*time.Hour), 13.8))
+	points, err := store.PointsBetween(ctx, DeviceMe, base.Add(time.Hour), base.Add(4*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(points) != 3 || !points[0].RecordedAt.Equal(base.Add(time.Hour)) || !points[2].RecordedAt.Equal(base.Add(3*time.Hour)) {
+		t.Fatalf("points = %d %+v", len(points), points)
+	}
+}

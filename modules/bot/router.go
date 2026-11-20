@@ -38,6 +38,19 @@ type Router struct {
 	ramProvider  func() float64
 	locationFunc func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
 	deployer     DeployStarter
+	insightFunc  func(ctx context.Context) (string, error)
+}
+
+// WithInsightFunc enables the /insight command.
+func WithInsightFunc(f func(ctx context.Context) (string, error)) RouterOption {
+	return func(r *Router) {
+		r.insightFunc = f
+	}
+}
+
+// SetInsightFunc assigns the /insight handler after router construction.
+func (r *Router) SetInsightFunc(f func(ctx context.Context) (string, error)) {
+	r.insightFunc = f
 }
 
 // WithDeployer enables the /deploy command.
@@ -298,6 +311,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
 			"<code>/task_status</code> ดูงาน Agent\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
+			"<code>/insight</code> สรุปสุขภาพเครื่อง การเดินทาง และตารางวันนี้\n" +
 			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
 			"<code>/reboot</code> รีสตาร์ต Go server\n" +
 			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
@@ -722,6 +736,21 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		res := r.executor.Execute(ctx, cmdInput)
 		_, err := r.sendMessage(ctx, chatID, res, keyboard)
 		return err
+
+	case "/insight":
+		if r.insightFunc == nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ Insight not configured", keyboard)
+			return err
+		}
+		if _, err := r.sendMessage(ctx, chatID, "⏳ กำลังสรุป…", nil); err != nil {
+			return err
+		}
+		text, err := r.insightFunc(ctx)
+		if err != nil {
+			text = "❌ <b>สรุปไม่สำเร็จ:</b> " + escapeDeployError(err)
+		}
+		_, sendErr := r.sendMessage(ctx, chatID, text, keyboard)
+		return sendErr
 
 	case "/deploy":
 		if r.deployer == nil {
