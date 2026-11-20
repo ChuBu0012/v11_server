@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - The deploy message is passed to the script as a positional argument (`"$1"`). It is never interpolated into the shell string.
-- The script is launched as `bash -c 'setsid nohup bash "$0" -m "$1" >>"$2" 2>&1 </dev/null & echo $!' <script> <msg> <log>`, so it is reparented away from go-server and survives pm2 tree-kill.
+- The script is launched as `bash -c 'nohup bash "$0" -m "$1" >>"$2" 2>&1 </dev/null & echo $!' <script> <msg> <log>`, so it is reparented away from go-server and survives pm2 tree-kill.
 - A deploy counts as running when the PID in `.deploy.pid` is alive (`syscall.Kill(pid, 0) == nil`) and the file is less than 15 minutes old.
 
 ## Review Focus

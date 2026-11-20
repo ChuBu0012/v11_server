@@ -193,6 +193,9 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			routerOpts = append(routerOpts, bot.WithCallbackHandler(reminderService.HandleCallback))
 		}
 		routerOpts = append(routerOpts, bot.WithRebootFunc(rebootHandler))
+		if cwd, err := os.Getwd(); err == nil {
+			routerOpts = append(routerOpts, bot.WithDeployer(bot.NewDeployer(cwd)))
+		}
 		if digestSvc != nil {
 			routerOpts = append(routerOpts, bot.WithDigestFunc(func(ctx context.Context) (string, error) {
 				rec, err := digestSvc.GenerateDigest(ctx, true)

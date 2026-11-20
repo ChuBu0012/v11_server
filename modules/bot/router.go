@@ -37,6 +37,14 @@ type Router struct {
 	scrubber     *OutputScrubber
 	ramProvider  func() float64
 	locationFunc func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
+	deployer     DeployStarter
+}
+
+// WithDeployer enables the /deploy command.
+func WithDeployer(d DeployStarter) RouterOption {
+	return func(r *Router) {
+		r.deployer = d
+	}
 }
 
 // WithLocationFunc sets the callback for on-demand location status and Live Map URL.
@@ -291,7 +299,8 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/task_status</code> ดูงาน Agent\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
 			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
-			"<code>/reboot</code> รีสตาร์ต Go server\n\n" +
+			"<code>/reboot</code> รีสตาร์ต Go server\n" +
+			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
 			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
 		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
 		return err
@@ -714,6 +723,24 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		_, err := r.sendMessage(ctx, chatID, res, keyboard)
 		return err
 
+	case "/deploy":
+		if r.deployer == nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ Deploy not configured", keyboard)
+			return err
+		}
+		message := strings.TrimSpace(strings.Join(args, " "))
+		var reply string
+		switch err := r.deployer.Start(message); {
+		case err == nil:
+			reply = "🚀 <b>รับคำสั่ง deploy แล้ว</b>\nกำลังดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n<i>ระบบจะแจ้งผลเมื่อเสร็จ (log: logs/deploy.log)</i>"
+		case errors.Is(err, ErrDeployRunning):
+			reply = "⏳ <b>มี deploy กำลังทำงานอยู่</b>\nรอให้รอบนี้เสร็จก่อนแล้วค่อยสั่งใหม่"
+		default:
+			reply = "❌ <b>เริ่ม deploy ไม่ได้:</b> " + escapeDeployError(err)
+		}
+		_, err := r.sendMessage(ctx, chatID, reply, keyboard)
+		return err
+
 	case "/reboot":
 		rebootMsg := "♻️ <b>กำลังรีสตาร์ต Pocket Sentinel</b>\n\n<i>ระบบจะปิดโปรเซสอย่างปลอดภัย และเริ่มทำงานใหม่ภายใน 3 วินาที</i>"
 		_, err := r.sendMessage(ctx, chatID, rebootMsg, nil)
@@ -760,4 +787,8 @@ func formatTimeoutTH(d time.Duration) string {
 		return fmt.Sprintf("%d นาที", mins)
 	}
 	return fmt.Sprintf("%d วินาที", int(d.Seconds()))
+}
+
+func escapeDeployError(err error) string {
+	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(err.Error())
 }

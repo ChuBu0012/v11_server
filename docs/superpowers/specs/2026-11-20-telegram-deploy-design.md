@@ -17,7 +17,7 @@ Date: 2026-11-20 · Small change, approved by the owner in chat.
   - The message is passed as an argument, never interpolated into a shell string.
   - `pm2 restart` uses tree-kill, which walks parent → child PIDs, so a `setsid` child of `go-server` would still be killed.
 - **Approaches:**
-  1. **The bot launches the existing script fully detached (chosen).** The script is launched through a double fork (`bash -c 'setsid nohup bash script … & echo $!'`), so it is reparented to init and survives the restart. This reuses build, health check, rollback and notifications.
+  1. **The bot launches the existing script fully detached (chosen).** The script is launched through a double fork (`bash -c 'nohup bash script … & echo $!'`), so it is reparented to init and survives the restart. This reuses build, health check, rollback and notifications.
   2. Calling the script as a normal child is ruled out because tree-kill stops it mid-deploy.
   3. Reimplementing deploy in Go is ruled out because it duplicates the script.
 - **Design:**
