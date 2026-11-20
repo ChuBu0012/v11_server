@@ -3,177 +3,165 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Quiet Schedule · Pocket Sentinel</title>
-  <meta name="theme-color" content="#0c0d10">
+  <title>ตาราง · Pocket Sentinel</title>
+  <meta name="theme-color" content="#13141a">
   <script>try{document.documentElement.dataset.theme=localStorage.getItem('sentinel-theme')==='light'?'light':'dark'}catch(_){}</script>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="stylesheet" href="/static/css/schedule.css">
   <script src="/static/js/components/schedule.js" defer></script>
 </head>
 <body class="schedule-page">
-  <header class="app-header schedule-topbar">
-    <div class="brand">
-      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
-        <span class="status-dot ok"></span>
-        <span class="brand-name">Pocket Sentinel</span>
-        <span class="brand-sub">v11</span>
-      </a>
-    </div>
-    <div class="topbar-actions schedule-top-actions">
-      <span class="timezone-chip">เวลาไทย</span>
-      <button class="schedule-pin-button" id="pin-open" type="button"><span id="pin-state">ตั้งค่า PIN</span></button>
-      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
-        <i id="theme-icon" class="ri-sun-line"></i>
-      </button>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3l-6.5 18-4.5-7-7-4.5z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 3.5V8h4.5M4 13a8 8 0 0 0 14.6 4.5M20 20.5V16h-4.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  </svg>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="status-dot" aria-hidden="true"></span><span class="brand-name">ตารางของฉัน</span></a>
+    <div class="topbar-actions">
+      <button class="btn btn-sm pin-button" id="pin-open" type="button"><svg class="icon icon-sm"><use href="#i-lock"/></svg><span id="pin-state">ตั้งค่า PIN</span></button>
+      <button class="btn-icon theme-toggle-btn" id="theme-toggle" type="button" aria-label="สลับโหมดสว่าง/มืด"><svg class="icon icon-sun"><use href="#i-sun"/></svg><svg class="icon icon-moon"><use href="#i-moon"/></svg></button>
     </div>
   </header>
-  <main class="schedule-shell">
-    <section class="schedule-title-row">
-      <div><p class="eyebrow">A LITTLE MORE ROOM TO BREATHE</p><h1>ตารางของฉัน</h1><p class="schedule-subtitle">เตือนสิ่งสำคัญแบบพอดี ๆ แล้วกลับไปใช้ชีวิตต่อ</p><p id="telegram-status" class="telegram-status" role="status"></p></div>
-      <button class="schedule-primary" id="add-reminder" type="button"> เพิ่มเตือน</button>
-    </section>
 
-    <!-- Natural Language Schedule Creator & AI Preview -->
-    <section class="schedule-nl-section" aria-label="สร้างการเตือนด้วยภาษาธรรมชาติ">
-      <div class="nl-input-bar">
-        <div class="nl-input-wrap">
-
-          <input type="text" id="nl-prompt-input" placeholder="พิมพ์ภาษาธรรมชาติ เช่น 'ประชุมทีม วันจันทร์ 10:00 เตือนก่อน 15 นาที'" maxlength="500">
-        </div>
-        <button type="button" id="nl-parse-btn" class="schedule-primary nl-parse-btn">
-           <span>แปลผลด้วย AI</span>
-        </button>
+  <main class="page">
+    <section class="calendar card" aria-label="ปฏิทินส่วนตัว">
+      <div class="month-bar">
+        <button id="previous-month" class="btn-icon" type="button" aria-label="เดือนก่อน"><svg class="icon"><use href="#i-left"/></svg></button>
+        <h1 id="month-label" class="month-label">—</h1>
+        <button id="next-month" class="btn-icon" type="button" aria-label="เดือนถัดไป"><svg class="icon"><use href="#i-right"/></svg></button>
+        <button id="jump-today" class="btn btn-ghost btn-sm" type="button">วันนี้</button>
       </div>
-
-      <!-- Interactive AI Preview Card (Initially Hidden) -->
-      <div id="nl-preview-card" class="nl-preview-card" hidden>
-        <div class="nl-preview-head">
-          <div class="nl-preview-title-wrap">
-            <span class="nl-badge"> AI PREVIEW</span>
-            <h3>ตรวจสอบความถูกต้องก่อนบันทึก</h3>
-          </div>
-          <button type="button" id="nl-cancel-btn" class="icon-button" aria-label="ปิดการ์ดพรีวิว">ปิด</button>
-        </div>
-
-        <!-- Ambiguity Warning Alert (if ambiguous/vague date/time) -->
-        <div id="nl-ambiguity-alert" class="nl-ambiguity-alert" hidden role="alert">
-
-          <div class="nl-ambiguity-content">
-            <strong id="nl-ambiguity-msg">ระบุเวลาไม่ชัดเจน กรุณาระบุหรือเลือกเวลาที่แน่นอน</strong>
-            <p>โปรดตรวจสอบและแก้ไขข้อมูลในฟิลด์ด้านล่างก่อนยืนยันบันทึก</p>
-          </div>
-        </div>
-
-        <div class="nl-preview-body">
-          <div class="nl-preview-row">
-            <label class="nl-field">
-              <span class="nl-field-label">เรื่อง:</span>
-              <input type="text" id="nl-field-title" class="nl-input-editable" required>
-            </label>
-          </div>
-          <div class="nl-preview-grid">
-            <label class="nl-field">
-              <span class="nl-field-label">วันและเวลา (เวลาไทย UTC+7):</span>
-              <input type="datetime-local" id="nl-field-starts-at" class="nl-input-editable" required>
-            </label>
-            <label class="nl-field">
-              <span class="nl-field-label">การทำซ้ำ:</span>
-              <select id="nl-field-recurrence" class="nl-input-editable">
-                <option value="once">ครั้งเดียว</option>
-                <option value="weekly">ทุกสัปดาห์</option>
-              </select>
-            </label>
-          </div>
-          <div class="nl-preview-row">
-            <fieldset class="nl-field offset-field" style="border: 0; padding: 0;">
-              <legend class="nl-field-label" style="margin-bottom: 6px;">เตือนล่วงหน้า:</legend>
-              <div class="offset-options">
-                <label><input type="checkbox" name="nl-offsets" value="0"><span>ตรงเวลา</span></label>
-                <label><input type="checkbox" name="nl-offsets" value="5"><span>5 นาที</span></label>
-                <label><input type="checkbox" name="nl-offsets" value="10"><span>10 นาที</span></label>
-                <label><input type="checkbox" name="nl-offsets" value="15"><span>15 นาที</span></label>
-                <label><input type="checkbox" name="nl-offsets" value="30"><span>30 นาที</span></label>
-              </div>
-            </fieldset>
-          </div>
-          <div class="nl-preview-row">
-            <label class="nl-field">
-              <span class="nl-field-label">รายละเอียด (ถ้ามี):</span>
-              <input type="text" id="nl-field-details" class="nl-input-editable" placeholder="รายละเอียดเพิ่มเติม">
-            </label>
-          </div>
-        </div>
-
-        <div class="nl-preview-actions">
-          <button type="button" id="nl-open-modal-btn" class="schedule-secondary">
-             แก้ไขในแบบฟอร์มปกติ
-          </button>
-          <div class="nl-actions-right">
-            <button type="button" id="nl-discard-btn" class="schedule-secondary">ยกเลิก</button>
-            <button type="button" id="nl-confirm-save-btn" class="schedule-primary">
-               ยืนยันและบันทึก
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="schedule-next" aria-labelledby="schedule-next-title">
-      <div class="next-date-mark"><span id="next-weekday">—</span><strong id="next-day">—</strong></div>
-      <div class="schedule-next-copy"><p class="eyebrow">UP NEXT</p><h2 id="schedule-next-title">กำลังโหลดตาราง…</h2><p id="schedule-next-description">รายการถัดไปจะอยู่ตรงนี้</p></div>
-      <span class="next-navigate" aria-hidden="true"></span>
-    </section>
-
-    <section class="calendar-panel" aria-label="ปฏิทินส่วนตัว">
-      <div class="calendar-toolbar"><div class="calendar-month-control"><button id="previous-month" class="icon-button" type="button" aria-label="เดือนก่อน">ก่อน</button><h2 id="month-label">—</h2><button id="next-month" class="icon-button" type="button" aria-label="เดือนถัดไป">ถัดไป</button><button id="jump-today" class="schedule-secondary calendar-today" type="button">วันนี้</button></div><div class="calendar-view-control"><button class="view-switch selected" id="month-view-button" type="button" aria-pressed="true">เดือน</button><button class="view-switch" id="agenda-view-button" type="button" aria-pressed="false">รายการ</button></div></div>
-      <div class="weekday-row" aria-hidden="true"><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span><span>อา.</span></div>
+      <div class="weekday-row" aria-hidden="true"><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span><span>อา</span></div>
       <div class="month-grid" id="month-grid" role="grid" aria-label="วันในเดือน"></div>
-      <div class="agenda-list" id="agenda-list" hidden></div>
-      <div class="calendar-legend"><span class="legend-dot"></span> มีรายการเตือน <span class="schedule-caption">แจ้งเตือนผ่าน Telegram แบบเงียบ</span></div>
     </section>
-    <section class="schedule-paused" id="schedule-paused" hidden aria-labelledby="paused-title"><div class="paused-heading"><h2 id="paused-title">พักการเตือนไว้</h2><span>รายการเหล่านี้ยังไม่ส่งแจ้งเตือน</span></div><div id="paused-list"></div></section>
-    <section class="delivery-issues" id="delivery-issues" hidden aria-live="polite"><h2> รายการที่ส่งแจ้งเตือนไม่สำเร็จ</h2><div id="delivery-issue-list"></div></section>
-    <details class="schedule-history" id="schedule-history"><summary>รายการที่ทำเสร็จแล้ว <span>ย้อนหลัง 30 วัน</span></summary><div id="schedule-history-list"></div></details>
-    <footer class="schedule-footer"><a href="/" class="back-dashboard"> กลับหน้า Dashboard</a><span>Quiet Schedule · Asia/Bangkok</span></footer>
+    <p id="telegram-status" class="alert telegram-status" role="status" hidden></p>
+
+    <section class="section day-section" aria-labelledby="day-heading">
+      <h2 id="day-heading" class="day-heading">วันนี้</h2>
+      <div class="list" id="agenda-list" aria-live="polite"></div>
+    </section>
+
+    <section class="section" id="delivery-issues" hidden aria-live="polite">
+      <div class="section-head"><h2>ส่งแจ้งเตือนไม่สำเร็จ</h2></div>
+      <div class="list" id="delivery-issue-list"></div>
+    </section>
+
+    <section class="section" id="schedule-paused" hidden aria-labelledby="paused-title">
+      <div class="section-head"><div><h2 id="paused-title">พักการเตือนไว้</h2><p>รายการเหล่านี้ยังไม่ส่งแจ้งเตือน</p></div></div>
+      <div class="list" id="paused-list"></div>
+    </section>
+
+    <details class="section card disclosure schedule-history" id="schedule-history">
+      <summary>ทำเสร็จแล้ว <small>30 วันล่าสุด</small></summary>
+      <div id="schedule-history-list"></div>
+    </details>
+    <p class="page-footer">แจ้งเตือนผ่าน Telegram · เวลาไทย (UTC+7)</p>
   </main>
 
-  <dialog class="reminder-dialog" id="reminder-dialog">
-    <form id="reminder-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">MAKE SPACE FOR IT</p><h2 id="dialog-title">เพิ่มการเตือน</h2></div><button class="icon-button" id="dialog-close" type="button" aria-label="ปิด">ปิด</button></div>
-      <label class="form-field"><span>อยากเตือนเรื่องอะไร</span><input id="reminder-title" name="title" maxlength="120" placeholder="เช่น โทรหาคุณแม่" required autocomplete="off"></label>
-      <label class="form-field"><span>วันและเวลา <small>เวลาไทย (UTC+7)</small></span><input id="reminder-start" name="starts_at" type="datetime-local" required></label>
-      <fieldset class="form-field offset-field"><legend>เตือนล่วงหน้า</legend><div class="offset-options"><label><input type="checkbox" name="offsets" value="0" checked><span>ตรงเวลา</span></label><label><input type="checkbox" name="offsets" value="5"><span>5 นาที</span></label><label><input type="checkbox" name="offsets" value="10"><span>10 นาที</span></label><label><input type="checkbox" name="offsets" value="30"><span>30 นาที</span></label></div></fieldset>
-      <label class="form-field"><span>ทำซ้ำ</span><select id="reminder-recurrence" name="recurrence"><option value="once">ครั้งเดียว</option><option value="weekly">ทุกสัปดาห์</option></select></label>
-      <label class="form-field"><span>รายละเอียด <small>ไม่บังคับ</small></span><textarea id="reminder-details" name="details" maxlength="1500" rows="3" placeholder="เช่น เตรียมเอกสารหรือจดสิ่งที่อยากจำ…"></textarea></label>
+  <button class="fab" id="add-reminder" type="button" aria-label="เพิ่มการเตือน"><svg class="icon"><use href="#i-plus"/></svg></button>
+
+  <dialog class="sheet reminder-dialog" id="reminder-dialog" aria-labelledby="dialog-title">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="dialog-title">เพิ่มการเตือน</h2>
+      <button class="btn-icon" id="dialog-close" type="button" aria-label="ปิด"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+
+    <section id="nl-block" class="nl-block" aria-label="สร้างการเตือนด้วยข้อความ">
+      <div class="nl-input-row">
+        <input type="text" id="nl-prompt-input" class="input" placeholder="เช่น ประชุมทีม จันทร์ 10:00 เตือนก่อน 15 นาที" maxlength="500" enterkeyhint="go">
+        <button type="button" id="nl-parse-btn" class="btn btn-primary"><svg class="icon icon-sm"><use href="#i-sparkle"/></svg><span>แปลผลด้วย AI</span></button>
+      </div>
+
+      <div id="nl-preview-card" class="nl-preview" hidden>
+        <div class="nl-preview-head">
+          <span class="chip">AI PREVIEW</span>
+          <button type="button" id="nl-cancel-btn" class="btn btn-ghost btn-sm">ปิด</button>
+        </div>
+        <div id="nl-ambiguity-alert" class="alert" hidden role="alert">
+          <strong id="nl-ambiguity-msg">ระบุเวลาไม่ชัดเจน กรุณาเลือกเวลาที่แน่นอน</strong>
+          <p>ตรวจและแก้ข้อมูลด้านล่างก่อนบันทึก</p>
+        </div>
+        <label class="field">เรื่อง<input type="text" id="nl-field-title" required></label>
+        <label class="field">วันและเวลา<input type="datetime-local" id="nl-field-starts-at" required></label>
+        <label class="field">ทำซ้ำ<select id="nl-field-recurrence"><option value="once">ครั้งเดียว</option><option value="weekly">ทุกสัปดาห์</option></select></label>
+        <fieldset class="field fieldset"><legend>เตือนล่วงหน้า</legend>
+          <div class="choice-row">
+            <label><input type="checkbox" name="nl-offsets" value="0"><span>ตรงเวลา</span></label>
+            <label><input type="checkbox" name="nl-offsets" value="5"><span>5 นาที</span></label>
+            <label><input type="checkbox" name="nl-offsets" value="10"><span>10 นาที</span></label>
+            <label><input type="checkbox" name="nl-offsets" value="15"><span>15 นาที</span></label>
+            <label><input type="checkbox" name="nl-offsets" value="30"><span>30 นาที</span></label>
+          </div>
+        </fieldset>
+        <label class="field">รายละเอียด <small>ไม่บังคับ</small><input type="text" id="nl-field-details"></label>
+        <div class="sheet-actions">
+          <button type="button" id="nl-discard-btn" class="btn">ยกเลิก</button>
+          <button type="button" id="nl-confirm-save-btn" class="btn btn-primary">ยืนยันและบันทึก</button>
+        </div>
+        <button type="button" id="nl-open-modal-btn" class="btn btn-ghost btn-block">แก้ไขในแบบฟอร์มปกติ</button>
+      </div>
+      <div class="nl-or" id="nl-or"><span>หรือกรอกเอง</span></div>
+    </section>
+
+    <form id="reminder-form" method="dialog" class="stack">
+      <label class="field">อยากเตือนเรื่องอะไร<input id="reminder-title" name="title" maxlength="120" placeholder="เช่น โทรหาคุณแม่" required autocomplete="off"></label>
+      <label class="field">วันและเวลา <small>เวลาไทย (UTC+7)</small><input id="reminder-start" name="starts_at" type="datetime-local" required></label>
+      <fieldset class="field fieldset"><legend>เตือนล่วงหน้า</legend>
+        <div class="choice-row">
+          <label><input type="checkbox" name="offsets" value="0" checked><span>ตรงเวลา</span></label>
+          <label><input type="checkbox" name="offsets" value="5"><span>5 นาที</span></label>
+          <label><input type="checkbox" name="offsets" value="10"><span>10 นาที</span></label>
+          <label><input type="checkbox" name="offsets" value="30"><span>30 นาที</span></label>
+        </div>
+      </fieldset>
+      <label class="field">ทำซ้ำ<select id="reminder-recurrence" name="recurrence"><option value="once">ครั้งเดียว</option><option value="weekly">ทุกสัปดาห์</option></select></label>
+      <label class="field">รายละเอียด <small>ไม่บังคับ</small><textarea id="reminder-details" name="details" maxlength="1500" rows="3" placeholder="สิ่งที่อยากจำ…"></textarea></label>
       <p class="form-error" id="form-error" role="alert"></p>
-      <div class="dialog-actions"><button class="schedule-secondary" id="cancel-form" type="button">ยกเลิก</button><button class="schedule-primary" id="save-reminder" type="submit">บันทึกการเตือน</button></div>
+      <div class="sheet-actions">
+        <button class="btn" id="cancel-form" type="button">ยกเลิก</button>
+        <button class="btn btn-primary" id="save-reminder" type="submit">บันทึกการเตือน</button>
+      </div>
+      <button class="btn btn-ghost btn-danger btn-block" id="delete-in-form" type="button" data-action="delete" hidden>ลบการเตือนนี้</button>
     </form>
   </dialog>
 
-  <dialog class="reminder-dialog pin-dialog" id="pin-dialog">
-    <form id="pin-form" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">PRIVATE BY DESIGN</p><h2>PIN สำหรับจัดการตาราง</h2></div><button class="icon-button" id="pin-close" type="button" aria-label="ปิด">ปิด</button></div><p class="pin-explanation">ตั้งค่า REMINDER_PIN ในไฟล์ .env ก่อน จากนั้นกรอก PIN เพื่อเพิ่ม แก้ไข หรือลบรายการ ตารางยังเปิดอ่านได้โดยไม่ต้องใช้ PIN</p><label class="form-field"><span>PIN</span><input id="reminder-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="กรอก PIN ที่ตั้งไว้ในเซิร์ฟเวอร์"></label><p class="form-error" id="pin-error" role="alert"></p><div class="dialog-actions"><button class="schedule-secondary" id="forget-pin" type="button">ลืม PIN นี้</button><button class="schedule-primary" type="submit">ใช้ PIN</button></div></form>
+  <dialog class="sheet pin-dialog" id="pin-dialog" aria-labelledby="pin-title">
+    <form id="pin-form" method="dialog" class="stack">
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <div class="sheet-head"><h2 id="pin-title">PIN สำหรับจัดการตาราง</h2><button class="btn-icon" id="pin-close" type="button" aria-label="ปิด"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p class="muted">ใช้ REMINDER_PIN จากไฟล์ .env เพื่อเพิ่ม แก้ไข หรือลบรายการ ดูตารางได้โดยไม่ต้องใช้ PIN</p>
+      <label class="field">PIN<input id="reminder-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="กรอก PIN"></label>
+      <p class="form-error" id="pin-error" role="alert"></p>
+      <div class="sheet-actions"><button class="btn" id="forget-pin" type="button">ลืม PIN นี้</button><button class="btn btn-primary" type="submit">ใช้ PIN</button></div>
+    </form>
   </dialog>
-  <div class="schedule-toast" id="schedule-toast" role="status" aria-live="polite"></div>
+
+  <div class="toast" id="schedule-toast" role="status" aria-live="polite"></div>
+
   <nav class="task-nav" aria-label="หน้าหลัก">
-    <a class="task-link" href="/?tab=overview">
-      <i class="ri-dashboard-line"></i>
-      <span>ภาพรวม</span>
-    </a>
-    <a class="task-link active" href="/schedule" aria-current="page">
-      <i class="ri-calendar-line"></i>
-      <span>ตาราง</span>
-    </a>
-    <a class="task-link" href="/live">
-      <i class="ri-map-pin-line"></i>
-      <span>แผนที่</span>
-    </a>
-    <a class="task-link" href="/relay">
-      <i class="ri-send-plane-line"></i>
-      <span>Telegram</span>
-    </a>
+    <a class="task-link" href="/?tab=overview"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
+    <a class="task-link active" href="/schedule" aria-current="page"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
+    <a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
+    <a class="task-link" href="/relay"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>
   </nav>
 </body>
 </html>

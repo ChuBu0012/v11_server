@@ -287,3 +287,18 @@ func TestPagesDropIconFontAndShareNav(t *testing.T) {
 		}
 	}
 }
+
+func TestScheduleUsesMonthPlusDayLayout(t *testing.T) {
+	body := fetchPage(t, "/schedule")
+	for _, want := range []string{`id="day-heading"`, `class="fab"`, `id="month-grid"`, `id="agenda-list"`,
+		"nl-prompt-input", "nl-parse-btn", "nl-preview-card", "nl-ambiguity-alert", "nl-confirm-save-btn", "nl-open-modal-btn"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("schedule page missing %q", want)
+		}
+	}
+	for _, gone := range []string{"agenda-view-button", "month-view-button", "schedule-next-title"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("schedule page still contains retired %q", gone)
+		}
+	}
+}
