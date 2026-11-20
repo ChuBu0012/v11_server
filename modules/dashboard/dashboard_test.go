@@ -254,3 +254,36 @@ func TestScheduleNLEndpoint(t *testing.T) {
 		t.Errorf("Expected /schedule to contain 'nl-open-modal-btn'")
 	}
 }
+
+func fetchPage(t *testing.T, path string) string {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+	r.GET("/live-page", mod.HandleLiveMap)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, path, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET %s status = %d", path, rr.Code)
+	}
+	return rr.Body.String()
+}
+
+func TestPagesDropIconFontAndShareNav(t *testing.T) {
+	for _, path := range []string{"/", "/schedule", "/relay", "/live-page"} {
+		body := fetchPage(t, path)
+		if strings.Contains(body, "remixicon") {
+			t.Errorf("%s still loads the remixicon font", path)
+		}
+		wants := []string{`class="task-nav"`, `<header class="topbar"`}
+		if path == "/live-page" {
+			wants = wants[:1] // the map uses a floating status chip instead of a topbar
+		}
+		for _, want := range wants {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing shared markup %q", path, want)
+			}
+		}
+	}
+}

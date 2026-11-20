@@ -69,7 +69,7 @@ document.addEventListener('alpine:init', () => {
           this.updateRenderedTab();
         } else if (latest && latest.status === 'failed') {
           this.metaText = `Last run failed · ${formatTime(latest.finished_at || latest.started_at)}`;
-          this.renderedContent = `<span style="color:var(--amber); display:inline-flex; align-items:center; gap:6px;"><i class="ri-alert-fill"></i> Error: ${escapeHtml(latest.error_message || 'Digest generation failed')}</span>`;
+          this.renderedContent = `<span class="digest-status warn">Error: ${escapeHtml(latest.error_message || 'Digest generation failed')}</span>`;
         } else {
           this.metaText = 'No digest generated yet';
           this.renderedContent = 'คลิก "Run Now" เพื่อเริ่มดึงข่าวสดและให้ Gemini สรุปข่าว AI, การเมือง และเกร็ดความรู้ทันที';
@@ -93,14 +93,14 @@ document.addEventListener('alpine:init', () => {
 
     async runNow() {
       this.isBusy = true;
-      this.renderedContent = '<div class="loading"><i class="ri-loader-4-line ri-spin"></i> กำลังดึงข่าวสดและให้ Gemini ประมวลผลบทความสรุป (ใช้เวลาประมาณ 10-15 วินาที)...</div>';
+      this.renderedContent = '<div class="loading"><span class="spinner" aria-hidden="true"></span> กำลังดึงข่าวสดและให้ Gemini ประมวลผลบทความสรุป (ใช้เวลาประมาณ 10-15 วินาที)...</div>';
       try {
         const res = await fetch('/api/digest/run', { method: 'POST' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Generation failed');
         await this.loadStatus();
       } catch (e) {
-        this.renderedContent = `<span style="color:var(--red); display:inline-flex; align-items:center; gap:6px;"><i class="ri-close-circle-fill"></i> ล้มเหลว: ${escapeHtml(e.message)}</span>`;
+        this.renderedContent = `<span class="digest-status err">ล้มเหลว: ${escapeHtml(e.message)}</span>`;
       } finally {
         this.isBusy = false;
       }
