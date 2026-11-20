@@ -67,3 +67,52 @@ Feature จะนับว่า **เสร็จ** เมื่อเจ้า
 - **โค้ดฝั่ง server** (เช่น AI helper ใน `shared/ai/`) จะนับเป็น feature ก็ต่อเมื่อถูกเรียกจาก route, worker หรือคำสั่งแล้ว — ตัวอย่าง: `shared/ai/monitor_insight.go` มีโค้ดแต่ยังไม่ถูกต่อสาย จึงยังไม่ใช่ feature
 
 ในข้อความสรุปงานถึงเจ้าของ ให้แยกสองหัวข้อชัดเจน: **ใช้ได้แล้ว** (พร้อมคำสั่งหรือ URL ที่ลองได้ทันทีหลัง deploy) และ **ยังไม่ได้ทำ / อยู่ในแผน** — งานที่ยังคุยออกแบบอยู่ห้ามเขียนปนกับงานที่ส่งมอบแล้ว
+
+## 9. Architecture & Build/Test Reference
+- `main.go` is the composition root: it loads configuration, initializes SQLite, constructs modules, registers Gin routes, starts cancellable workers/Telegram polling, and performs graceful shutdown.
+- Domain behavior is split across `modules/` (telemetry, alerts, bot, dashboard, digest, insight, location, relay, reminders, system, watchtower, and logs). Shared infrastructure is in `shared/` (config, database, AI clients, host memory, and workers).
+- The dashboard is an embedded PWA. `modules/dashboard/dashboard.go` embeds its HTML, static assets, manifest, icons, and service worker, so frontend changes are part of the Go build/deploy.
+- SQLite schema creation and compatibility migrations are centralized in `shared/db/db.go`; modules share the initialized `*sql.DB` and layer store/service/handler behavior around it.
+
+Run from the repository root:
+
+```bash
+go test ./...
+go test -count=1 ./...
+go test ./modules/bot -run 'TestRouter'
+go test ./modules/location -run 'TestDistance|TestValidate'
+go build ./...
+go vet ./...
+node --check modules/dashboard/static/js/components/live-map.js
+```
+
+Tests live beside the implementation in `*_test.go`; use the relevant package and
+`-run` expression for focused iteration. There is no repository-wide npm lint or
+build pipeline. Go edits should be formatted with `gofmt`; the deterministic
+hook in `scripts/hook-validate.sh` formats Go and vets the affected package.
+
+For device deployment, use `./scripts/deploy.sh -m "description"` (or
+`--config-only` for configuration-only sync). Full deployment cross-compiles
+`server` and `cmd/digest` with
+`CGO_ENABLED=0 GOOS=android GOARCH=arm64`, atomically transfers them to Termux,
+restarts `go-server`, and checks `/health`. On-device development may use
+`go build -o server .`, but never run `go run` under PM2.
+
+Configuration starts from `.env.example`; defaults and validation are in
+`shared/config/config.go`. Keep secrets out of logs, tests, bot output, and
+documentation. The default local port is `8080`, the default database is
+`./data.db`, Telegram requires both bot token and chat ID, and AI integrations
+are optional.
+
+New HTTP features should follow the module handler/service/store layering and
+be wired through `setupApp`/`setupRouter`, with handler and service/store tests.
+Telegram features additionally require a router case, `/help` entry, and bot
+tests; frequently used commands belong in `MakeHelpKeyboard()`.
+
+When changing Telegram/Discord alerts, command menus, relay templates, or other
+outbound messages, read
+`.agents/skills/telegram-discord-message-templates/SKILL.md` first. For
+dashboard changes, keep complex Three.js/Chart.js/File objects outside Alpine
+reactive state, resize hidden canvases in `$nextTick()`, keep an `init()` data
+fallback for custom-event listeners, and bump `CACHE_NAME` plus the asset list
+in `modules/dashboard/sw.js` when frontend assets change.
