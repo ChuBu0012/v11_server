@@ -532,6 +532,11 @@ document.addEventListener('alpine:init', () => {
         this.updatedAt = times.length ? new Date(Math.max(...times)) : null;
         this.connected = true;
         updateLeafletLayers(data, this.showTrail);
+        // Default view: frame both people once, as soon as the first coordinates arrive.
+        if (!liveMapState.didInitialFit && (this.me || this.friend) && !this.pickingLocation) {
+          liveMapState.didInitialFit = true;
+          this.centerOnDevices();
+        }
       } catch (error) {
         this.connected = false;
         this.errorText = error?.message || 'เชื่อมต่อ Pocket Sentinel ไม่สำเร็จ';
@@ -605,8 +610,15 @@ document.addEventListener('alpine:init', () => {
     centerOnDevices() {
       const coords = [this.me, this.friend].filter(Boolean).map((point) => [point.latitude, point.longitude]);
       if (!liveMapState.map || !coords.length) return;
-      if (coords.length === 1) liveMapState.map.setView(coords[0], 16);
-      else liveMapState.map.fitBounds(L.latLngBounds(coords).pad(0.28), { maxZoom: 16 });
+      // Keep both pins clear of the floating status chip/controls and the bottom sheet.
+      const sheet = document.querySelector('.map-sheet');
+      const sheetTop = sheet ? sheet.getBoundingClientRect().top : window.innerHeight;
+      const bottomCover = Math.max(0, window.innerHeight - sheetTop);
+      liveMapState.map.fitBounds(L.latLngBounds(coords), {
+        paddingTopLeft: [40, 90],
+        paddingBottomRight: [72, bottomCover + 40],
+        maxZoom: 16,
+      });
     },
 
     toggleTrail() {

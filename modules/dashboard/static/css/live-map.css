@@ -31,7 +31,12 @@ body.live-map-body { height: 100dvh; overflow: hidden; padding: 0; overscroll-be
 /* Floating controls */
 .map-fabs { position: fixed; z-index: 15; right: 12px; top: calc(var(--safe-t) + 66px); display: flex; flex-direction: column; gap: 8px; }
 .map-fabs .btn-icon { border-radius: 14px; }
-.map-fabs .btn-icon.is-active { color: var(--blue); border-color: var(--blue); }
+/* Floating buttons keep their solid glass surface on hover/tap; the generic
+   .btn-icon:hover tint is near-transparent and let light map tiles wash out the icon. */
+.btn-icon.map-glass { color: var(--ink); }
+.btn-icon.map-glass:hover { background: var(--glass); border-color: var(--hairline-dark); }
+.btn-icon.map-glass:active { background: var(--pearl); transform: scale(.96); }
+.map-fabs .btn-icon.is-active { color: var(--on-accent); background: var(--blue); border-color: var(--blue); }
 .hover-only { display: none; }
 @media (hover: hover) and (pointer: fine) { .hover-only { display: inline-flex; } }
 
