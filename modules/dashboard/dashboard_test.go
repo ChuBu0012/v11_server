@@ -44,6 +44,9 @@ func TestDashboardEndpoint(t *testing.T) {
 	if !strings.Contains(body, "href=\"/live\"") {
 		t.Errorf("Expected dashboard body to contain nav link to '/live'")
 	}
+	if !strings.Contains(body, "insightCard") || !strings.Contains(body, `id="insight-card"`) || !strings.Contains(body, "/static/js/components/insight.js") {
+		t.Errorf("Expected dashboard body to include the morning insight card")
+	}
 	if !strings.Contains(body, "chart-insight") || !strings.Contains(body, "task-nav") {
 		t.Errorf("Expected dashboard body to include telemetry insight and task navigation")
 	}

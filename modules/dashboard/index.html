@@ -21,6 +21,7 @@
   <script src="/static/js/components/digest.js"></script>
   <script src="/static/js/components/events.js"></script>
   <script src="/static/js/components/schedule-summary.js"></script>
+  <script src="/static/js/components/insight.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body x-data>
@@ -75,6 +76,21 @@
           <svg class="icon icon-sm"><use href="#i-refresh"/></svg><span>อัปเดต</span>
         </button>
       </div>
+    </section>
+
+    <!-- Morning insight -->
+    <section class="section" id="insight-card" aria-labelledby="insight-title" x-data="insightCard">
+      <div class="section-head">
+        <div><h2 id="insight-title">Insight เช้านี้</h2><p>สรุปเครื่อง การเดินทาง และตารางวันนี้ · ส่งเข้า Telegram ทุก 07:00</p></div>
+        <button class="btn btn-sm" type="button" @click="run()" :disabled="busy"><svg class="icon icon-sm"><use href="#i-sparkle"/></svg><span x-text="busy ? 'กำลังสรุป…' : 'สร้างใหม่'"></span></button>
+      </div>
+      <article class="card insight-card" aria-live="polite">
+        <template x-if="loading"><p class="loading"><span class="spinner" aria-hidden="true"></span>กำลังโหลดสรุป…</p></template>
+        <template x-if="!loading && empty && !html"><p class="empty">ยังไม่มีสรุป · กด “สร้างใหม่”</p></template>
+        <template x-if="!loading && failed && !html"><p class="empty">โหลดสรุปไม่สำเร็จ</p></template>
+        <div class="insight-body" x-show="html" x-html="html"></div>
+        <p class="insight-foot" x-show="footer || note"><span x-text="note || footer"></span></p>
+      </article>
     </section>
 
     <!-- 2. Metrics + conditions -->
