@@ -24,17 +24,17 @@ func formatTelegramLocationStatus(me, friend *location.LocationPoint, liveURL st
 	if me != nil && friend != nil {
 		dist := location.DistanceMeters(me.Latitude, me.Longitude, friend.Latitude, friend.Longitude)
 		if dist <= 80 {
-			statusHeader = fmt.Sprintf("🟢 <b>Chubu & Furturia อยู่ที่นี่ด้วยกันแล้ว</b> (ห่างกัน %s)", location.FormatDistance(dist))
+			statusHeader = fmt.Sprintf("🟢 <b>อยู่ด้วยกัน</b> (ห่าง %s)", location.FormatDistance(dist))
 		} else {
-			statusHeader = fmt.Sprintf("🔵 <b>ระยะห่างระหว่างกัน:</b> %s", location.FormatDistance(dist))
+			statusHeader = fmt.Sprintf("🔵 <b>ห่างกัน %s</b>", location.FormatDistance(dist))
 		}
 	} else {
-		statusHeader = "🟡 <b>ได้รับพิกัดเพียงหนึ่งอุปกรณ์</b>"
+		statusHeader = "🟡 <b>ได้รับพิกัดเพียง 1 เครื่อง</b>"
 	}
 
 	formatDeviceLine := func(name string, p *location.LocationPoint) string {
 		if p == nil {
-			return fmt.Sprintf("• <b>%s:</b> <i>ยังไม่มีข้อมูล</i>", name)
+			return fmt.Sprintf("• <b>%s:</b> <i>ไม่มีข้อมูล</i>", name)
 		}
 		battery := "ไม่ทราบ"
 		if p.Battery >= 0 {
@@ -49,10 +49,10 @@ func formatTelegramLocationStatus(me, friend *location.LocationPoint, liveURL st
 			speed = fmt.Sprintf("%.0f km/h", p.Speed)
 		}
 		age := relativeTimeAgo(p.RecordedAt)
-		return fmt.Sprintf("• <b>%s:</b> 🔋 %s · %s · ±%.0f ม. (%s)", name, battery, speed, p.Accuracy, age)
+		return fmt.Sprintf("• <b>%s:</b> 🔋 %s · %s · %s", name, battery, speed, age)
 	}
 
-	msg := fmt.Sprintf("📍 <b>Live Map: Chubu & Furturia</b>\n%s\n\n%s\n%s\n\n<i>กดปุ่มด้านล่างเพื่อเปิดดูตำแหน่งสดแบบเรียลไทม์</i>",
+	msg := fmt.Sprintf("📍 <b>Live Map</b> · %s\n\n%s\n%s",
 		statusHeader,
 		formatDeviceLine("Chubu", me),
 		formatDeviceLine("Furturia", friend),
@@ -60,7 +60,7 @@ func formatTelegramLocationStatus(me, friend *location.LocationPoint, liveURL st
 
 	kb := &bot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]bot.InlineKeyboardButton{
-			{{Text: "🗺️ เปิดแผนที่สด (Live Map)", URL: liveURL}},
+			{{Text: "🗺️ เปิดแผนที่สด", URL: liveURL}},
 		},
 	}
 	return msg, kb, nil

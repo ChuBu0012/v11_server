@@ -167,7 +167,7 @@ func TestSimulation_FullLife360Story(t *testing.T) {
 	if len(msgs) == 0 {
 		t.Fatalf("expected geofence enter notification for Chubu in notifier")
 	}
-	if !strings.Contains(msgs[0], "📍 **Chubu มาถึง มหาวิทยาลัย KMUTT แล้ว**") {
+	if !strings.Contains(msgs[0], "📍 **Chubu ถึง มหาวิทยาลัย KMUTT**") {
 		t.Errorf("expected arrival message, got: %s", msgs[0])
 	}
 
@@ -196,10 +196,10 @@ func TestSimulation_FullLife360Story(t *testing.T) {
 	foundMeet := false
 	foundArrival := false
 	for _, m := range msgs {
-		if strings.Contains(m, "📍 **Furturia มาถึง มหาวิทยาลัย KMUTT แล้ว**") {
+		if strings.Contains(m, "📍 **Furturia ถึง มหาวิทยาลัย KMUTT**") {
 			foundArrival = true
 		}
-		if strings.Contains(m, "🤝 **Chubu และ Furturia อยู่ที่ มหาวิทยาลัย KMUTT ด้วยกันแล้ว**") {
+		if strings.Contains(m, "🤝 **Chubu & Furturia อยู่ด้วยกันที่ มหาวิทยาลัย KMUTT**") {
 			foundMeet = true
 		}
 	}
@@ -241,10 +241,10 @@ func TestSimulation_FullLife360Story(t *testing.T) {
 	foundExit := false
 	foundSeparation := false
 	for _, m := range msgs {
-		if strings.Contains(m, "🚗 **Furturia ออกจาก มหาวิทยาลัย KMUTT แล้ว**") {
+		if strings.Contains(m, "🚗 **Furturia ออกจาก มหาวิทยาลัย KMUTT**") {
 			foundExit = true
 		}
-		if strings.Contains(m, "👋 **Chubu และ Furturia แยกย้ายกันแล้ว**") {
+		if strings.Contains(m, "👋 **Chubu & Furturia แยกย้ายกัน**") {
 			foundSeparation = true
 		}
 	}
@@ -285,7 +285,7 @@ func TestSimulation_FullLife360Story(t *testing.T) {
 
 	foundBattery := false
 	for _, m := range msgs {
-		if strings.Contains(m, "🪫 **แบตเตอรี่ของ Chubu ต่ำ (`10%`)**") {
+		if strings.Contains(m, "🪫 **แบตเตอรี่ Chubu เหลือ 10%**") {
 			foundBattery = true
 			break
 		}

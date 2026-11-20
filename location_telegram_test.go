@@ -36,7 +36,7 @@ func TestFormatTelegramLocationStatus(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for _, want := range []string{"📍 <b>Live Map: Chubu & Furturia</b>", "Chubu & Furturia อยู่ที่นี่ด้วยกันแล้ว", "Chubu:</b> 🔋 80% ⚡", "Furturia:</b> 🔋 65%"} {
+	for _, want := range []string{"📍 <b>Live Map</b>", "🟢 <b>อยู่ด้วยกัน</b>", "Chubu:</b> 🔋 80% ⚡", "Furturia:</b> 🔋 65%"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("msg missing %q:\n%s", want, msg)
 		}

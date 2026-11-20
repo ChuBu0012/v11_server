@@ -96,7 +96,7 @@ func redactWebhook(value, webhookURL string) string {
 
 // FormatDiscordEvent renders a location event as compact, mention-safe Discord Markdown.
 func FormatDiscordEvent(event NotificationEvent) string {
-	timestamp := event.OccurredAt.In(bangkokZone).Format("15:04:05 ICT")
+	timestamp := event.OccurredAt.In(bangkokZone).Format("15:04")
 	switch event.Kind {
 	case EventMeet:
 		me := event.Point
@@ -104,57 +104,48 @@ func FormatDiscordEvent(event NotificationEvent) string {
 		if event.Partner != nil {
 			friend = *event.Partner
 		}
-		header := "🤝 **Chubu และ Furturia อยู่ที่นี่ด้วยกันแล้ว**"
+		header := "🤝 **Chubu & Furturia อยู่ด้วยกันแล้ว**"
 		if event.HasGeofence {
-			header = fmt.Sprintf("🤝 **Chubu และ Furturia อยู่ที่ %s ด้วยกันแล้ว**", escapeDiscordText(event.Geofence.Name))
+			header = fmt.Sprintf("🤝 **Chubu & Furturia อยู่ด้วยกันที่ %s**", escapeDiscordText(event.Geofence.Name))
 		}
-		return fmt.Sprintf("%s\n"+
-			"• **ระยะห่าง:** `%s`\n"+
-			"• **พิกัด:** `%s`\n"+
-			"• **เวลา:** %s\n"+
-			"• **แบตเตอรี่:** Chubu %s · Furturia %s",
-			header, FormatDistance(event.DistanceMeters), midpointCoordinates(me, friend), timestamp,
-			formatBattery(me), formatBattery(friend))
+		var details []string
+		details = append(details, fmt.Sprintf("ห่าง %s", FormatDistance(event.DistanceMeters)))
+		details = append(details, timestamp)
+		if me.Battery >= 0 || friend.Battery >= 0 {
+			details = append(details, fmt.Sprintf("🔋 Chubu %s · Furturia %s", formatBattery(me), formatBattery(friend)))
+		}
+		return fmt.Sprintf("%s\n%s", header, strings.Join(details, " · "))
 	case EventSeparate:
-		return fmt.Sprintf("👋 **Chubu และ Furturia แยกย้ายกันแล้ว**\n"+
-			"• **ระยะห่างล่าสุด:** `%s`\n"+
-			"• **เวลา:** %s", FormatDistance(event.DistanceMeters), timestamp)
+		return fmt.Sprintf("👋 **Chubu & Furturia แยกย้ายกัน**\nห่าง %s · %s",
+			FormatDistance(event.DistanceMeters), timestamp)
 	case EventGeofenceEnter:
 		name := pureDeviceName(event.DeviceID)
-		return fmt.Sprintf("📍 **%s มาถึง %s แล้ว**\n"+
-			"• **เวลา:** %s\n"+
-			"• **แบตเตอรี่:** %s",
-			name, escapeDiscordText(event.Geofence.Name), timestamp, formatBattery(event.Point))
+		var details []string
+		details = append(details, timestamp)
+		if event.Point.Battery >= 0 {
+			details = append(details, "🔋 "+formatBattery(event.Point))
+		}
+		return fmt.Sprintf("📍 **%s ถึง %s**\n%s",
+			name, escapeDiscordText(event.Geofence.Name), strings.Join(details, " · "))
 	case EventGeofenceExit:
 		name := pureDeviceName(event.DeviceID)
-		return fmt.Sprintf("🚗 **%s ออกจาก %s แล้ว**\n"+
-			"• **ความเร็ว:** %.0f km/h\n"+
-			"• **เวลา:** %s\n"+
-			"• **แบตเตอรี่:** %s",
-			name, escapeDiscordText(event.Geofence.Name), event.Point.Speed, timestamp, formatBattery(event.Point))
+		var details []string
+		details = append(details, timestamp)
+		if event.Point.Speed >= 5 {
+			details = append(details, fmt.Sprintf("%.0f km/h", event.Point.Speed))
+		}
+		if event.Point.Battery >= 0 {
+			details = append(details, "🔋 "+formatBattery(event.Point))
+		}
+		return fmt.Sprintf("🚗 **%s ออกจาก %s**\n%s",
+			name, escapeDiscordText(event.Geofence.Name), strings.Join(details, " · "))
 	case EventBatteryCritical:
 		name := pureDeviceName(event.DeviceID)
-		return fmt.Sprintf("🪫 **แบตเตอรี่ของ %s ต่ำ (`%d%%`)**\n"+
-			"• **สถานะ:** %s\n"+
-			"• **เวลา:** %s",
-			name, event.Point.Battery, chargingStatus(event.Point.BatteryStatus), timestamp)
+		return fmt.Sprintf("🪫 **แบตเตอรี่ %s เหลือ %d%%**\n%s · %s",
+			name, event.Point.Battery, timestamp, chargingStatus(event.Point.BatteryStatus))
 	default:
 		return "📍 **Pocket Sentinel:** มีเหตุการณ์ตำแหน่งใหม่"
 	}
-}
-
-func meetingPlace(event NotificationEvent) string {
-	if event.HasGeofence {
-		return fmt.Sprintf("%s (%s)", escapeDiscordText(event.Geofence.Name), FormatDistance(event.Geofence.Radius))
-	}
-	if event.Partner != nil {
-		return "พิกัดที่พบกัน"
-	}
-	return "พิกัด"
-}
-
-func midpointCoordinates(me, friend LocationPoint) string {
-	return fmt.Sprintf("%.4f, %.4f", (me.Latitude+friend.Latitude)/2, (me.Longitude+friend.Longitude)/2)
 }
 
 func pureDeviceName(device string) string {
@@ -162,13 +153,6 @@ func pureDeviceName(device string) string {
 		return "Chubu"
 	}
 	return "Furturia"
-}
-
-func deviceName(device string) string {
-	if device == DeviceMe {
-		return "👤 Chubu"
-	}
-	return "👥 Furturia"
 }
 
 func formatBattery(point LocationPoint) string {

@@ -28,9 +28,72 @@ Use this skill whenever a change writes, edits, or formats text sent to Telegram
 ## Discord
 
 - Use Discord Markdown (`**bold**`, `*italic*`, and backticks); remove or translate Telegram HTML before sending.
-- Use a short heading and compact bullets. Keep webhook content below Discord's 2000-character message limit; this project truncates near 1950 characters.
+- Use a short heading and compact inline details. Keep webhook content below Discord's 2000-character message limit; this project truncates near 1950 characters.
 - Prevent unintended mentions from dynamic content. Escape or suppress `@everyone`, role, and user mentions unless notification is an explicit feature.
 - Use embeds only when the current notifier supports structured embeds; do not make a content-only webhook depend on embed rendering.
+
+## Minimal Notification Pattern (Noti แบบเรียบ)
+
+สำหรับ Notification ที่แจ้งเตือนเหตุการณ์สด (เช่น Live Map, Geofence, Hardware Events) ให้ยึดโครงสร้างแบบ **2 บรรทัดกระชับ (Minimal 2-Line)** เสมอ:
+
+1. **บรรทัดที่ 1 (Event Header):** Emoji + ตัวหนา `**` สรุปสิ่งที่เกิดขึ้นทันที (ไม่มีคำเยิ่นเย้อ เช่น ไม่ใส่ "แล้ว", "อยู่ที่นี่ด้วยกันแล้ว")
+2. **บรรทัดที่ 2 (Inline Context):** ข้อมูลเสริมรวบยอดคั่นด้วย middle dot (`·`)
+3. **ตัดสิ่งรบกวนสายตา (Zero-Clutter Policy):**
+   - **ห้ามใช้ Bullet (`•`)** กับ push notification สั้นๆ
+   - **ห้ามใส่พิกัดตัวเลขดิบ (Lat/Long)** เช่น `13.7462, 100.5348`
+   - **เวลาใช้ `HH:mm`** (เช่น `14:15`) ตัดวินาทีและชื่อโซน (`ICT`) ออก
+   - **แบตเตอรี่ใช้ไอคอน `🔋`** และต่อท้ายด้วย `⚡` เมื่อกำลังชาร์จ (เช่น `🔋 85% ⚡`)
+   - **ความเร็ว** แสดงเฉพาะเมื่อมีการเคลื่อนที่ชัดเจน (เช่น `≥ 5 km/h`)
+
+## Location & Geofence Alert Templates (Discord)
+
+### 1. เมื่อมาพบกัน (Co-location Meet)
+* **กรณีอยู่ในสถานที่ (Geofence):**
+```md
+🤝 **Chubu & Furturia อยู่ด้วยกันที่ {place}**
+ห่าง {distance} · {time} · 🔋 Chubu {batt1} · Furturia {batt2}
+```
+* **กรณีอยู่นอกสถานที่:**
+```md
+🤝 **Chubu & Furturia อยู่ด้วยกันแล้ว**
+ห่าง {distance} · {time} · 🔋 Chubu {batt1} · Furturia {batt2}
+```
+
+### 2. เมื่อแยกย้ายกัน (Co-location Separate)
+```md
+👋 **Chubu & Furturia แยกย้ายกัน**
+ห่าง {distance} · {time}
+```
+
+### 3. เมื่อถึงสถานที่ (Geofence Enter)
+```md
+📍 **{device} ถึง {place}**
+{time} · 🔋 {battery}
+```
+
+### 4. เมื่อออกจากสถานที่ (Geofence Exit)
+```md
+🚗 **{device} ออกจาก {place}**
+{time} · {speed} · 🔋 {battery}
+```
+*(หากความเร็ว < 5 km/h ให้ละเว้น `{speed}` เพื่อความกระชับ)*
+
+### 5. แบตเตอรี่ต่ำวิกฤต (Battery Critical ≤ 15% และไม่ได้ชาร์จ)
+```md
+🪫 **แบตเตอรี่ {device} เหลือ {percent}%**
+{time} · {charging_status}
+```
+
+## Telegram Live Map Status Card (`/map`)
+
+เมื่อผู้ใช้เรียกดูสถานะสดผ่าน Telegram bot:
+```html
+📍 <b>Live Map</b> · 🟢 <b>อยู่ด้วยกัน</b> (ห่าง {distance})
+
+• <b>Chubu:</b> 🔋 {battery} · {speed} · {time_ago}
+• <b>Furturia:</b> 🔋 {battery} · {speed} · {time_ago}
+```
+*(ปุ่ม Inline Keyboard: <code>[ 🗺️ เปิดแผนที่สด ]</code> ไม่ต้องมีข้อความแนะนำปุ่มเพิ่มเติม)*
 
 ## Pocket Sentinel Template Set
 
