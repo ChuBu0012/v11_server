@@ -1962,3 +1962,53 @@ body.live-map-body {
   .device-grid { grid-template-columns: 1fr; }
   .live-footer { flex-direction: column; gap: 4px; text-align: center; }
 }
+
+/* RawBlock live map: keep the map central, keep controls legible, trim chrome. */
+body.live-map-body { min-width:320px; background:var(--parchment); color:var(--ink); font-family:"Work Sans",system-ui,sans-serif; }
+.map-tab { width:min(100%,1120px); padding:18px 16px 28px; gap:12px; }
+.live-summary { display:grid; grid-template-columns:1fr; gap:8px; padding:12px 0; border:0; border-block:3px solid var(--ink); background:transparent; }
+.summary-left,.summary-right { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.summary-right { justify-content:space-between; }
+.status-badge,.summary-distance-chip,.summary-time { min-height:36px; padding:6px 9px; border:2px solid var(--ink); background:transparent; color:var(--ink); font:11px "Space Mono",monospace; }
+.status-badge.is-colocated { border-color:#008000; color:#008000; }
+.status-badge.is-separated { border-color:#ffa500; color:#ffa500; }
+.status-badge-dot,.pulse-indicator { box-shadow:none !important; }
+.live-summary button,.add-place-pill,.map-ctrl-btn,.picker-close-btn,.device-shortcut,.radius-pill,.suggestion-chip,.picker-actions button { min-height:44px; border:2px solid var(--ink); background:var(--canvas); color:var(--ink); }
+.map-picker-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+.map-shell { min-height:54dvh; height:54dvh; max-height:720px; border:3px solid var(--ink); background:#ddd; }
+#live-map-canvas { min-height:100%; }
+.map-controls-group { top:10px; right:10px; gap:4px; padding:4px; border:2px solid #000; background:#fff; }
+.map-ctrl-btn { width:44px; height:44px; min-height:44px; border:1px solid #000; background:#fff; color:#000; font-weight:700; }
+.map-ctrl-btn:hover { background:#000; color:#fff; }
+.map-legend { left:10px; bottom:10px; gap:6px; padding:6px; border:2px solid #000; background:#fff; color:#000; font:11px "Space Mono",monospace; }
+.legend-avatar { width:22px; height:22px; border:2px solid #000; }
+.picker-reticle { filter:grayscale(1); }
+.picker-map-hint { border:2px solid #000; background:#fff; color:#000; }
+.map-loading { background:rgba(255,255,255,.9); color:#000; font:12px "Space Mono",monospace; }
+.loading-orbit { border-color:#000; border-top-color:#0000ff; }
+.place-picker-panel { border:3px solid var(--ink); background:var(--canvas); color:var(--ink); }
+.picker-panel-heading,.picker-panel-form,.picker-step-content { border-color:var(--ink); }
+.picker-eyebrow,.picker-field-label,.picker-chips-label { color:var(--muted); font:11px "Space Mono",monospace; }
+.picker-step-list li { border:2px solid var(--hairline); background:transparent; color:var(--muted); }
+.picker-step-list li.is-current,.picker-step-list li.is-complete { border-color:var(--ink); background:var(--ink); color:var(--canvas); }
+.picker-name-input,.picker-pin-input,.radius-number-wrap input { min-height:48px; border:3px solid var(--ink); background:var(--pearl); color:var(--ink); font:14px "Space Mono",monospace; }
+.picker-device-shortcuts { gap:6px; }
+.device-shortcut { padding:8px; }
+.device-shortcut img { width:32px; height:32px; border:2px solid currentColor; }
+.picker-suggestion-chips,.picker-radius-presets { gap:6px; }
+.suggestion-chip.is-active,.radius-pill.is-active { background:var(--ink); color:var(--canvas); }
+.picker-alert-option { border:2px solid var(--ink); background:transparent; }
+.picker-actions { gap:8px; }
+.picker-actions button:last-child { background:var(--ink); color:var(--canvas); }
+.theme-toggle-btn { min-width:56px; }
+@media(min-width:760px) {
+  .map-tab { padding-top:28px; }
+  .live-summary { grid-template-columns:1fr auto; align-items:center; padding:14px 0; }
+  .map-shell { min-height:66dvh; height:66dvh; }
+  .map-picker-layout.is-picker-open { grid-template-columns:minmax(0,1fr) 350px; }
+}
+@media(max-width:480px) {
+  .map-shell { min-height:50dvh; height:50dvh; }
+  .map-controls-group { top:6px; right:6px; }
+  .map-ctrl-btn { width:40px; height:40px; min-height:40px; }
+}

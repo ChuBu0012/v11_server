@@ -58,19 +58,20 @@ if ('serviceWorker' in navigator) {
 }
 
 // Alpine Store Initialization
+const initialParams = new URLSearchParams(window.location.search);
+if (initialParams.get('tab') === 'telegram' || initialParams.get('app') === 'relay') {
+  window.location.replace('/relay');
+}
+
 document.addEventListener('alpine:init', () => {
-  const initialParams = new URLSearchParams(window.location.search);
-  const requestedTab = initialParams.get('tab');
-  const initialTab = ['overview', 'monitor', 'map', 'telegram'].includes(requestedTab)
-    ? requestedTab
-    : (initialParams.get('app') === 'relay' ? 'telegram' : 'overview');
+  const initialTab = 'overview';
 
   Alpine.store('sentinel', {
     theme: localStorage.getItem('sentinel-theme') || 'dark',
     activeTab: initialTab,
     busy: false,
-    heroTitle: 'Checking your server',
-    heroCopy: 'Loading the latest device and service status.',
+    heroTitle: 'กำลังตรวจสอบเซิร์ฟเวอร์',
+    heroCopy: 'กำลังโหลดสถานะอุปกรณ์และบริการล่าสุด',
     statusDotClass: '',
     syncDotClass: 'sync-dot',
     syncText: 'Connecting…',
@@ -85,17 +86,15 @@ document.addEventListener('alpine:init', () => {
       this.refreshAll();
       window.setInterval(() => this.refreshAll(), 60000);
       window.addEventListener('popstate', () => {
-        const tab = new URLSearchParams(window.location.search).get('tab');
-        this.activateTab(['overview', 'monitor', 'map', 'telegram'].includes(tab) ? tab : 'overview');
+        this.activateTab('overview');
       });
     },
 
     setTab(tab) {
-      if (!['overview', 'monitor', 'map', 'telegram'].includes(tab) || tab === this.activeTab) return;
+      if (tab !== 'overview' || tab === this.activeTab) return;
       const url = new URL(window.location.href);
       url.searchParams.delete('app');
-      if (tab === 'overview') url.searchParams.delete('tab');
-      else url.searchParams.set('tab', tab);
+      url.searchParams.delete('tab');
       window.history.pushState({ tab }, '', url);
       this.activateTab(tab);
     },
@@ -133,8 +132,8 @@ document.addEventListener('alpine:init', () => {
         if (currentRes.status === 'fulfilled') {
           this.processCurrent(currentRes.value);
         } else {
-          this.heroTitle = 'Unable to load server status';
-          this.heroCopy = currentRes.reason.message || 'The status endpoint did not respond.';
+          this.heroTitle = 'ไม่สามารถโหลดสถานะเซิร์ฟเวอร์';
+          this.heroCopy = currentRes.reason.message || 'ระบบสถานะไม่ตอบกลับ';
           this.statusDotClass = 'error';
           this.syncDotClass = 'sync-dot error';
           this.syncText = 'Offline';
@@ -169,30 +168,30 @@ document.addEventListener('alpine:init', () => {
       const collectorError = Boolean(data.last_error);
 
       if (!sample) {
-        this.heroTitle = 'Waiting for telemetry';
-        this.heroCopy = 'The server is available, but it has not stored a device sample yet.';
+        this.heroTitle = 'รอข้อมูลอุปกรณ์';
+        this.heroCopy = 'เซิร์ฟเวอร์พร้อม แต่ยังไม่มีข้อมูลอุปกรณ์ที่บันทึกไว้';
         this.statusDotClass = 'warning';
       } else if (collectorError || stale) {
-        this.heroTitle = collectorError ? 'Collection needs attention' : 'Telemetry is out of date';
-        this.heroCopy = collectorError ? String(data.last_error) : 'No new sample has arrived for more than two collection intervals.';
+        this.heroTitle = collectorError ? 'ระบบเก็บข้อมูลมีปัญหา' : 'ข้อมูลล่าสุดล่าช้า';
+        this.heroCopy = collectorError ? String(data.last_error) : 'ไม่มีข้อมูลใหม่เกิน 2 รอบการเก็บข้อมูล';
         this.statusDotClass = 'error';
       } else {
         const active = this.conditions.filter((c) => c.active);
-        this.heroTitle = active.length ? 'Attention required' : 'All systems operational';
-        this.heroCopy = active.length ? `${active.length} condition${active.length === 1 ? '' : 's'} need attention.` : 'Your pocket server and device telemetry are up to date.';
+        this.heroTitle = active.length ? 'ต้องตรวจสอบระบบ' : 'ระบบทำงานปกติ';
+        this.heroCopy = active.length ? `พบ ${active.length} รายการที่ต้องตรวจสอบ` : 'เซิร์ฟเวอร์และข้อมูลอุปกรณ์อัปเดตตามปกติ';
         this.statusDotClass = active.length ? 'warning' : '';
       }
 
       if (!lastCollected || Number.isNaN(lastCollected.getTime())) {
-        this.syncText = 'Connecting…';
+        this.syncText = 'กำลังเชื่อมต่อ';
         this.syncDotClass = 'sync-dot stale';
         this.syncTitle = 'No telemetry collection recorded yet';
       } else if (collectorError) {
-        this.syncText = 'Sync Error';
+        this.syncText = 'ซิงก์ไม่สำเร็จ';
         this.syncDotClass = 'sync-dot error';
         this.syncTitle = `Collection error: ${data.last_error}`;
       } else if (stale) {
-        this.syncText = `Delayed · ${formatTime(lastCollected)}`;
+        this.syncText = `ล่าช้า · ${formatTime(lastCollected)}`;
         this.syncDotClass = 'sync-dot stale';
         this.syncTitle = `Delayed: last update was ${lastCollected.toLocaleString()}`;
       } else {
@@ -203,7 +202,7 @@ document.addEventListener('alpine:init', () => {
 
       this.sampleTimeText = sample
         ? `Sampled ${formatTime(sample.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-        : 'Waiting for first sample';
+        : 'รอข้อมูลตัวอย่างแรก';
 
       // Notify other components (e.g. 3D Energy Core)
       window.dispatchEvent(new CustomEvent('sentinel:current-loaded', { detail: data }));

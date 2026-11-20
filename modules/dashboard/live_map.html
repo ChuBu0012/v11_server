@@ -21,19 +21,19 @@
     })();
   </script>
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png?v=28">
+  <link rel="apple-touch-icon" href="/static/img/avatar-chubu.png">
   <title>Location &amp; Rendezvous — Pocket Sentinel</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="/static/css/styles.css?v=30">
-  <link rel="stylesheet" href="/static/css/live-map.css?v=30">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/live-map.css">
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-  <script defer src="/static/js/components/live-map.js?v=30"></script>
+  <script defer src="/static/js/components/live-map.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body class="live-map-body" x-data="liveMap" x-init="init()" @keydown.escape.window="if (pickingLocation) cancelMapPicker()">
   <!-- Unified Topbar -->
-  <header class="topbar">
+  <header class="app-header">
     <div class="brand">
       <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
         <span class="status-dot ok" aria-hidden="true"></span>
@@ -53,16 +53,6 @@
   </header>
 
   <!-- Unified Sub-Nav Bar -->
-  <nav class="sentinel-nav" aria-label="เมนูหลัก">
-    <div class="sentinel-nav-inner">
-      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
-      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
-      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
-      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-      <a class="sentinel-nav-link active" href="/?tab=map" aria-current="page"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-      <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
-    </div>
-  </nav>
 
   <main class="wrap map-tab">
     <!-- Tracking Overview (Hero Status Banner) -->
@@ -75,12 +65,11 @@
         <span class="summary-distance-chip" x-show="distanceText" x-text="distanceText"></span>
       </div>
       <div class="summary-right">
-        <span class="summary-time"><i class="ri-time-line" aria-hidden="true"></i> <span x-text="updatedText"></span></span>
-        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">
-          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
+        <span class="summary-time"> <span x-text="updatedText"></span></span>
+        <button class="icon-button" type="button" @click="refresh()" aria-label="รีเฟรชข้อมูลตำแหน่ง" title="รีเฟรช">อัปเดต
         </button>
         <button class="add-place-pill" type="button" @click="startMapPicker()" title="ปักหมุดเพิ่มสถานที่ใหม่บนแผนที่">
-          <i class="ri-add-line" aria-hidden="true"></i>
+
           <span>เพิ่มสถานที่</span>
         </button>
       </div>
@@ -90,7 +79,7 @@
     <div class="map-picker-layout" :class="{'is-picker-open': pickingLocation}">
       <section class="map-shell" aria-label="แผนที่แสดงตำแหน่ง">
         <div id="live-map-canvas" role="application" aria-label="แผนที่แสดงตำแหน่งของ Chubu และ Furturia"></div>
-        
+
         <!-- Picker Reticle & Floating Guidance -->
         <div class="picker-reticle" x-show="pickingLocation" x-cloak aria-hidden="true"><span></span></div>
         <div class="picker-map-hint" x-show="pickingLocation" x-cloak aria-live="polite">
@@ -104,25 +93,17 @@
 
         <!-- Grouped Floating Map Controls (Top-Right Toolbar) -->
         <div class="map-controls-group">
-          <button type="button" class="map-ctrl-btn" @click="centerOnDevices()" title="จัดตำแหน่งกึ่งกลางผู้ใช้">
-            <i class="ri-focus-3-line" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="map-ctrl-btn" :class="{'is-active': showTrail}" @click="toggleTrail()" title="เปิด/ปิดเส้นทางย้อนหลัง 24 ชม.">
-            <i class="ri-route-line" aria-hidden="true"></i>
-          </button>
+          <button type="button" class="map-ctrl-btn" @click="centerOnDevices()" title="จัดตำแหน่งกึ่งกลางผู้ใช้">กึ่งกลาง</button>
+          <button type="button" class="map-ctrl-btn" :class="{'is-active': showTrail}" @click="toggleTrail()" title="เปิด/ปิดเส้นทางย้อนหลัง 24 ชม.">เส้นทาง</button>
           <div class="map-ctrl-divider"></div>
-          <button type="button" class="map-ctrl-btn" @click="zoomIn()" title="ซูมเข้า">
-            <i class="ri-add-line" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="map-ctrl-btn" @click="zoomOut()" title="ซูมออก">
-            <i class="ri-subtract-line" aria-hidden="true"></i>
-          </button>
+          <button type="button" class="map-ctrl-btn" @click="zoomIn()" title="ซูมเข้า">+</button>
+          <button type="button" class="map-ctrl-btn" @click="zoomOut()" title="ซูมออก">−</button>
         </div>
 
         <!-- Compact Floating Legend (Bottom-Left) -->
         <div class="map-legend">
-          <span class="legend-item"><img src="/static/img/avatar-chubu.png?v=28" alt="Chubu" class="legend-avatar"> Chubu</span>
-          <span class="legend-item"><img src="/static/img/avatar-furturia.png?v=28" alt="Furturia" class="legend-avatar"> Furturia</span>
+          <span class="legend-item"><img src="/static/img/avatar-chubu.png" alt="Chubu" class="legend-avatar"> Chubu</span>
+          <span class="legend-item"><img src="/static/img/avatar-furturia.png" alt="Furturia" class="legend-avatar"> Furturia</span>
         </div>
       </section>
 
@@ -158,14 +139,14 @@
 
             <div class="picker-device-shortcuts">
               <button type="button" class="device-shortcut" @click="useDeviceLocation('me')" :disabled="!me">
-                <img src="/static/img/avatar-chubu.png?v=28" alt="" aria-hidden="true">
+                <img src="/static/img/avatar-chubu.png" alt="" aria-hidden="true">
                 <span>
                   <strong>จุดของ Chubu</strong>
                   <small x-text="me ? deviceAge(me) : 'ไม่มีพิกัด'"></small>
                 </span>
               </button>
               <button type="button" class="device-shortcut" @click="useDeviceLocation('friend')" :disabled="!friend">
-                <img src="/static/img/avatar-furturia.png?v=28" alt="" aria-hidden="true">
+                <img src="/static/img/avatar-furturia.png" alt="" aria-hidden="true">
                 <span>
                   <strong>จุดของ Furturia</strong>
                   <small x-text="friend ? deviceAge(friend) : 'ไม่มีพิกัด'"></small>
@@ -174,7 +155,7 @@
             </div>
 
             <div class="picker-coordinate-readout" x-show="newZone.latitude != null">
-              <i class="ri-map-pin-line" aria-hidden="true"></i>
+
               <span x-text="`พิกัด: ${newZone.latitude?.toFixed(5)}, ${newZone.longitude?.toFixed(5)}`"></span>
             </div>
 
@@ -283,7 +264,7 @@
       <!-- Device Card: Chubu -->
       <article class="device-card device-card-me">
         <div class="device-card-header">
-          <img class="device-avatar-img" src="/static/img/avatar-chubu.png?v=28" alt="Chubu">
+          <img class="device-avatar-img" src="/static/img/avatar-chubu.png" alt="Chubu">
           <div class="device-card-info">
             <div class="device-card-name-row">
               <strong>Chubu</strong>
@@ -301,7 +282,7 @@
             <span class="metric-label">แบตเตอรี่</span>
             <strong class="metric-value">
               <span x-text="`${batteryPercent(me)}%`"></span>
-              <span x-show="isCharging(me)" class="charging-icon">⚡</span>
+              <span x-show="isCharging(me)" class="charging-icon">กำลังชาร์จ</span>
             </strong>
             <div class="metric-bar-track">
               <div class="metric-bar-fill" :class="batteryBarClass(me)" :style="`width: ${batteryPercent(me)}%`"></div>
@@ -325,7 +306,7 @@
       <!-- Device Card: Furturia -->
       <article class="device-card device-card-friend">
         <div class="device-card-header">
-          <img class="device-avatar-img" src="/static/img/avatar-furturia.png?v=28" alt="Furturia">
+          <img class="device-avatar-img" src="/static/img/avatar-furturia.png" alt="Furturia">
           <div class="device-card-info">
             <div class="device-card-name-row">
               <strong>Furturia</strong>
@@ -343,7 +324,7 @@
             <span class="metric-label">แบตเตอรี่</span>
             <strong class="metric-value">
               <span x-text="`${batteryPercent(friend)}%`"></span>
-              <span x-show="isCharging(friend)" class="charging-icon">⚡</span>
+              <span x-show="isCharging(friend)" class="charging-icon">กำลังชาร์จ</span>
             </strong>
             <div class="metric-bar-track">
               <div class="metric-bar-fill" :class="batteryBarClass(friend)" :style="`width: ${batteryPercent(friend)}%`"></div>
@@ -370,13 +351,11 @@
       <div class="logs-card">
         <div class="logs-header" @click="showLogs = !showLogs">
           <div class="logs-title">
-            <i class="ri-signal-tower-line" aria-hidden="true"></i>
+
             <span>บันทึกพิกัดล่าสุด (Live Ping Log)</span>
             <span class="logs-count-badge" x-text="recentLogs.length + ' รายการ'"></span>
           </div>
-          <button type="button" class="icon-button logs-collapse-btn" :aria-expanded="showLogs">
-            <i :class="showLogs ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" aria-hidden="true"></i>
-          </button>
+          <button type="button" class="icon-button logs-collapse-btn" :aria-expanded="showLogs"><span x-text="showLogs ? 'ย่อ' : 'ขยาย'"></span></button>
         </div>
         <div class="logs-body" x-show="showLogs" x-transition>
           <template x-if="recentLogs.length === 0">
@@ -386,7 +365,7 @@
             <template x-for="log in recentLogs" :key="log.id + '-' + log.device">
               <li class="log-item">
                 <div class="log-device">
-                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png?v=28' : '/static/img/avatar-furturia.png?v=28'" :alt="log.name" class="log-avatar">
+                  <img :src="log.device === 'me' ? '/static/img/avatar-chubu.png' : '/static/img/avatar-furturia.png'" :alt="log.name" class="log-avatar">
                   <div>
                     <strong x-text="log.name"></strong>
                     <small x-text="formatTimeDetail(log.recorded_at)"></small>
@@ -410,12 +389,12 @@
       <div class="management-card">
         <div class="management-card-header">
           <div class="management-title">
-            <i class="ri-map-pin-range-line" aria-hidden="true"></i>
+
             <span>สถานที่ทั้งหมด (Geofences)</span>
             <span class="logs-count-badge" x-text="geofences.length + ' แห่ง'"></span>
           </div>
           <button type="button" class="add-geofence-trigger-btn" @click="startMapPicker()">
-            <i class="ri-add-line" aria-hidden="true"></i>
+
             <span>เพิ่มสถานที่</span>
           </button>
         </div>
@@ -424,15 +403,12 @@
             <p class="empty-state-text">ยังไม่มีสถานที่ที่บันทึกไว้ กดปุ่ม "เพิ่มสถานที่" เพื่อเริ่มสร้าง</p>
           </template>
           <p class="geofence-error" x-show="geofenceError" x-text="geofenceError" role="alert" x-cloak></p>
-          
+
           <!-- Compact List of Locations -->
           <ul class="geofence-inline-list">
             <template x-for="zone in orderedGeofences" :key="zone.id">
               <li class="geofence-inline-item">
                 <div class="geofence-item-main" @click="toggleGeofenceDetails(zone.id)">
-                  <div class="geofence-icon-box">
-                    <i class="ri-map-pin-2-fill" aria-hidden="true"></i>
-                  </div>
                   <div class="geofence-info-col">
                     <div class="geofence-title-row">
                       <strong x-text="zone.name"></strong>
@@ -445,18 +421,14 @@
                       <small class="geofence-coordinates" x-text="`พิกัด: ${Number(zone.latitude).toFixed(5)}, ${Number(zone.longitude).toFixed(5)}`"></small>
                     </div>
                   </div>
-                  <button type="button" class="geofence-chevron-btn" :aria-expanded="expandedGeofenceId === zone.id" title="ดูรายละเอียดพิกัด">
-                    <i :class="expandedGeofenceId === zone.id ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" aria-hidden="true"></i>
-                  </button>
+                  <button type="button" class="geofence-chevron-btn" :aria-expanded="expandedGeofenceId === zone.id" title="ดูรายละเอียดพิกัด"><span x-text="expandedGeofenceId === zone.id ? 'ย่อ' : 'ดู'"></span></button>
                 </div>
                 <div class="geofence-actions-col">
                   <button type="button" class="geofence-focus-btn" @click.stop="focusGeofence(zone)" title="ดูตำแหน่งบนแผนที่">
-                    <i class="ri-focus-2-line" aria-hidden="true"></i>
+
                     <span>ดูบนแผนที่</span>
                   </button>
-                  <button type="button" class="delete-zone-btn" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`" title="ลบสถานที่">
-                    <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                  </button>
+                  <button type="button" class="delete-zone-btn" @click.stop="deleteGeofence(zone.id)" :aria-label="`ลบ ${zone.name}`" title="ลบสถานที่">ลบ</button>
                 </div>
               </li>
             </template>
@@ -468,7 +440,7 @@
       <div class="management-card">
         <div class="management-card-header">
           <div class="management-title">
-            <i class="ri-notification-3-line" aria-hidden="true"></i>
+
             <span>การแจ้งเตือน Discord</span>
           </div>
           <span class="settings-status-text" x-text="settingsMessage"></span>
@@ -510,7 +482,7 @@
           <!-- Advanced Security: Relay PIN Management -->
           <div class="advanced-pin-section">
             <div class="advanced-pin-header">
-              <i class="ri-shield-keyhole-line" aria-hidden="true"></i>
+
               <div>
                 <strong>Relay PIN (รหัสความปลอดภัย)</strong>
                 <small>จัดเก็บเฉพาะบนอุปกรณ์นี้เพื่อใช้ยืนยันการตั้งค่าและจัดการสถานที่</small>
@@ -519,9 +491,7 @@
             <div class="advanced-pin-row">
               <div class="pin-input-group">
                 <input :type="showPin ? 'text' : 'password'" x-model="pin" inputmode="numeric" placeholder="เช่น 1804" class="pin-field-input" autocomplete="current-password">
-                <button type="button" class="pin-visibility-btn" @click="showPin = !showPin" :title="showPin ? 'ซ่อน PIN' : 'แสดง PIN'">
-                  <i :class="showPin ? 'ri-eye-off-line' : 'ri-eye-line'" aria-hidden="true"></i>
-                </button>
+                <button type="button" class="pin-visibility-btn" @click="showPin = !showPin" :title="showPin ? 'ซ่อน PIN' : 'แสดง PIN'"><span x-text="showPin ? 'ซ่อน' : 'แสดง'"></span></button>
               </div>
               <button type="button" class="pin-save-btn" @click="savePinExplicit()">
                 <span x-text="pinSavedNotice ? 'บันทึกแล้ว ✓' : 'บันทึก PIN'"></span>
@@ -538,5 +508,23 @@
       <span>ข้อมูลจัดเก็บปลอดภัยใน Pocket Sentinel</span>
     </footer>
   </main>
+  <nav class="task-nav" aria-label="หน้าหลัก">
+    <a class="task-link" href="/?tab=overview">
+      <i class="ri-dashboard-line"></i>
+      <span>ภาพรวม</span>
+    </a>
+    <a class="task-link" href="/schedule">
+      <i class="ri-calendar-line"></i>
+      <span>ตาราง</span>
+    </a>
+    <a class="task-link active" href="/live" aria-current="page">
+      <i class="ri-map-pin-line"></i>
+      <span>แผนที่</span>
+    </a>
+    <a class="task-link" href="/relay">
+      <i class="ri-send-plane-line"></i>
+      <span>Telegram</span>
+    </a>
+  </nav>
 </body>
 </html>

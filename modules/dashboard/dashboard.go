@@ -17,9 +17,6 @@ var teleBridgeHTML []byte
 //go:embed schedule.html
 var scheduleHTML []byte
 
-//go:embed watchtower.html
-var watchtowerHTML []byte
-
 //go:embed live_map.html
 var liveMapHTML []byte
 
@@ -68,8 +65,8 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/relay", m.HandleTeleBridge)
 	r.GET("/schedule", m.HandleSchedule)
 	r.HEAD("/schedule", m.HandleSchedule)
-	r.GET("/watchtower", m.HandleWatchtower)
-	r.HEAD("/watchtower", m.HandleWatchtower)
+	r.GET("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
+	r.HEAD("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
 
 	subFS, err := fs.Sub(staticFS, "static")
 	if err == nil {
@@ -90,11 +87,6 @@ func (m *Module) HandleTeleBridge(c *gin.Context) {
 // HandleSchedule serves the focused personal reminder calendar.
 func (m *Module) HandleSchedule(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", scheduleHTML)
-}
-
-// HandleWatchtower serves the dedicated Personal Watchtower management interface.
-func (m *Module) HandleWatchtower(c *gin.Context) {
-	c.Data(http.StatusOK, "text/html; charset=utf-8", watchtowerHTML)
 }
 
 // HandleLiveMap serves the responsive tracker viewer after token authorization.

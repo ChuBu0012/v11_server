@@ -346,50 +346,6 @@ func TestTelegramBotWiring(t *testing.T) {
 	}
 }
 
-func TestWatchtowerEndpoints_Integration(t *testing.T) {
-	_, router, cleanup := setupTestApp(t)
-	defer cleanup()
-
-	// 1. GET /api/watchtower/summary
-	reqSum := httptest.NewRequest(http.MethodGet, "/api/watchtower/summary", nil)
-	rrSum := httptest.NewRecorder()
-	router.ServeHTTP(rrSum, reqSum)
-
-	if rrSum.Code != http.StatusOK {
-		t.Fatalf("Expected 200 for summary, got %d", rrSum.Code)
-	}
-
-	var sum map[string]interface{}
-	if err := json.Unmarshal(rrSum.Body.Bytes(), &sum); err != nil {
-		t.Fatalf("Failed to parse summary JSON: %v", err)
-	}
-	if sum["status"] != "healthy" {
-		t.Errorf("Expected status 'healthy', got %v", sum["status"])
-	}
-
-	// 2. POST /api/watchtower/watchers without PIN -> 401
-	payload := `{"name":"Todo FM App","url":"https://todo-fm-d.vercel.app/","expected_status":200}`
-	reqNoPin := httptest.NewRequest(http.MethodPost, "/api/watchtower/watchers", strings.NewReader(payload))
-	reqNoPin.Header.Set("Content-Type", "application/json")
-	rrNoPin := httptest.NewRecorder()
-	router.ServeHTTP(rrNoPin, reqNoPin)
-
-	if rrNoPin.Code != http.StatusUnauthorized {
-		t.Fatalf("Expected 401 Unauthorized for missing PIN, got %d", rrNoPin.Code)
-	}
-
-	// 3. POST /api/watchtower/watchers with PIN -> 201
-	reqWithPin := httptest.NewRequest(http.MethodPost, "/api/watchtower/watchers", strings.NewReader(payload))
-	reqWithPin.Header.Set("Content-Type", "application/json")
-	reqWithPin.Header.Set("X-Watchtower-PIN", "1804")
-	rrWithPin := httptest.NewRecorder()
-	router.ServeHTTP(rrWithPin, reqWithPin)
-
-	if rrWithPin.Code != http.StatusCreated {
-		t.Fatalf("Expected 201 Created with valid PIN, got %d (%s)", rrWithPin.Code, rrWithPin.Body.String())
-	}
-}
-
 func TestScheduleNLParse_Integration(t *testing.T) {
 	_, router, cleanup := setupTestApp(t)
 	defer cleanup()
@@ -500,20 +456,4 @@ func TestRelayProofread_Integration(t *testing.T) {
 	if !strings.Contains(proofResp["original"].(string), "เซิร์ฟเวอร์ออนไลน์พร้อมใช้งาน") {
 		t.Errorf("Expected original text preserved, got %v", proofResp["original"])
 	}
-}
-
-func TestWatchtowerScheduler_Lifecycle(t *testing.T) {
-	app, _, cleanup := setupTestApp(t)
-	defer cleanup()
-
-	if app.watchtowerService == nil {
-		t.Fatal("Expected watchtowerService to be initialized in setupApp")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	app.watchtowerService.Start(ctx)
-
-	time.Sleep(20 * time.Millisecond)
-	cancel()
-	app.watchtowerService.Stop()
 }

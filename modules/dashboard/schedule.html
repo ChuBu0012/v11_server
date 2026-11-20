@@ -14,7 +14,7 @@
   <script src="/static/js/components/schedule.js" defer></script>
 </head>
 <body class="schedule-page">
-  <header class="topbar schedule-topbar">
+  <header class="app-header schedule-topbar">
     <div class="brand">
       <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
         <span class="status-dot ok"></span>
@@ -23,38 +23,28 @@
       </a>
     </div>
     <div class="topbar-actions schedule-top-actions">
-      <span class="timezone-chip"><i class="ri-time-line" aria-hidden="true"></i> เวลาไทย</span>
-      <button class="schedule-pin-button" id="pin-open" type="button"><i class="ri-lock-line" aria-hidden="true"></i><span id="pin-state">ตั้งค่า PIN</span></button>
+      <span class="timezone-chip">เวลาไทย</span>
+      <button class="schedule-pin-button" id="pin-open" type="button"><span id="pin-state">ตั้งค่า PIN</span></button>
       <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
         <i id="theme-icon" class="ri-sun-line"></i>
       </button>
     </div>
   </header>
-  <nav class="sentinel-nav" aria-label="เมนูหลัก">
-    <div class="sentinel-nav-inner">
-      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
-      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
-      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
-      <a class="sentinel-nav-link active" href="/schedule" aria-current="page"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-      <a class="sentinel-nav-link" href="/?tab=map"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-      <a class="sentinel-nav-link" href="/?tab=telegram"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
-    </div>
-  </nav>
   <main class="schedule-shell">
     <section class="schedule-title-row">
       <div><p class="eyebrow">A LITTLE MORE ROOM TO BREATHE</p><h1>ตารางของฉัน</h1><p class="schedule-subtitle">เตือนสิ่งสำคัญแบบพอดี ๆ แล้วกลับไปใช้ชีวิตต่อ</p><p id="telegram-status" class="telegram-status" role="status"></p></div>
-      <button class="schedule-primary" id="add-reminder" type="button"><i class="ri-add-line" aria-hidden="true"></i> เพิ่มเตือน</button>
+      <button class="schedule-primary" id="add-reminder" type="button"> เพิ่มเตือน</button>
     </section>
 
     <!-- Natural Language Schedule Creator & AI Preview -->
     <section class="schedule-nl-section" aria-label="สร้างการเตือนด้วยภาษาธรรมชาติ">
       <div class="nl-input-bar">
         <div class="nl-input-wrap">
-          <i class="ri-sparkling-fill nl-sparkle-icon" aria-hidden="true"></i>
+
           <input type="text" id="nl-prompt-input" placeholder="พิมพ์ภาษาธรรมชาติ เช่น 'ประชุมทีม วันจันทร์ 10:00 เตือนก่อน 15 นาที'" maxlength="500">
         </div>
         <button type="button" id="nl-parse-btn" class="schedule-primary nl-parse-btn">
-          <i class="ri-magic-line"></i> <span>แปลผลด้วย AI</span>
+           <span>แปลผลด้วย AI</span>
         </button>
       </div>
 
@@ -62,15 +52,15 @@
       <div id="nl-preview-card" class="nl-preview-card" hidden>
         <div class="nl-preview-head">
           <div class="nl-preview-title-wrap">
-            <span class="nl-badge"><i class="ri-robot-2-line"></i> AI PREVIEW</span>
+            <span class="nl-badge"> AI PREVIEW</span>
             <h3>ตรวจสอบความถูกต้องก่อนบันทึก</h3>
           </div>
-          <button type="button" id="nl-cancel-btn" class="icon-button" aria-label="ปิดการ์ดพรีวิว"><i class="ri-close-line"></i></button>
+          <button type="button" id="nl-cancel-btn" class="icon-button" aria-label="ปิดการ์ดพรีวิว">ปิด</button>
         </div>
 
         <!-- Ambiguity Warning Alert (if ambiguous/vague date/time) -->
         <div id="nl-ambiguity-alert" class="nl-ambiguity-alert" hidden role="alert">
-          <i class="ri-alert-fill" style="font-size: 18px; flex-shrink: 0;"></i>
+
           <div class="nl-ambiguity-content">
             <strong id="nl-ambiguity-msg">ระบุเวลาไม่ชัดเจน กรุณาระบุหรือเลือกเวลาที่แน่นอน</strong>
             <p>โปรดตรวจสอบและแก้ไขข้อมูลในฟิลด์ด้านล่างก่อนยืนยันบันทึก</p>
@@ -119,12 +109,12 @@
 
         <div class="nl-preview-actions">
           <button type="button" id="nl-open-modal-btn" class="schedule-secondary">
-            <i class="ri-edit-line"></i> แก้ไขในแบบฟอร์มปกติ
+             แก้ไขในแบบฟอร์มปกติ
           </button>
           <div class="nl-actions-right">
             <button type="button" id="nl-discard-btn" class="schedule-secondary">ยกเลิก</button>
             <button type="button" id="nl-confirm-save-btn" class="schedule-primary">
-              <i class="ri-check-line"></i> ยืนยันและบันทึก
+               ยืนยันและบันทึก
             </button>
           </div>
         </div>
@@ -134,25 +124,25 @@
     <section class="schedule-next" aria-labelledby="schedule-next-title">
       <div class="next-date-mark"><span id="next-weekday">—</span><strong id="next-day">—</strong></div>
       <div class="schedule-next-copy"><p class="eyebrow">UP NEXT</p><h2 id="schedule-next-title">กำลังโหลดตาราง…</h2><p id="schedule-next-description">รายการถัดไปจะอยู่ตรงนี้</p></div>
-      <span class="next-navigate" aria-hidden="true"><i class="ri-calendar-check-line"></i></span>
+      <span class="next-navigate" aria-hidden="true"></span>
     </section>
 
     <section class="calendar-panel" aria-label="ปฏิทินส่วนตัว">
-      <div class="calendar-toolbar"><div class="calendar-month-control"><button id="previous-month" class="icon-button" type="button" aria-label="เดือนก่อน"><i class="ri-arrow-left-s-line" aria-hidden="true"></i></button><h2 id="month-label">—</h2><button id="next-month" class="icon-button" type="button" aria-label="เดือนถัดไป"><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button><button id="jump-today" class="schedule-secondary calendar-today" type="button">วันนี้</button></div><div class="calendar-view-control"><button class="view-switch selected" id="month-view-button" type="button" aria-pressed="true">เดือน</button><button class="view-switch" id="agenda-view-button" type="button" aria-pressed="false">รายการ</button></div></div>
+      <div class="calendar-toolbar"><div class="calendar-month-control"><button id="previous-month" class="icon-button" type="button" aria-label="เดือนก่อน">ก่อน</button><h2 id="month-label">—</h2><button id="next-month" class="icon-button" type="button" aria-label="เดือนถัดไป">ถัดไป</button><button id="jump-today" class="schedule-secondary calendar-today" type="button">วันนี้</button></div><div class="calendar-view-control"><button class="view-switch selected" id="month-view-button" type="button" aria-pressed="true">เดือน</button><button class="view-switch" id="agenda-view-button" type="button" aria-pressed="false">รายการ</button></div></div>
       <div class="weekday-row" aria-hidden="true"><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span><span>อา.</span></div>
       <div class="month-grid" id="month-grid" role="grid" aria-label="วันในเดือน"></div>
       <div class="agenda-list" id="agenda-list" hidden></div>
       <div class="calendar-legend"><span class="legend-dot"></span> มีรายการเตือน <span class="schedule-caption">แจ้งเตือนผ่าน Telegram แบบเงียบ</span></div>
     </section>
     <section class="schedule-paused" id="schedule-paused" hidden aria-labelledby="paused-title"><div class="paused-heading"><h2 id="paused-title">พักการเตือนไว้</h2><span>รายการเหล่านี้ยังไม่ส่งแจ้งเตือน</span></div><div id="paused-list"></div></section>
-    <section class="delivery-issues" id="delivery-issues" hidden aria-live="polite"><h2><i class="ri-error-warning-line" aria-hidden="true"></i> รายการที่ส่งแจ้งเตือนไม่สำเร็จ</h2><div id="delivery-issue-list"></div></section>
+    <section class="delivery-issues" id="delivery-issues" hidden aria-live="polite"><h2> รายการที่ส่งแจ้งเตือนไม่สำเร็จ</h2><div id="delivery-issue-list"></div></section>
     <details class="schedule-history" id="schedule-history"><summary>รายการที่ทำเสร็จแล้ว <span>ย้อนหลัง 30 วัน</span></summary><div id="schedule-history-list"></div></details>
-    <footer class="schedule-footer"><a href="/" class="back-dashboard"><i class="ri-arrow-left-line" aria-hidden="true"></i> กลับหน้า Dashboard</a><span>Quiet Schedule · Asia/Bangkok</span></footer>
+    <footer class="schedule-footer"><a href="/" class="back-dashboard"> กลับหน้า Dashboard</a><span>Quiet Schedule · Asia/Bangkok</span></footer>
   </main>
 
   <dialog class="reminder-dialog" id="reminder-dialog">
     <form id="reminder-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">MAKE SPACE FOR IT</p><h2 id="dialog-title">เพิ่มการเตือน</h2></div><button class="icon-button" id="dialog-close" type="button" aria-label="ปิด"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dialog-heading"><div><p class="eyebrow">MAKE SPACE FOR IT</p><h2 id="dialog-title">เพิ่มการเตือน</h2></div><button class="icon-button" id="dialog-close" type="button" aria-label="ปิด">ปิด</button></div>
       <label class="form-field"><span>อยากเตือนเรื่องอะไร</span><input id="reminder-title" name="title" maxlength="120" placeholder="เช่น โทรหาคุณแม่" required autocomplete="off"></label>
       <label class="form-field"><span>วันและเวลา <small>เวลาไทย (UTC+7)</small></span><input id="reminder-start" name="starts_at" type="datetime-local" required></label>
       <fieldset class="form-field offset-field"><legend>เตือนล่วงหน้า</legend><div class="offset-options"><label><input type="checkbox" name="offsets" value="0" checked><span>ตรงเวลา</span></label><label><input type="checkbox" name="offsets" value="5"><span>5 นาที</span></label><label><input type="checkbox" name="offsets" value="10"><span>10 นาที</span></label><label><input type="checkbox" name="offsets" value="30"><span>30 นาที</span></label></div></fieldset>
@@ -164,8 +154,26 @@
   </dialog>
 
   <dialog class="reminder-dialog pin-dialog" id="pin-dialog">
-    <form id="pin-form" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">PRIVATE BY DESIGN</p><h2>PIN สำหรับจัดการตาราง</h2></div><button class="icon-button" id="pin-close" type="button" aria-label="ปิด"><i class="ri-close-line" aria-hidden="true"></i></button></div><p class="pin-explanation">ตั้งค่า REMINDER_PIN ในไฟล์ .env ก่อน จากนั้นกรอก PIN เพื่อเพิ่ม แก้ไข หรือลบรายการ ตารางยังเปิดอ่านได้โดยไม่ต้องใช้ PIN</p><label class="form-field"><span>PIN</span><input id="reminder-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="กรอก PIN ที่ตั้งไว้ในเซิร์ฟเวอร์"></label><p class="form-error" id="pin-error" role="alert"></p><div class="dialog-actions"><button class="schedule-secondary" id="forget-pin" type="button">ลืม PIN นี้</button><button class="schedule-primary" type="submit">ใช้ PIN</button></div></form>
+    <form id="pin-form" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">PRIVATE BY DESIGN</p><h2>PIN สำหรับจัดการตาราง</h2></div><button class="icon-button" id="pin-close" type="button" aria-label="ปิด">ปิด</button></div><p class="pin-explanation">ตั้งค่า REMINDER_PIN ในไฟล์ .env ก่อน จากนั้นกรอก PIN เพื่อเพิ่ม แก้ไข หรือลบรายการ ตารางยังเปิดอ่านได้โดยไม่ต้องใช้ PIN</p><label class="form-field"><span>PIN</span><input id="reminder-pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="กรอก PIN ที่ตั้งไว้ในเซิร์ฟเวอร์"></label><p class="form-error" id="pin-error" role="alert"></p><div class="dialog-actions"><button class="schedule-secondary" id="forget-pin" type="button">ลืม PIN นี้</button><button class="schedule-primary" type="submit">ใช้ PIN</button></div></form>
   </dialog>
   <div class="schedule-toast" id="schedule-toast" role="status" aria-live="polite"></div>
+  <nav class="task-nav" aria-label="หน้าหลัก">
+    <a class="task-link" href="/?tab=overview">
+      <i class="ri-dashboard-line"></i>
+      <span>ภาพรวม</span>
+    </a>
+    <a class="task-link active" href="/schedule" aria-current="page">
+      <i class="ri-calendar-line"></i>
+      <span>ตาราง</span>
+    </a>
+    <a class="task-link" href="/live">
+      <i class="ri-map-pin-line"></i>
+      <span>แผนที่</span>
+    </a>
+    <a class="task-link" href="/relay">
+      <i class="ri-send-plane-line"></i>
+      <span>Telegram</span>
+    </a>
+  </nav>
 </body>
 </html>

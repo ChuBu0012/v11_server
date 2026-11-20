@@ -16,7 +16,7 @@
   </script>
 
   <!-- Remix Icon -->
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.min.css">
 
   <!-- Base Stylesheet -->
   <link rel="stylesheet" href="/static/css/styles.css">
@@ -28,7 +28,7 @@
 <body class="tele-bridge-page" x-data="relayComponent()">
 
   <!-- Top Navigation Bar -->
-  <header class="topbar">
+  <header class="app-header">
     <div class="brand">
       <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
         <span class="status-dot ok"></span>
@@ -38,28 +38,20 @@
     </div>
     <div class="topbar-actions">
       <button class="drawer-pin-pill" type="button" @click="showPinModal = true" :title="pin ? 'PIN ตั้งค่าแล้ว (คลิกเพื่อเปลี่ยน)' : 'คลิกเพื่อตั้งค่า PIN'">
-        <i class="ri-lock-fill" :class="isUnlocked ? 'text-green' : 'text-amber'"></i>
+        <i class="ri-shield-keyhole-line"></i>
         <span x-text="isUnlocked ? 'PIN พร้อมใช้งาน' : 'ต้องการ PIN'"></span>
+      </button>
+      <button class="theme-toggle" id="theme-toggle" type="button" @click="toggleTheme()" :aria-label="theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'" :title="theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'">
+        <i :class="theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'"></i>
       </button>
     </div>
   </header>
-
-  <nav class="sentinel-nav" aria-label="เมนูหลัก">
-    <div class="sentinel-nav-inner">
-      <a class="sentinel-nav-link" href="/?tab=overview"><i class="ri-dashboard-line" aria-hidden="true"></i><span>ภาพรวม</span></a>
-      <a class="sentinel-nav-link" href="/?tab=monitor"><i class="ri-pulse-line" aria-hidden="true"></i><span>Monitor</span></a>
-      <a class="sentinel-nav-link" href="/watchtower"><i class="ri-radar-line" aria-hidden="true"></i><span>Watchtower</span></a>
-      <a class="sentinel-nav-link" href="/schedule"><i class="ri-calendar-2-line" aria-hidden="true"></i><span>ปฏิทิน</span></a>
-      <a class="sentinel-nav-link" href="/?tab=map"><i class="ri-map-pin-2-line" aria-hidden="true"></i><span>แผนที่</span></a>
-      <a class="sentinel-nav-link active" href="/?tab=telegram" aria-current="page"><i class="ri-send-plane-line" aria-hidden="true"></i><span>Telegram</span></a>
-    </div>
-  </nav>
 
   <!-- Main Card Container -->
   <main class="tele-card">
     <div class="tele-title-wrap">
       <div class="tele-icon-huge">
-        <i class="ri-send-plane-2-fill"></i>
+
       </div>
       <div>
         <h1 class="tele-heading">Telegram Bridge</h1>
@@ -70,7 +62,7 @@
     <!-- PIN Setup Box (Conditional Modal / Inlined) -->
     <div class="pin-setup-box" x-show="showPinModal" x-transition x-cloak>
       <div class="pin-setup-row">
-        <label for="relay-pin-input"><i class="ri-key-2-line"></i> รหัส PIN สำหรับ Relay:</label>
+        <label for="relay-pin-input"> รหัส PIN สำหรับ Relay:</label>
         <div class="pin-input-group">
           <input type="password" id="relay-pin-input" x-model="tempPin" placeholder="เช่น 1804" maxlength="12" @keydown.enter="savePin()">
           <button type="button" class="pin-save-btn" @click="savePin()">บันทึก</button>
@@ -83,12 +75,12 @@
     <!-- Segmented Tab Controls with High-Contrast Active State -->
     <div class="relay-tabs" role="tablist">
       <button class="relay-tab-btn" :class="{ active: activeTab === 'text' }" @click="activeTab = 'text'" type="button">
-        <i class="ri-chat-3-line"></i>
+
         <span>ข้อความ (Text)</span>
         <span class="tab-indicator" x-show="activeTab === 'text'"></span>
       </button>
       <button class="relay-tab-btn" :class="{ active: activeTab === 'file' }" @click="activeTab = 'file'" type="button">
-        <i class="ri-attachment-2"></i>
+
         <span>ไฟล์ / รูปภาพ</span>
         <span class="tab-indicator" x-show="activeTab === 'file'"></span>
       </button>
@@ -112,11 +104,11 @@
             <span class="char-count" x-text="(messageText.length) + '/4000'"></span>
             <!-- Opt-in AI Proofread Button -->
             <button type="button" class="proofread-btn" @click="proofreadText()" :disabled="isProofreading || !messageText.trim()" title="ตรวจทานภาษาและตัวสะกดด้วย AI (OpenRouter free)">
-              <i :class="isProofreading ? 'ri-loader-4-line spin' : 'ri-sparkling-fill'"></i>
+
               <span x-text="isProofreading ? 'กำลังตรวจทาน…' : 'AI Proofread (ตรวจทานภาษา)'"></span>
             </button>
             <button class="composer-send-btn" type="button" :disabled="isSending || !messageText.trim()" @click="submit()" aria-label="ส่งข้อความ">
-              <i class="ri-send-plane-fill"></i><span>ส่ง</span>
+              <span>ส่ง</span>
             </button>
           </div>
         </div>
@@ -125,10 +117,8 @@
       <!-- Diff Comparison View (Shown when proofreading complete) -->
       <div class="proofread-diff-card" x-show="showProofreadDiff" x-transition x-cloak>
         <div class="proofread-diff-header">
-          <span class="proofread-badge"><i class="ri-sparkling-fill"></i> AI PROOFREAD PREVIEW</span>
-          <button type="button" class="btn-action" @click="cancelProofread()" style="border: none; padding: 2px 6px;">
-            <i class="ri-close-line"></i>
-          </button>
+          <span class="proofread-badge"> AI PROOFREAD PREVIEW</span>
+          <button type="button" class="btn-action" @click="cancelProofread()" style="border: none; padding: 2px 6px;">ปิด</button>
         </div>
 
         <div class="diff-blocks-grid">
@@ -155,13 +145,13 @@
         <!-- Explicit Send Controls: Zero automatic sending -->
         <div class="proofread-controls">
           <button type="button" class="btn-action" @click="editProofread()">
-            <i class="ri-edit-line"></i> แก้ไขต่อ (Edit)
+             แก้ไขต่อ (Edit)
           </button>
           <button type="button" class="btn-action" @click="sendOriginal()" :disabled="isSending">
-            <i class="ri-send-plane-line"></i> ส่งข้อความเดิม (Send Original)
+             ส่งข้อความเดิม (Send Original)
           </button>
           <button type="button" class="app-action-btn primary" @click="sendRevised()" :disabled="isSending">
-            <i class="ri-sparkling-fill"></i> ส่งข้อความที่แนะนำ (Send Revised)
+             ส่งข้อความที่แนะนำ (Send Revised)
           </button>
         </div>
       </div>
@@ -170,19 +160,19 @@
     <!-- Tab 2: File & Photo Upload -->
     <div class="relay-tab-content" x-show="activeTab === 'file'">
       <!-- Drop Zone -->
-      <div class="drop-zone" 
-           :class="{ 'dragging': isDragging, 'has-file': hasFile }" 
-           @dragover="handleDragOver($event)" 
-           @dragleave="handleDragLeave($event)" 
+      <div class="drop-zone"
+           :class="{ 'dragging': isDragging, 'has-file': hasFile }"
+           @dragover="handleDragOver($event)"
+           @dragleave="handleDragLeave($event)"
            @drop="handleDrop($event)"
            @click="if(!hasFile) document.getElementById('relay-file-input').click()">
-        
+
         <template x-if="!hasFile">
           <div class="drop-prompt">
-            <div class="cloud-icon-bounce"><i class="ri-upload-cloud-2-line"></i></div>
+            <div class="cloud-icon-bounce"></div>
             <p class="drop-main-text">ลากไฟล์มาวางที่นี่ หรือ <span>เลือกไฟล์</span></p>
             <p class="drop-sub-text">รองรับรูปภาพ (พรีวิวในแชท), เอกสาร, PDF, Code ขนาดไม่เกิน 20 MB</p>
-            <div class="paste-badge"><i class="ri-clipboard-line"></i> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
+            <div class="paste-badge"> กด ⌘+V เพื่อวางรูปจากคลิปบอร์ดได้ทันที</div>
           </div>
         </template>
 
@@ -193,15 +183,13 @@
               <img :src="filePreviewUrl" class="file-thumb" alt="Preview">
             </template>
             <template x-if="!filePreviewUrl">
-              <div class="file-icon-placeholder"><i class="ri-file-text-line"></i></div>
+              <div class="file-icon-placeholder"></div>
             </template>
             <div class="file-chip-info">
               <div class="file-chip-name" x-text="fileName"></div>
               <div class="file-chip-meta" x-text="fileSizeFormatted + ' · ' + (isImageFile ? 'รูปภาพ' : 'เอกสาร')"></div>
             </div>
-            <button type="button" class="file-chip-remove" @click="removeFile()" title="ลบไฟล์">
-              <i class="ri-close-line"></i>
-            </button>
+            <button type="button" class="file-chip-remove" @click="removeFile()" title="ลบไฟล์">ลบ</button>
           </div>
         </template>
 
@@ -229,19 +217,15 @@
 
     <!-- Status Banner -->
     <div class="relay-status-banner" :class="statusType" x-show="statusText && statusType !== 'info'" x-transition x-cloak>
-      <i :class="{
-        'ri-checkbox-circle-fill': statusType === 'success',
-        'ri-error-warning-fill': statusType === 'error',
-        'ri-loader-4-line spin': statusType === 'info'
-      }"></i>
+
       <span x-text="statusText"></span>
     </div>
 
     <!-- Action Buttons -->
     <div class="relay-footer" x-show="activeTab === 'file'">
       <button class="relay-submit-btn" type="button" x-show="activeTab === 'file'" :disabled="isSending" @click="submit()">
-        <span x-show="!isSending"><i class="ri-send-plane-fill"></i> ส่งเข้า Telegram</span>
-        <span x-show="isSending"><i class="ri-loader-4-line spin"></i> กำลังส่ง…</span>
+        <span x-show="!isSending"> ส่งเข้า Telegram</span>
+        <span x-show="isSending"> กำลังส่ง…</span>
       </button>
     </div>
   </main>
@@ -251,5 +235,23 @@
     <p>Pocket Sentinel Telegram Bridge &bull; vivo 1804 (v11) &bull; เพดานขนาดไฟล์สูงสุด 20 MB &bull; รองรับ Auto-fallback ภาพความละเอียดสูง</p>
   </footer>
 
+  <nav class="task-nav" aria-label="หน้าหลัก">
+    <a class="task-link" href="/?tab=overview">
+      <i class="ri-dashboard-line"></i>
+      <span>ภาพรวม</span>
+    </a>
+    <a class="task-link" href="/schedule">
+      <i class="ri-calendar-line"></i>
+      <span>ตาราง</span>
+    </a>
+    <a class="task-link" href="/live">
+      <i class="ri-map-pin-line"></i>
+      <span>แผนที่</span>
+    </a>
+    <a class="task-link active" href="/relay" aria-current="page">
+      <i class="ri-send-plane-line"></i>
+      <span>Telegram</span>
+    </a>
+  </nav>
 </body>
 </html>

@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 	_ "time/tzdata"
@@ -30,7 +29,6 @@ import (
 	"v11-server/modules/reminders"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
-	"v11-server/modules/watchtower"
 	"v11-server/shared/ai"
 	"v11-server/shared/config"
 	"v11-server/shared/db"
@@ -38,11 +36,6 @@ import (
 )
 
 var startTime = time.Now()
-
-var monitorInsightRate = struct {
-	sync.Mutex
-	last time.Time
-}{}
 
 func init() {
 	setupAndroidDNS()
@@ -100,8 +93,6 @@ type App struct {
 	relay             *relay.Module
 	reminders         *reminders.Module
 	reminderService   *reminders.Service
-	watchtower        *watchtower.Module
-	watchtowerService *watchtower.Service
 	locationModule    *location.Module
 	locationService   *location.Service
 	locationStore     *location.Store
@@ -247,36 +238,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	// OpenRouter AI client initialization
 	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
 
-	// Watchtower module initialization
-	watchtowerStore, err := watchtower.NewStore(dbConn)
-	if err != nil {
-		log.Printf("Warning: failed to initialize watchtower store: %v", err)
-	}
-	var watchtowerSvc *watchtower.Service
-	var watchtowerMod *watchtower.Module
-	if watchtowerStore != nil {
-		watchtowerSvc = watchtower.NewService(watchtowerStore, notifier, cfg.WatchtowerPIN, log.Default())
-		if aiClient != nil {
-			watchtowerSvc.SetIncidentSummarizer(func(ctx context.Context, w *watchtower.Watcher, res watchtower.CheckResult) string {
-				metadata := ai.IncidentMetadata{
-					Timestamp:      res.CheckedAt,
-					WatcherName:    w.Name,
-					URL:            w.URL,
-					ExpectedStatus: w.ExpectedStatus,
-					ActualStatus:   res.StatusCode,
-					LatencyMs:      res.LatencyMs,
-					ErrorSummary:   res.Error,
-				}
-				sum, err := ai.SummarizeIncident(ctx, aiClient, metadata)
-				if err != nil || sum == nil {
-					return ""
-				}
-				return sum.RawSummary
-			})
-		}
-		watchtowerMod = watchtower.NewModule(watchtowerSvc)
-	}
-
 	locationCredentials := location.Credentials{
 		SecretToken: cfg.LocationSecretToken, ViewerToken: cfg.LocationViewerToken,
 		SecretExplicit: cfg.LocationSecretTokenExplicit, ViewerExplicit: cfg.LocationViewerTokenExplicit,
@@ -329,8 +290,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		relay:             relay.New(botClient, cfg.TelegramChatID, cfg.RelayPIN),
 		reminders:         reminderMod,
 		reminderService:   reminderService,
-		watchtower:        watchtowerMod,
-		watchtowerService: watchtowerSvc,
 		locationModule:    locationModule,
 		locationService:   locationService,
 		locationStore:     locationStore,
@@ -362,9 +321,6 @@ func setupRouter(app *App) *gin.Engine {
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
 	}
-	if app.watchtower != nil {
-		app.watchtower.RegisterRoutes(r)
-	}
 	if app.locationModule != nil {
 		app.locationModule.RegisterRoutes(r)
 		r.Match([]string{"GET", "HEAD"}, "/api/location/viewer-token", func(c *gin.Context) {
@@ -393,30 +349,6 @@ func setupRouter(app *App) *gin.Engine {
 			c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
 		})
 	}
-	r.POST("/api/monitor/insight", requirePINAuth(app.cfg.RelayPIN, "X-Relay-PIN"), func(c *gin.Context) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
-		var evidence ai.MonitorEvidence
-		if err := c.ShouldBindJSON(&evidence); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูล Monitor ไม่ถูกต้อง หรือมีขนาดใหญ่เกินไป"})
-			return
-		}
-		if err := validateMonitorEvidence(evidence); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		monitorInsightRate.Lock()
-		if time.Since(monitorInsightRate.last) < 20*time.Second {
-			monitorInsightRate.Unlock()
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": "รอสักครู่ก่อนขอ AI insight อีกครั้ง"})
-			return
-		}
-		monitorInsightRate.last = time.Now()
-		monitorInsightRate.Unlock()
-
-		c.JSON(http.StatusOK, ai.SummarizeMonitorInsight(c.Request.Context(), app.aiClient, evidence))
-	})
-
 	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
 	r.POST("/api/schedule/parse", requirePINAuth(app.cfg.ReminderPIN, "X-Reminder-PIN"), func(c *gin.Context) {
 		var req struct {
@@ -460,38 +392,6 @@ func setupRouter(app *App) *gin.Engine {
 	})
 
 	return r
-}
-
-func validateMonitorEvidence(e ai.MonitorEvidence) error {
-	switch e.Status {
-	case "รอข้อมูล telemetry", "ต้องตรวจสอบการเก็บข้อมูล", "พบเงื่อนไขที่ต้องติดตาม", "ระบบทำงานปกติ":
-	default:
-		return fmt.Errorf("สถานะ Monitor ไม่ถูกต้อง")
-	}
-	if e.HostRAMUsedMB < 0 || e.HostRAMUsedMB > 1024*1024 || e.HostRAMTotalMB < 0 || e.HostRAMTotalMB > 1024*1024 ||
-		e.GoRAMMB < 0 || e.GoRAMMB > 1024*1024 || e.DiskFreeGB < 0 || e.DiskFreeGB > 1024*1024 ||
-		e.DiskTotalGB < 0 || e.DiskTotalGB > 1024*1024 || (e.BatteryAvailable && (e.BatteryPct < 0 || e.BatteryPct > 100)) || e.UptimeSeconds < 0 {
-		return fmt.Errorf("ค่าตัวเลข Monitor อยู่นอกช่วงที่รองรับ")
-	}
-	if len(e.Conditions) > 10 || len(e.Trend) > 24 || e.Watchtower.Total < 0 || e.Watchtower.Total > 1000 ||
-		e.Watchtower.Up < 0 || e.Watchtower.Down < 0 || e.Watchtower.Paused < 0 ||
-		e.Watchtower.Up+e.Watchtower.Down+e.Watchtower.Paused > e.Watchtower.Total {
-		return fmt.Errorf("จำนวนรายการ Monitor อยู่นอกช่วงที่รองรับ")
-	}
-	for _, condition := range e.Conditions {
-		switch condition {
-		case "low_battery", "low_disk", "service_failure":
-		default:
-			return fmt.Errorf("รหัสเงื่อนไข Monitor ไม่ถูกต้อง")
-		}
-	}
-	for _, point := range e.Trend {
-		if point.GoRAMMB < 0 || point.GoRAMMB > 1024*1024 ||
-			point.DiskFreeGB < 0 || point.DiskFreeGB > 1024*1024 || (point.BatteryAvailable && (point.BatteryPct < 0 || point.BatteryPct > 100)) {
-			return fmt.Errorf("จุดข้อมูลแนวโน้มไม่ถูกต้อง")
-		}
-	}
-	return nil
 }
 
 func redactedRequestPath(path string) string {
@@ -579,14 +479,6 @@ func main() {
 	if app.reminderService != nil {
 		app.reminderService.Start(workerCtx)
 	}
-	if app.watchtowerService != nil {
-		app.watchtowerService.Start(workerCtx)
-		if app.watchtowerService.Store() != nil {
-			if purged, err := app.watchtowerService.Store().PurgeOldChecks(context.Background(), watchtower.RetentionDays); err == nil && purged > 0 {
-				log.Printf("[retention:watchtower] purged %d checks older than %d days on startup", purged, watchtower.RetentionDays)
-			}
-		}
-	}
 	startWeeklyEventLogPurge(workerCtx, app.logs)
 
 	if app.botPoller != nil {
@@ -658,9 +550,6 @@ func main() {
 
 	// 1. Cancel background worker
 	cancelWorker()
-	if app.watchtowerService != nil {
-		app.watchtowerService.Stop()
-	}
 
 	// 2. Gracefully stop HTTP server
 	shutdownCtx, cancelHTTP := context.WithTimeout(context.Background(), 5*time.Second)

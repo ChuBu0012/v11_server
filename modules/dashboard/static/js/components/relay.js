@@ -13,18 +13,25 @@ document.addEventListener('alpine:init', () => {
     isStandalonePage: window.location.pathname.includes('tele-br') || window.location.pathname === '/relay',
     isEmbeddedTab: window.location.pathname === '/' || window.location.pathname === '',
     activeTab: 'text', // 'text' | 'file'
+    theme: localStorage.getItem('sentinel-theme') || 'dark',
     pin: localStorage.getItem('sentinel-relay-pin') || '',
     isUnlocked: Boolean(localStorage.getItem('sentinel-relay-pin')),
     tempPin: '',
     showPinModal: false,
 
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.theme);
+      try { localStorage.setItem('sentinel-theme', this.theme); } catch (_) {}
+    },
+
     // Form fields (Primitive state only — NO File instances in proxy)
     messageText: '',
     messageTemplates: [
-      { label: '📝 บันทึก', text: '📝 บันทึก\nหัวข้อ: [พิมพ์หัวข้อ]\nรายละเอียด: [พิมพ์รายละเอียด]' },
-      { label: '🚨 แจ้งปัญหา', text: '🚨 รายงานปัญหา\nอาการ: [อธิบายอาการ]\nเริ่มพบเมื่อ: [เวลา]\nสิ่งที่ลองแล้ว: [รายการ]' },
-      { label: '✅ ความคืบหน้า', text: '✅ รายงานความคืบหน้า\nทำแล้ว: [รายการ]\nกำลังทำ: [รายการ]\nติดขัด: [ถ้ามี]\nขั้นถัดไป: [รายการ]' },
-      { label: '📋 ขอให้ตรวจสอบ', text: '📋 ขอให้ช่วยตรวจสอบ\nรายการ: [RAM / disk / PM2]\nช่วงเวลา: [เช่น 24 ชั่วโมง]' },
+      { label: 'บันทึก', text: 'บันทึก\nหัวข้อ: [พิมพ์หัวข้อ]\nรายละเอียด: [พิมพ์รายละเอียด]' },
+      { label: 'แจ้งปัญหา', text: 'รายงานปัญหา\nอาการ: [อธิบายอาการ]\nเริ่มพบเมื่อ: [เวลา]\nสิ่งที่ลองแล้ว: [รายการ]' },
+      { label: 'ความคืบหน้า', text: 'รายงานความคืบหน้า\nทำแล้ว: [รายการ]\nกำลังทำ: [รายการ]\nติดขัด: [ถ้ามี]\nขั้นถัดไป: [รายการ]' },
+      { label: 'ขอให้ตรวจสอบ', text: 'ขอให้ช่วยตรวจสอบ\nรายการ: [RAM / disk / PM2]\nช่วงเวลา: [เช่น 24 ชั่วโมง]' },
     ],
     captionText: '',
     hasFile: false,

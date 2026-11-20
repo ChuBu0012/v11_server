@@ -161,6 +161,68 @@
   .view-switch { padding:0 9px; }
   .reminder-dialog form { padding:18px; }
 }
+
+/* RawBlock schedule: agenda first, calendar as a compact browse tool. */
+.schedule-shell { width:min(100%,980px); padding:24px 16px 34px; }
+.schedule-title-row { align-items:flex-start; padding:0 0 20px; margin-bottom:18px; border:0; border-bottom:5px solid var(--ink); background:transparent; }
+.schedule-title-row h1 { font-size:clamp(36px,10vw,64px); }
+.schedule-subtitle { color:var(--muted); }
+.schedule-primary,.schedule-secondary { min-height:48px; border:3px solid var(--ink); padding-inline:14px; font:700 11px "Space Mono",monospace; text-transform:uppercase; }
+.schedule-primary { background:var(--ink); color:var(--canvas); }
+.schedule-secondary { background:transparent; color:var(--ink); }
+.schedule-next { align-items:flex-start; gap:14px; margin:0 0 16px; padding:14px 0; border:0; border-block:3px solid var(--ink); background:transparent; }
+.next-date-mark { width:60px; min-height:64px; border:3px solid var(--ink); background:var(--ink); color:var(--canvas); }
+.next-date-mark strong { font:32px/1 "Archivo Black",Impact,sans-serif; }
+.schedule-next-copy h2 { font-size:20px; }
+.calendar-panel { padding:14px 0; border:0; border-top:3px solid var(--ink); background:transparent; }
+.calendar-toolbar { align-items:flex-start; flex-wrap:wrap; gap:10px; }
+.calendar-month-control { flex-wrap:wrap; gap:6px; }
+.calendar-month-control h2 { min-width:112px; margin:0; font:700 14px "Space Mono",monospace; }
+.icon-button { width:44px; min-height:44px; border:2px solid var(--ink); background:transparent; color:var(--ink); }
+.calendar-view-control { padding:0; border:2px solid var(--ink); background:transparent; }
+.view-switch { min-height:40px; border:0; background:transparent; color:var(--ink); font:11px "Space Mono",monospace; }
+.view-switch.selected { background:var(--ink); color:var(--canvas); }
+.calendar-cell { min-height:72px; padding:5px; border:1px solid var(--hairline); background:var(--canvas); color:var(--ink); }
+.calendar-cell.today { border:3px solid var(--ink); background:var(--pearl); }
+.calendar-cell.selected { border:3px solid var(--blue); background:var(--pearl); }
+.cell-day { font:12px "Space Mono",monospace; }
+.calendar-cell.today .cell-day { background:var(--ink); color:var(--canvas); }
+.cell-event { background:#008000; color:#fff; }
+.agenda-day { padding:12px 0; border:0; border-top:3px solid var(--ink); background:transparent; }
+.agenda-day-heading { font:700 12px "Space Mono",monospace; }
+.agenda-item { align-items:center; gap:8px; }
+.agenda-time { color:var(--ink); font:12px "Space Mono",monospace; }
+.agenda-copy strong { font-size:15px; }
+.agenda-actions { flex-wrap:wrap; justify-content:flex-end; }
+.agenda-actions button,.paused-actions button { min-height:44px; border:2px solid var(--ink); border-radius:0; background:transparent; color:var(--ink); font:10px "Space Mono",monospace; }
+.delivery-issues,.schedule-paused { padding:14px 0; border:0; border-top:3px solid var(--ink); background:transparent; }
+.schedule-history { border-top:3px solid var(--ink); }
+.history-entry { border:0; border-top:2px solid var(--ink); background:transparent; }
+.reminder-dialog { border:3px solid var(--ink); background:var(--canvas); color:var(--ink); }
+.reminder-dialog form { padding:18px; }
+.form-field input,.form-field select,.form-field textarea,.nl-input-wrap input,.nl-input-editable { min-height:48px; border:3px solid var(--ink); background:var(--pearl); color:var(--ink); font:14px "Space Mono",monospace; }
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus,.nl-input-editable:focus { border-color:var(--blue); box-shadow:none; }
+.offset-options span { min-height:44px; border:2px solid var(--ink); background:transparent; color:var(--ink); }
+.offset-options input:checked + span { background:var(--ink); color:var(--canvas); border-color:var(--ink); }
+.nl-preview-card { padding:14px 0; border:0; border-block:3px solid var(--ink); background:transparent; animation:raw-appear .24s ease both; }
+.nl-badge { border:2px solid var(--ink); background:var(--ink); color:var(--canvas); }
+.nl-ambiguity-alert { border:3px solid #ffa500; background:transparent; color:var(--ink); }
+.schedule-toast { border:3px solid var(--ink); background:var(--ink); color:var(--canvas); }
+.schedule-page footer { padding-bottom:calc(18px + env(safe-area-inset-bottom)); }
+@media(min-width:701px) {
+  .schedule-shell { padding-top:44px; }
+  .schedule-next { padding:20px 0; }
+  .agenda-actions { flex-wrap:nowrap; }
+}
+@media(max-width:600px) {
+  .schedule-title-row { align-items:center; }
+  .schedule-title-row .schedule-primary { flex:0 0 auto; }
+  .calendar-cell { min-height:48px; }
+  .agenda-item { display:grid; grid-template-columns:48px minmax(0,1fr); }
+  .agenda-actions { grid-column:1/-1; justify-content:flex-start; }
+  .agenda-actions button { flex:1; }
+  .nl-parse-btn { width:100%; }
+}
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; } }
 
 /* Natural Language Schedule Input & AI Preview Card */

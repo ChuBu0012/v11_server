@@ -141,7 +141,7 @@
     if (!getPin()) return;
 
     const btn = $('#nl-parse-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ri-loader-4-line spin"></i> <span>กำลังวิเคราะห์...</span>'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'กำลังวิเคราะห์...'; }
 
     try {
       const data = await api('/api/schedule/parse', {
@@ -203,7 +203,7 @@
       const titleEl = $('#reminder-title');
       if (titleEl) titleEl.value = prompt;
     } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-magic-line"></i> <span>แปลผลด้วย AI</span>'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'แปลผลด้วย AI'; }
     }
   }
 
@@ -241,7 +241,7 @@
     } catch (err) {
       showToast(err.message);
     } finally {
-      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.innerHTML = '<i class="ri-check-line"></i> ยืนยันและบันทึก'; }
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'ยืนยันและบันทึก'; }
     }
   }
 
@@ -273,8 +273,10 @@
     if (themeToggle) {
       const updateThemeIcon = () => {
         const isDark = document.documentElement.dataset.theme !== 'light';
-        const icon = $('#theme-icon');
-        if (icon) icon.className = isDark ? 'ri-sun-line' : 'ri-moon-line';
+        const label = $('#theme-icon');
+        if (label) {
+          label.className = isDark ? 'ri-sun-line' : 'ri-moon-line';
+        }
       };
       updateThemeIcon();
       themeToggle.addEventListener('click', () => {

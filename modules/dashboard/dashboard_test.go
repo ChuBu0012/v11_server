@@ -34,23 +34,17 @@ func TestDashboardEndpoint(t *testing.T) {
 	if !strings.Contains(body, "Pocket Sentinel") {
 		t.Errorf("Expected dashboard body to contain 'Pocket Sentinel'")
 	}
-	if !strings.Contains(body, "Hardware &amp; Runtime Metrics") && !strings.Contains(body, "Hardware & Runtime Metrics") {
-		t.Errorf("Expected dashboard body to contain hardware metrics section")
+	if !strings.Contains(body, "สถานะตอนนี้") || !strings.Contains(body, "metric-grid") {
+		t.Errorf("Expected dashboard body to contain the current device status section")
 	}
-	if !strings.Contains(body, "Personal Watchtower") {
-		t.Errorf("Expected dashboard body to contain 'Personal Watchtower'")
-	}
-	if !strings.Contains(body, "vivo V11") || !strings.Contains(body, "observer") && !strings.Contains(body, "Observer") {
-		t.Errorf("Expected dashboard body to contain V11 observer perspective badge")
-	}
-	if !strings.Contains(body, "watchtowerSummaryComponent") {
-		t.Errorf("Expected dashboard body to contain 'watchtowerSummaryComponent'")
+	if strings.Contains(body, "Personal Watchtower") || strings.Contains(body, "watchtowerSummaryComponent") || strings.Contains(body, "Monitor") {
+		t.Errorf("Expected retired Monitor and Watchtower interfaces to be absent from the dashboard")
 	}
 	if !strings.Contains(body, "href=\"/live\"") {
 		t.Errorf("Expected dashboard body to contain nav link to '/live'")
 	}
-	if !strings.Contains(body, "Live Location &amp; Rendezvous") {
-		t.Errorf("Expected dashboard body to contain 'Live Location & Rendezvous' card")
+	if !strings.Contains(body, "chart-insight") || !strings.Contains(body, "task-nav") {
+		t.Errorf("Expected dashboard body to include telemetry insight and task navigation")
 	}
 
 	// Secret scan: Ensure no bot tokens or sensitive placeholders leaked into HTML
@@ -71,7 +65,7 @@ func TestLiveMapPageIsEmbeddedAndResponsive(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("live map status = %d", response.Code)
 	}
-	for _, want := range []string{"id=\"live-map-canvas\"", "live-map.css", "live-map.js", "viewport-fit=cover", "theme-toggle-btn", "sentinel-nav"} {
+	for _, want := range []string{"id=\"live-map-canvas\"", "live-map.css", "live-map.js", "viewport-fit=cover", "theme-toggle-btn", "task-nav"} {
 		if !strings.Contains(response.Body.String(), want) {
 			t.Errorf("embedded live map page missing %q", want)
 		}
@@ -119,11 +113,8 @@ func TestPWARoutes(t *testing.T) {
 	if !strings.Contains(swBody, "sentinel-shell-v") {
 		t.Errorf("Expected sw.js to contain cache name 'sentinel-shell-v*', got body: %s", swBody)
 	}
-	if !strings.Contains(swBody, "/watchtower") {
-		t.Errorf("Expected sw.js to cache '/watchtower'")
-	}
-	if !strings.Contains(swBody, "/static/js/components/watchtower.js") {
-		t.Errorf("Expected sw.js to cache '/static/js/components/watchtower.js'")
+	if strings.Contains(swBody, "/watchtower") || strings.Contains(swBody, "/static/js/components/watchtower.js") || strings.Contains(swBody, "/static/js/components/monitor.js") {
+		t.Errorf("Expected sw.js to exclude retired Monitor and Watchtower assets")
 	}
 
 	// 3. Icons
@@ -204,7 +195,7 @@ func TestTeleBridgeEndpoint(t *testing.T) {
 	}
 }
 
-func TestWatchtowerEndpoint(t *testing.T) {
+func TestWatchtowerEndpointRedirectsToDashboard(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
@@ -215,38 +206,16 @@ func TestWatchtowerEndpoint(t *testing.T) {
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("Expected 200 for /watchtower, got %d", rr.Code)
-	}
-
-	ct := rr.Header().Get("Content-Type")
-	if !strings.Contains(ct, "text/html") {
-		t.Errorf("Expected Content-Type to contain 'text/html', got '%s'", ct)
-	}
-
-	body := rr.Body.String()
-	if !strings.Contains(body, "Personal Watchtower") {
-		t.Errorf("Expected /watchtower body to contain 'Personal Watchtower'")
-	}
-	if !strings.Contains(body, "vivo V11") || !strings.Contains(body, "observer") && !strings.Contains(body, "Observer") {
-		t.Errorf("Expected /watchtower body to contain V11 perspective badge")
-	}
-	if !strings.Contains(body, "watchtowerComponent") {
-		t.Errorf("Expected /watchtower body to contain 'watchtowerComponent'")
-	}
-	if !strings.Contains(body, "watcher-chart-") {
-		t.Errorf("Expected /watchtower body to contain watcher chart canvas")
-	}
-	if !strings.Contains(body, "Check now") {
-		t.Errorf("Expected /watchtower body to contain 'Check now' button")
+	if rr.Code != http.StatusTemporaryRedirect || rr.Header().Get("Location") != "/" {
+		t.Fatalf("/watchtower should redirect to dashboard, status=%d location=%q", rr.Code, rr.Header().Get("Location"))
 	}
 
 	// HEAD request verification
 	reqHead := httptest.NewRequest(http.MethodHead, "/watchtower", nil)
 	rrHead := httptest.NewRecorder()
 	r.ServeHTTP(rrHead, reqHead)
-	if rrHead.Code != http.StatusOK {
-		t.Errorf("Expected 200 for HEAD /watchtower, got %d", rrHead.Code)
+	if rrHead.Code != http.StatusTemporaryRedirect {
+		t.Errorf("Expected redirect for HEAD /watchtower, got %d", rrHead.Code)
 	}
 }
 

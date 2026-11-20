@@ -2,6 +2,23 @@
 // Pocket Sentinel — Resource Trends & Charts Component
 // =============================================================================
 
+let chartLibraryPromise;
+
+function ensureChartLibrary() {
+  if (window.Chart) return Promise.resolve();
+  if (chartLibraryPromise) return chartLibraryPromise;
+
+  chartLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js';
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('โหลดกราฟไม่สำเร็จ'));
+    document.head.appendChild(script);
+  });
+  return chartLibraryPromise;
+}
+
 document.addEventListener('alpine:init', () => {
   // Keep Chart.js instances strictly outside of Alpine's reactive Proxy
   // to avoid TypeError on internal Chart.js proxy traps and ensure reliable rendering.
@@ -13,11 +30,46 @@ document.addEventListener('alpine:init', () => {
   };
 
   const chartConfigs = {
-    hostRam: { canvasId: 'host-ram-chart', label: 'Host RAM Used', unit: ' MB', color: '#2997ff', maxValue: null },
-    memory:  { canvasId: 'memory-chart',   label: 'Allocated',     unit: ' MB', color: '#0071e3', maxValue: null },
-    disk:    { canvasId: 'disk-chart',     label: 'Available',     unit: ' GB', color: '#30d158', maxValue: null },
-    battery: { canvasId: 'battery-chart',  label: 'Level',         unit: '%',   color: '#ffd60a', maxValue: 100 }
+    hostRam: { canvasId: 'host-ram-chart', insightId: 'host-ram-insight', label: 'Host RAM Used', unit: ' MB', maxValue: null, digits: 0 },
+    memory:  { canvasId: 'memory-chart', insightId: 'memory-insight', label: 'Go Allocated Memory', unit: ' MB', maxValue: null, digits: 1 },
+    disk:    { canvasId: 'disk-chart', insightId: 'disk-insight', label: 'Free Disk Space', unit: ' GB', maxValue: null, digits: 1 },
+    battery: { canvasId: 'battery-chart', insightId: 'battery-insight', label: 'Battery Level', unit: '%', maxValue: 100, digits: 0 }
   };
+
+  function mean(rows, key) {
+    return rows.reduce((sum, sample) => sum + Number(sample[key]), 0) / rows.length;
+  }
+
+  function insightFor(samples, key, label, unit, hours, digits) {
+    if (samples.length < 4) {
+      return 'ข้อมูลย้อนหลังยังไม่พอสำหรับเปรียบเทียบแนวโน้ม ต้องมีอย่างน้อย 4 ตัวอย่าง';
+    }
+
+    const third = Math.max(1, Math.floor(samples.length / 3));
+    const baseline = mean(samples.slice(0, third), key);
+    const recent = mean(samples.slice(-third), key);
+    const delta = recent - baseline;
+    const change = baseline === 0 ? null : Math.abs(delta / baseline) * 100;
+    const magnitude = change === null
+      ? `${formatNumber(Math.abs(delta), digits)}${unit}`
+      : `${formatNumber(change, 1)}%`;
+    const period = hours === 1 ? '1 ชั่วโมง' : `${hours} ชั่วโมง`;
+    const direction = delta > 0 ? 'เพิ่มขึ้น' : delta < 0 ? 'ลดลง' : 'คงที่';
+
+    if (change !== null && change < 1) {
+      return `${label}คงที่ในช่วง ${period} (ค่าเฉลี่ยเปลี่ยน ${magnitude})`;
+    }
+    if (Math.abs(delta) < 0.01) {
+      return `${label}คงที่ในช่วง ${period} (ค่าเฉลี่ยเปลี่ยน ${magnitude})`;
+    }
+
+    const interpretation = key === 'disk_free_gb'
+      ? (delta < 0 ? 'พื้นที่ว่างกำลังลดลง' : 'พื้นที่ว่างเพิ่มขึ้น')
+      : key === 'battery_level'
+        ? (delta < 0 ? 'ระดับแบตเตอรี่กำลังลดลง' : 'ระดับแบตเตอรี่เพิ่มขึ้น')
+        : (delta > 0 ? 'ควรสังเกตการใช้ทรัพยากร' : 'การใช้ทรัพยากรลดลง');
+    return `${label}${direction} ${magnitude} ในช่วง ${period} — ${interpretation}`;
+  }
 
   function createChart(chartKey) {
     const cfg = chartConfigs[chartKey];
@@ -27,6 +79,7 @@ document.addEventListener('alpine:init', () => {
     if (!el) return null;
 
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const lineColor = isDark ? '#ffffff' : '#000000';
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0';
     const tickColor = isDark ? '#8e8e93' : '#86868b';
 
@@ -37,8 +90,8 @@ document.addEventListener('alpine:init', () => {
         datasets: [{
           label: cfg.label,
           data: [],
-          borderColor: cfg.color,
-          backgroundColor: `${cfg.color}18`,
+          borderColor: lineColor,
+          backgroundColor: isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)',
           borderWidth: 2,
           pointRadius: 0,
           pointHoverRadius: 4,
@@ -96,6 +149,7 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('chartsComponent', () => ({
     hours: 24,
     samples: [],
+    chartUnavailable: false,
     currentValues: {
       hostRam: 'No sample yet',
       memory: 'No sample yet',
@@ -132,6 +186,30 @@ document.addEventListener('alpine:init', () => {
 
       // 3. Fallback direct load on init in case event was dispatched before component mounted
       this.loadHistory();
+
+      const chartSection = document.querySelector('.chart-grid');
+      if (!chartSection) return;
+      const loadCharts = () => {
+        ensureChartLibrary()
+          .then(() => {
+            this.chartUnavailable = false;
+            this.processHistory(this.samples);
+          })
+          .catch((error) => {
+            this.chartUnavailable = true;
+            console.warn('Chart library unavailable:', error);
+          });
+      };
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          observer.disconnect();
+          loadCharts();
+        }, { rootMargin: '300px 0px' });
+        observer.observe(chartSection);
+      } else {
+        loadCharts();
+      }
     },
 
     async loadHistory() {
@@ -153,6 +231,10 @@ document.addEventListener('alpine:init', () => {
       const usable = samples.filter((s) => s[key] !== null && s[key] !== undefined && Number.isFinite(Number(s[key])));
       const enough = usable.length >= 2;
       this.hasEnoughSamples[chartKey] = enough;
+      const insightEl = document.getElementById(chartConfigs[chartKey]?.insightId);
+      if (insightEl) {
+        insightEl.textContent = insightFor(usable, key, label, unit, this.hours, digits);
+      }
 
       if (!enough) {
         if (usable.length === 1) {
@@ -192,10 +274,10 @@ document.addEventListener('alpine:init', () => {
 
     processHistory(historyData) {
       this.samples = Array.isArray(historyData) ? historyData.slice().reverse() : [];
-      this.updateSingleChart('hostRam', this.samples, 'host_memory_used_mb', 'Host RAM', ' MB', 0);
-      this.updateSingleChart('memory', this.samples, 'memory_alloc_mb', 'Go Memory', ' MB', 1);
-      this.updateSingleChart('disk', this.samples, 'disk_free_gb', 'Disk', ' GB', 1);
-      this.updateSingleChart('battery', this.samples, 'battery_level', 'Battery', '%', 0);
+      this.updateSingleChart('hostRam', this.samples, 'host_memory_used_mb', 'RAM เครื่อง ', ' MB', 0);
+      this.updateSingleChart('memory', this.samples, 'memory_alloc_mb', 'RAM เซิร์ฟเวอร์ ', ' MB', 1);
+      this.updateSingleChart('disk', this.samples, 'disk_free_gb', 'พื้นที่ว่าง ', ' GB', 1);
+      this.updateSingleChart('battery', this.samples, 'battery_level', 'แบตเตอรี่ ', '%', 0);
     },
 
     updateTheme(theme) {
@@ -205,6 +287,11 @@ document.addEventListener('alpine:init', () => {
 
       Object.values(chartInstances).forEach((chart) => {
         if (!chart || !chart.options || !chart.options.scales) return;
+        const lineColor = isDark ? '#ffffff' : '#000000';
+        chart.data.datasets.forEach((dataset) => {
+          dataset.borderColor = lineColor;
+          dataset.backgroundColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+        });
         if (chart.options.scales.y) {
           chart.options.scales.y.grid.color = gridColor;
           chart.options.scales.y.ticks.color = tickColor;
