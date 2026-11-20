@@ -17,7 +17,7 @@ document.addEventListener('alpine:init', () => {
       text: 'Pause',
       icon: 'ri-pause-circle-line'
     },
-    sections: { ai: '', politics: '', trivia: '', all: '' },
+    sections: { ai: '', politics: '', stocks: '', gold: '', trivia: '', all: '' },
     renderedContent: '<div class="loading">Loading latest AI digest…</div>',
     isBusy: false,
 
@@ -107,18 +107,38 @@ document.addEventListener('alpine:init', () => {
     },
 
     parseSections(raw) {
-      const sec = { ai: '', politics: '', trivia: '', all: raw || '' };
+      const sec = { ai: '', politics: '', stocks: '', gold: '', trivia: '', all: raw || '' };
       if (!raw) return sec;
+
+      if (raw.includes('===SECTION:')) {
+        const parts = raw.split('===SECTION:');
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (!trimmed) continue;
+          const idx = trimmed.indexOf('===');
+          if (idx === -1) continue;
+          const key = trimmed.slice(0, idx).trim().toLowerCase();
+          const content = trimmed.slice(idx + 3).trim();
+          if (sec.hasOwnProperty(key)) {
+            sec[key] = content;
+          }
+        }
+        return sec;
+      }
 
       const aiMatch = raw.match(/###\s*(?:🤖\s*)?AI & Tech[\s\S]*?(?=(?:###|$))/i);
       const polMatch = raw.match(/###\s*(?:🏛️\s*)?การเมือง[\s\S]*?(?=(?:###|$))/i);
+      const stockMatch = raw.match(/###\s*(?:📈\s*)?หุ้น[\s\S]*?(?=(?:###|$))/i);
+      const goldMatch = raw.match(/###\s*(?:🥇\s*)?ทอง[\s\S]*?(?=(?:###|$))/i);
       const triMatch = raw.match(/###\s*(?:💡\s*)?สาระน่ารู้[\s\S]*?(?=(?:###|$))/i);
 
       if (aiMatch) sec.ai = aiMatch[0].trim();
       if (polMatch) sec.politics = polMatch[0].trim();
+      if (stockMatch) sec.stocks = stockMatch[0].trim();
+      if (goldMatch) sec.gold = goldMatch[0].trim();
       if (triMatch) sec.trivia = triMatch[0].trim();
 
-      if (!sec.ai && !sec.politics && !sec.trivia) {
+      if (!sec.ai && !sec.politics && !sec.stocks && !sec.gold && !sec.trivia) {
         const lines = raw.split('\n');
         let currentKey = 'ai';
         let currentLines = [];
@@ -128,6 +148,14 @@ document.addEventListener('alpine:init', () => {
           if (lower.includes('การเมือง') || lower.includes('politics')) {
             if (currentLines.length) sec[currentKey] = currentLines.join('\n');
             currentKey = 'politics';
+            currentLines = [line];
+          } else if (lower.includes('หุ้น') || lower.includes('stock')) {
+            if (currentLines.length) sec[currentKey] = currentLines.join('\n');
+            currentKey = 'stocks';
+            currentLines = [line];
+          } else if (lower.includes('ทอง') || lower.includes('gold')) {
+            if (currentLines.length) sec[currentKey] = currentLines.join('\n');
+            currentKey = 'gold';
             currentLines = [line];
           } else if (lower.includes('สาระน่ารู้') || lower.includes('trivia')) {
             if (currentLines.length) sec[currentKey] = currentLines.join('\n');

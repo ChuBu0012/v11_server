@@ -348,3 +348,12 @@ func TestPagesHaveNoPINPrompts(t *testing.T) {
 		}
 	}
 }
+
+func TestDashboardDigestTabs(t *testing.T) {
+	body := fetchPage(t, "/")
+	for _, want := range []string{"tab-btn-ai", "tab-btn-politics", "tab-btn-stocks", "tab-btn-gold", "tab-btn-trivia", "tab-btn-all"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Expected dashboard body to contain digest tab %q", want)
+		}
+	}
+}
