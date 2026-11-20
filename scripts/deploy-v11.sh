@@ -75,33 +75,54 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${DEPLOY_MSG}" ]] && command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+echo "=================================================="
+echo "📱 Pocket Sentinel — Deploying natively on vivo V11"
+echo "   Directory: ${APP_DIR}"
+echo "   Message:   ${DEPLOY_MSG:-(from latest commit after pull)}"
+echo "=================================================="
+
+START_NOTI="🚀 <b>เริ่มกระบวนการ Deploy บน vivo v11</b>"
+START_NOTI+=$'\n'
+if [[ -n "${DEPLOY_MSG}" ]]; then
+  START_NOTI+="📦 <b>สิ่งที่อัปเดต:</b> $(escape_html "${DEPLOY_MSG}")"
+else
+  START_NOTI+="📥 กำลังดึงโค้ดล่าสุดจาก GitHub…"
+fi
+notify_telegram "${START_NOTI}"
+
+# 1. Pull latest code from GitHub. A failed pull aborts the deploy: rebuilding
+#    the old tree and reporting "success" would be misleading.
+if [ -d .git ]; then
+  echo "📥 [1/4] Pulling latest code from origin/main..."
+  BEFORE_REV=$(git rev-parse --short HEAD 2>/dev/null || echo "?")
+  if ! PULL_OUT=$(git pull --ff-only origin main 2>&1); then
+    trap - ERR
+    echo "${PULL_OUT}"
+    echo "❌ git pull failed — deploy aborted (nothing was built or restarted)."
+    PULL_TAIL=$(printf '%s' "${PULL_OUT}" | tail -n 3)
+    notify_telegram "❌ <b>Deploy ยกเลิก:</b> git pull ไม่สำเร็จ (ยังไม่ได้ build หรือ restart)"$'\n'"<pre>$(escape_html "${PULL_TAIL}")</pre>"
+    exit 1
+  fi
+  echo "${PULL_OUT}"
+  AFTER_REV=$(git rev-parse --short HEAD 2>/dev/null || echo "?")
+else
+  echo "⚡ [1/4] Skipping git pull (no .git directory)..."
+  BEFORE_REV="?"; AFTER_REV="?"
+fi
+
+# Describe what was actually deployed (the pulled commit), unless a message was given.
+if [[ -z "${DEPLOY_MSG}" ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   DEPLOY_MSG=$(git log -1 --pretty=format:"%s" 2>/dev/null || true)
 fi
 if [[ -z "${DEPLOY_MSG}" ]]; then
   DEPLOY_MSG="อัปเดตระบบทั่วไปบนอุปกรณ์"
 fi
-
-ESCAPED_DEPLOY_MSG=$(escape_html "${DEPLOY_MSG}")
-
-echo "=================================================="
-echo "📱 Pocket Sentinel — Deploying natively on vivo V11"
-echo "   Directory: ${APP_DIR}"
-echo "   Message:   ${DEPLOY_MSG}"
-echo "=================================================="
-
-START_NOTI="🚀 <b>เริ่มกระบวนการ Deploy บน vivo v11</b>"
-START_NOTI+=$'\n'
-START_NOTI+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
-notify_telegram "${START_NOTI}"
-
-# 1. Pull latest code from GitHub (optional when changes are local)
-if [ -d .git ]; then
-  echo "📥 [1/4] Checking git status..."
-  git pull origin main || echo "⚠️ Git pull reported warnings, proceeding with local working tree..."
-else
-  echo "⚡ [1/4] Skipping git pull (no .git directory)..."
+if [[ "${BEFORE_REV}" != "?" && "${BEFORE_REV}" != "${AFTER_REV}" ]]; then
+  DEPLOY_MSG="${DEPLOY_MSG} (${BEFORE_REV} → ${AFTER_REV})"
+elif [[ "${BEFORE_REV}" != "?" ]]; then
+  DEPLOY_MSG="${DEPLOY_MSG} (ไม่มี commit ใหม่ · ${AFTER_REV})"
 fi
+ESCAPED_DEPLOY_MSG=$(escape_html "${DEPLOY_MSG}")
 
 # 2. Build Go binary natively
 echo "🔨 [2/4] Building ARM64 Go binary with stripped debug symbols (-s -w)..."
