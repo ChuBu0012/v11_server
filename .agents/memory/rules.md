@@ -9,6 +9,8 @@
 - [2026-11-14 | AGENTS.md] Always pass `--nostream` when running remote `pm2 logs` via SSH to avoid hanging sessions.
 - [2026-11-14 | AGENTS.md] Run `pm2 save` after PM2 process changes for persistence across Termux restarts.
 - [2026-11-21 | Learning/Post-mortem] SPA Reverse Proxy: When mounting an external SPA under a subpath (e.g. `/status/`), always patch dynamic router history base (`location.pathname.startsWith('/status') ? '/status/' : '/'`), proxy all root asset paths (`/img/*`, `/js/*`, `/css/*`, favicons), bypass host PWA service worker (`sw.js`), and set `no-cache` headers.
+- [2026-11-21 | Learning/Post-mortem] SQLite Connection Pool PRAGMA: In Go `database/sql`, always configure SQLite PRAGMAs (busy_timeout, journal_mode, synchronous) via DSN query parameters (`_pragma=busy_timeout(10000)...`), never via `db.Exec()`, ensuring all connections in the pool inherit the configuration.
+- [2026-11-21 | Learning/Post-mortem] Mobile Telemetry Throttling: Debounce high-frequency mobile GPS/telemetry at the service layer (ignore stationary jitter < 5m within 10s with identical battery) to prevent SQLite write lock collisions and bandwidth exhaustion.
 - [2026-11-21 | Testing] Gin ReverseProxy tests: Wrap `httptest.ResponseRecorder` with `http.CloseNotifier` (`testCloseNotifierRecorder`) to prevent runtime type-assertion panics in unit tests.
 
 ## Must Not
