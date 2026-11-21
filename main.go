@@ -495,6 +495,14 @@ func setupRouter(app *App) *gin.Engine {
 	r.Any("/css/*path", func(c *gin.Context) {
 		gatusProxy.ServeHTTP(c.Writer, c.Request)
 	})
+	r.Any("/img/*path", func(c *gin.Context) {
+		gatusProxy.ServeHTTP(c.Writer, c.Request)
+	})
+	for _, p := range []string{"/favicon.ico", "/favicon-16x16.png", "/favicon-32x32.png", "/apple-touch-icon.png"} {
+		r.Any(p, func(c *gin.Context) {
+			gatusProxy.ServeHTTP(c.Writer, c.Request)
+		})
+	}
 
 	return r
 }
