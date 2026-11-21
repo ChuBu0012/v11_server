@@ -22,6 +22,7 @@ import (
 	"v11-server/modules/bot"
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
+	"v11-server/modules/endpoints"
 	"v11-server/modules/insight"
 	"v11-server/modules/location"
 	"v11-server/modules/logs"
@@ -91,6 +92,7 @@ type App struct {
 	botClient         *bot.Client
 	digest            *digest.Module
 	relay             *relay.Module
+	endpoints         *endpoints.Module
 	reminders         *reminders.Module
 	reminderService   *reminders.Service
 	locationModule    *location.Module
@@ -121,6 +123,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	sysMod := system.New(startTime)
 	logsMod := logs.New(dbConn)
 	dashMod := dashboard.New()
+	endpointsMod := endpoints.New("")
 	reminderStore, reminderErr := reminders.NewStore(dbConn)
 	if reminderErr != nil {
 		log.Printf("Warning: failed to initialize quiet schedule: %v", reminderErr)
@@ -350,6 +353,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botClient:         botClient,
 		digest:            digestMod,
 		relay:             relay.New(botClient, cfg.TelegramChatID),
+		endpoints:         endpointsMod,
 		reminders:         reminderMod,
 		reminderService:   reminderService,
 		locationModule:    locationModule,
@@ -381,6 +385,9 @@ func setupRouter(app *App) *gin.Engine {
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
 	app.relay.RegisterRoutes(r)
+	if app.endpoints != nil {
+		app.endpoints.RegisterRoutes(r.Group("/api"))
+	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
 	}

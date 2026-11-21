@@ -466,3 +466,25 @@ func TestReminderWritesNeedNoPIN(t *testing.T) {
 		t.Fatalf("create reminder without PIN = %d %s", rr.Code, rr.Body.String())
 	}
 }
+
+func TestEndpointsRoute_Integration(t *testing.T) {
+	_, router, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// GET /api/endpoints
+	req := httptest.NewRequest(http.MethodGet, "/api/endpoints", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/endpoints status = %d, want 200", rr.Code)
+	}
+
+	// POST /api/endpoints (invalid empty payload -> 400)
+	reqBad := httptest.NewRequest(http.MethodPost, "/api/endpoints", strings.NewReader(`{}`))
+	reqBad.Header.Set("Content-Type", "application/json")
+	rrBad := httptest.NewRecorder()
+	router.ServeHTTP(rrBad, reqBad)
+	if rrBad.Code != http.StatusBadRequest {
+		t.Fatalf("POST /api/endpoints empty status = %d, want 400", rrBad.Code)
+	}
+}
