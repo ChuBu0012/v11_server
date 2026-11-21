@@ -268,3 +268,55 @@ func TestEditMessageText_ParseErrorFallback(t *testing.T) {
 		t.Errorf("expected retry attempt empty parse_mode, got %q", receivedParseModes[1])
 	}
 }
+
+func TestCleanReplyMarkup(t *testing.T) {
+	if cleanReplyMarkup(nil) != nil {
+		t.Error("expected untyped nil to remain nil")
+	}
+
+	var ikm *InlineKeyboardMarkup = nil
+	if cleanReplyMarkup(ikm) != nil {
+		t.Error("expected typed nil *InlineKeyboardMarkup to become untyped nil")
+	}
+
+	var rkm *ReplyKeyboardMarkup = nil
+	if cleanReplyMarkup(rkm) != nil {
+		t.Error("expected typed nil *ReplyKeyboardMarkup to become untyped nil")
+	}
+
+	var rkr *ReplyKeyboardRemove = nil
+	if cleanReplyMarkup(rkr) != nil {
+		t.Error("expected typed nil *ReplyKeyboardRemove to become untyped nil")
+	}
+
+	validIKM := &InlineKeyboardMarkup{InlineKeyboard: [][]InlineKeyboardButton{}}
+	if cleanReplyMarkup(validIKM) != validIKM {
+		t.Error("expected valid *InlineKeyboardMarkup to remain untouched")
+	}
+}
+
+func TestSendMessage_OmitsNilReplyMarkup(t *testing.T) {
+	var capturedBody string
+	mockTransport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body, _ := io.ReadAll(req.Body)
+		capturedBody = string(body)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1,"chat":{"id":123456}}}`)),
+		}, nil
+	})
+
+	httpClient := &http.Client{Transport: mockTransport}
+	client := NewClient("TEST_TOKEN", WithBaseURL("https://api.telegram.org"), WithHTTPClient(httpClient))
+
+	// Pass nil reply markup
+	_, err := client.SendMessage(context.Background(), 123456, "Hello", nil)
+	if err != nil {
+		t.Fatalf("SendMessage failed: %v", err)
+	}
+
+	if strings.Contains(capturedBody, `"reply_markup":null`) || strings.Contains(capturedBody, `"reply_markup"`) {
+		t.Errorf("Expected reply_markup to be omitted completely when nil, got: %s", capturedBody)
+	}
+}

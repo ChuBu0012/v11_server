@@ -142,6 +142,34 @@ func (c *Client) SendMessageWithReplyMarkup(ctx context.Context, chatID int64, t
 	return c.sendMessage(ctx, chatID, text, replyMarkup, false)
 }
 
+// cleanReplyMarkup ensures typed nil pointers wrapped in an any interface
+// are returned as true untyped nil so encoding/json omits the reply_markup field.
+// Telegram Bot API rejects messages with "reply_markup": null with HTTP 400.
+func cleanReplyMarkup(markup any) any {
+	if markup == nil {
+		return nil
+	}
+	switch v := markup.(type) {
+	case *InlineKeyboardMarkup:
+		if v == nil {
+			return nil
+		}
+		return v
+	case *ReplyKeyboardMarkup:
+		if v == nil {
+			return nil
+		}
+		return v
+	case *ReplyKeyboardRemove:
+		if v == nil {
+			return nil
+		}
+		return v
+	default:
+		return markup
+	}
+}
+
 func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, replyMarkup any, silent bool) (*Message, error) {
 	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", c.baseURL, c.token)
 
@@ -149,7 +177,7 @@ func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, rep
 		ChatID:              chatID,
 		Text:                text,
 		ParseMode:           "HTML",
-		ReplyMarkup:         replyMarkup,
+		ReplyMarkup:         cleanReplyMarkup(replyMarkup),
 		DisableNotification: silent,
 	}
 

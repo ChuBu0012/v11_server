@@ -32,7 +32,7 @@ notify_telegram() {
     local token=$(grep -E "^TELEGRAM_BOT_TOKEN=" .env | cut -d '=' -f2- | tr -d '"'\'' ' || true)
     local chat_id=$(grep -E "^TELEGRAM_CHAT_ID=" .env | cut -d '=' -f2- | tr -d '"'\'' ' || true)
     if [[ -n "${token}" && -n "${chat_id}" ]]; then
-      curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+      curl --http1.1 -4 -s --connect-timeout 4 --max-time 8 -X POST "https://api.telegram.org/bot${token}/sendMessage" \
         -d "chat_id=${chat_id}" \
         --data-urlencode "text=${msg}" \
         -d "parse_mode=HTML" > /dev/null 2>&1 || true

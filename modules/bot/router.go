@@ -388,7 +388,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
 			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
 		if cmd == "/start" {
-			_, _ = r.sendReplyMarkup(ctx, chatID, helpHTML, MakeDefaultReplyKeyboard())
+			_, _ = r.sendReplyMarkup(ctx, chatID, "👋 <b>ยินดีต้อนรับสู่ Pocket Sentinel</b>\nเปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว", MakeDefaultReplyKeyboard())
 		}
 		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
 		return err

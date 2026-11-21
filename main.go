@@ -583,7 +583,7 @@ func main() {
 		log.Printf("🚀 Pocket Sentinel running on port :%s (DB: %s)", port, dbPath)
 		if app.botClient != nil && app.cfg.TelegramChatID != "" {
 			go func() {
-				time.Sleep(1 * time.Second)
+				time.Sleep(2 * time.Second)
 				chatID, _ := strconv.ParseInt(app.cfg.TelegramChatID, 10, 64)
 				if chatID != 0 {
 					var m runtime.MemStats
@@ -595,9 +595,19 @@ func main() {
 						"<b>หน่วยความจำ:</b> <code>%.1f MB</code>\n"+
 						"<b>เวลา:</b> %s",
 						os.Getpid(), ramMB, time.Now().Format("2006-01-02 15:04:05"))
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-					defer cancel()
-					_, _ = app.botClient.SendMessage(ctx, chatID, bootMsg, nil)
+					for attempt := 1; attempt <= 3; attempt++ {
+						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						_, err := app.botClient.SendMessage(ctx, chatID, bootMsg, nil)
+						cancel()
+						if err == nil {
+							log.Printf("[main] 🚀 Boot notification sent successfully (attempt %d)", attempt)
+							break
+						}
+						log.Printf("[main] ⚠️ Failed to send boot notification (attempt %d/3): %v", attempt, err)
+						if attempt < 3 {
+							time.Sleep(2 * time.Second)
+						}
+					}
 				}
 			}()
 		}
