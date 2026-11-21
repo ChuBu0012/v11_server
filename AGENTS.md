@@ -9,9 +9,9 @@
 - **Stack:**
   - Go (Gin HTTP Framework in ReleaseMode)
   - SQLite: Pure-Go driver (`modernc.org/sqlite`) ห้ามใช้ CGO เพื่อป้องกันปัญหา build บน Android Kernel 4.4
-  - Process Manager: PM2 (`ecosystem.config.js` คุม `go-server` และ `ngrok-tunnel`)
-  - Public Ingress: `ngrok` (รันผ่าน `run-ngrok.sh` ด้วย termux-chroot)
-  - Active Public Endpoint: `https://spindle-said-hemstitch.ngrok-free.dev`
+  - Process Manager: PM2 (`ecosystem.config.js` คุม `go-server`)
+  - Ingress: Tailscale Private Mesh (`http://100.92.194.87:8080`)
+  - Active Endpoint: `http://100.92.194.87:8080`
   - Port: `8080` (`http://localhost:8080`)
   - Memory Budget: < 300MB RAM (ปกติรันอยู่ที่ ~12–20MB)
 
@@ -43,7 +43,7 @@
 - **Progress Heartbeats:** ขณะ agy ประมวลผล ระบบจะอัปเดตข้อความ ACK เดิมด้วย `editMessageText` ทุก 15 วินาที พร้อมแจ้งเวลาและ RAM ป้องกันการสแปมแชท
 
 ## 6. Telegram Relay & Gateway API
-- **Active Endpoint:** `https://spindle-said-hemstitch.ngrok-free.dev`
+- **Active Endpoint:** `http://100.92.194.87:8080` (Tailscale)
 - **Unified Relay Endpoint:** `POST /api/relay/send`
 - **Auth:** ไม่มี PIN แล้ว (เจ้าของเลือกให้เป็น public ตั้งแต่ 2026-11-20) — Relay, Schedule และ Location management API เรียกได้โดยไม่ต้องส่ง PIN; header `X-Relay-PIN` เดิมถูกละเลย ส่วน OwnTracks secret token (`/api/location/report`) และ viewer token (`/live/<token>`) ยังคงใช้อยู่
 - **Auto Detection:**

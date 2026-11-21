@@ -94,8 +94,8 @@ func (p *DefaultStatusProvider) GetStatusCard(ctx context.Context) (string, erro
 	// 4. Uptime
 	uptimeStr := p.GetUptimeString()
 
-	// 5. Ngrok public URL
-	ngrokURL := p.getNgrokURL(ctx)
+	// 5. Active endpoint URL (Tailscale or Tunnel)
+	endpointURL := p.getEndpointURL(ctx)
 
 	// Memory line (with Host RAM if available)
 	memLine := fmt.Sprintf("🧠 <b>Memory:</b> %.1f MB (Sys: %.1f MB)", allocMB, sysMB)
@@ -111,13 +111,13 @@ func (p *DefaultStatusProvider) GetStatusCard(ctx context.Context) (string, erro
 			"%s\n"+
 			"💾 <b>Disk (%s):</b> %.1f GB free / %.1f GB\n"+
 			"⏱️ <b>Uptime:</b> %s\n"+
-			"🌐 <b>Tunnel:</b> %s\n\n"+
+			"🌐 <b>Endpoint:</b> %s\n\n"+
 			"<i>Updated: %s UTC</i>",
 		batteryStr,
 		memLine,
 		targetPath, diskFreeGB, diskTotalGB,
 		uptimeStr,
-		ngrokURL,
+		endpointURL,
 		time.Now().UTC().Format("2006-01-02 15:04:05"),
 	)
 
@@ -157,6 +157,18 @@ func (p *DefaultStatusProvider) getBatteryString(ctx context.Context) string {
 		return fmt.Sprintf("%.0f%% (%s, %.1f°C)", data.Percentage, data.Status, data.Temperature)
 	}
 	return fmt.Sprintf("%.0f%% (%s)", data.Percentage, data.Status)
+}
+
+func (p *DefaultStatusProvider) getEndpointURL(ctx context.Context) string {
+	ngrokURL := p.getNgrokURL(ctx)
+	if ngrokURL != "" && !strings.HasPrefix(ngrokURL, "inactive") {
+		return ngrokURL
+	}
+	baseURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+	if baseURL != "" {
+		return fmt.Sprintf("%s (Tailscale)", baseURL)
+	}
+	return "http://100.92.194.87:8080 (Tailscale)"
 }
 
 func (p *DefaultStatusProvider) getNgrokURL(ctx context.Context) string {

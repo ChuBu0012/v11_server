@@ -6,8 +6,7 @@ const env = {
   PORT: "8080",
   DB_PATH: "/data/data/com.termux/files/home/go-app/data.db",
   GIN_MODE: "release",
-  NGROK_AUTHTOKEN: process.env.NGROK_AUTHTOKEN || "",
-  NGROK_DOMAIN: process.env.NGROK_DOMAIN || ""
+  APP_BASE_URL: process.env.APP_BASE_URL || "http://100.92.194.87:8080"
 };
 
 const envPath = path.resolve(__dirname, ".env");
@@ -28,15 +27,6 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-// Build ngrok tunnel arguments
-let ngrokArgs = "http 8080";
-if (env.NGROK_DOMAIN) {
-  ngrokArgs += ` --url=${env.NGROK_DOMAIN}`;
-}
-if (env.NGROK_AUTHTOKEN) {
-  ngrokArgs += ` --authtoken=${env.NGROK_AUTHTOKEN}`;
-}
-
 const apps = [
   {
     name: "go-server",
@@ -51,18 +41,5 @@ const apps = [
     }
   }
 ];
-
-// Start ngrok tunnel if authtoken is configured
-if (env.NGROK_AUTHTOKEN) {
-  apps.push({
-    name: "ngrok-tunnel",
-    script: "/data/data/com.termux/files/home/go-app/run-ngrok.sh",
-    args: ngrokArgs,
-    cwd: "/data/data/com.termux/files/home/go-app",
-    interpreter: "none",
-    autorestart: true,
-    watch: false
-  });
-}
 
 module.exports = { apps };

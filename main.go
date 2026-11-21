@@ -292,7 +292,11 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationModule = location.NewModule(locationStore, locationService)
 		if botRouter != nil {
 			_, viewerToken := locationStore.Tokens()
-			liveURL := "https://spindle-said-hemstitch.ngrok-free.dev/live/" + viewerToken
+			baseURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+			if baseURL == "" {
+				baseURL = "http://100.92.194.87:8080"
+			}
+			liveURL := baseURL + "/live/" + viewerToken
 			botRouter.SetLocationFunc(func(ctx context.Context) (string, *bot.InlineKeyboardMarkup, error) {
 				latest, err := locationStore.LatestPoints(ctx)
 				if err != nil {

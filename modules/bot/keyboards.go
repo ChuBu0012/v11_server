@@ -57,7 +57,7 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 				copyCommand("📋 เช็คเครื่อง", "/task [low] ตรวจสอบ RAM, พื้นที่ disk และสถานะ PM2 go-server"),
 			},
 			{
-				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ ngrok-tunnel"),
+				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ gatus"),
 				copyCommand("📋 Task status", "/task_status"),
 			},
 			{

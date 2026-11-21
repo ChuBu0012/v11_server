@@ -1,7 +1,7 @@
 # Project Memory: v11 Pocket Server (Pocket Sentinel)
 
 ## Purpose
-A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 (Termux arm64) managed by PM2. Functions as "Pocket Sentinel" — an autonomous health and telemetry monitoring service with Apple HIG-inspired web dashboard, SQLite time-series telemetry storage, configurable threshold alert state machine, and Telegram notifications, exposed via ngrok tunnel.
+A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 (Termux arm64) managed by PM2. Functions as "Pocket Sentinel" — an autonomous health and telemetry monitoring service with Apple HIG-inspired web dashboard, SQLite time-series telemetry storage, configurable threshold alert state machine, and Telegram notifications, accessible via Tailscale private mesh.
 
 ## Scope
 - **In-Scope:**
@@ -14,7 +14,7 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
     - `modules/alerts`: Pure threshold evaluation, SQLite alert state persistence, edge-triggered state machine (alert on OK->Problem, suppress on Problem->Problem, recover on Problem->OK), Telegram notifier client.
     - `modules/dashboard`: Responsive single-page dashboard strictly adhering to Apple design specification (`DESIGN.md`), embedded via `//go:embed` at `GET /`.
     - `modules/system` & `modules/logs`: System info, Termux API battery querying, and event logs.
-  - Process orchestration via `ecosystem.config.js` (`go-server` + `ngrok-tunnel`).
+  - Process orchestration via `ecosystem.config.js` (`go-server`).
   - Cross-compile build & deploy pipeline (`scripts/deploy.sh`, `scripts/status.sh`).
 - **Out-of-Scope (Initial Phase):**
   - Disruptive hardware control (torch, vibration, notification, audio) without explicit user permission.
@@ -33,9 +33,10 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 - Target binary compiled and uploaded to vivo 1804 (v11):
   - `server: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV)` (25MB)
   - Remote process memory remains ~18.4MB (budget < 300MB).
-  - Active Public Endpoint: `https://spindle-said-hemstitch.ngrok-free.dev`.
+  - Active Endpoint: `http://100.92.194.87:8080` (Tailscale Private Mesh).
 
 ## Decisions
+- [2026-11-21] Decommissioned public ngrok ingress and transitioned entirely to Tailscale (`http://100.92.194.87:8080`) to eliminate 1GB/month bandwidth quota limits and protocol overhead. Removed ngrok-tunnel PM2 process.
 - [2026-11-14] Switched from Cloudflare to ngrok for public tunneling with free static domain.
 - [2026-11-14] Wrapped ngrok in `run-ngrok.sh` using `termux-chroot` + `SSL_CERT_FILE=/etc/tls/cert.pem` to solve Android Kernel 4.4 syscall issues and TLS root CA lookup in Termux.
 - [2026-11-14] Cross-compilation on macOS: `CGO_ENABLED=0 GOOS=android GOARCH=arm64` (never `GOOS=linux` due to Kernel 4.4 `faccessat2` crash).

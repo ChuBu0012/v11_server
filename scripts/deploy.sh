@@ -136,9 +136,6 @@ fi
 if [[ -f ecosystem.config.js ]]; then
   TRANSFER_FILES+=(ecosystem.config.js)
 fi
-if [[ -f run-ngrok.sh ]]; then
-  TRANSFER_FILES+=(run-ngrok.sh)
-fi
 if [[ -f .env ]]; then
   TRANSFER_FILES+=(.env)
 fi
@@ -152,9 +149,7 @@ rm -f server.new digest.new
 # Atomic swap & permissions on remote
 if [[ "${MODE}" == "full" ]]; then
   echo "💾 Creating automatic remote backup (server -> server.bak)..."
-  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && if [ -f server ]; then cp -f server server.bak; fi && mv -f server.new server 2>/dev/null || true; mv -f digest.new digest 2>/dev/null || true; chmod +x server digest run-ngrok.sh 2>/dev/null || true"
-else
-  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && chmod +x run-ngrok.sh 2>/dev/null || true"
+  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "cd ${REMOTE_DIR} && if [ -f server ]; then cp -f server server.bak; fi && mv -f server.new server 2>/dev/null || true; mv -f digest.new digest 2>/dev/null || true; chmod +x server digest 2>/dev/null || true"
 fi
 
 # ------------------------------------------------------------------------------
@@ -163,16 +158,10 @@ fi
 echo "🔄 [3/4] Reloading PM2 services on ${REMOTE_HOST}..."
 ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "REMOTE_DIR='${REMOTE_DIR}' bash -s" << 'EOF'
   cd "${REMOTE_DIR}"
-  # If ngrok-tunnel is already online, leave it alone to prevent tunnel drop / reconnection delay.
-  # Restart go-server. If go-server is not running or restart fails, start it explicitly.
-  NGROK_PID=$(pm2 pid ngrok-tunnel 2>/dev/null || true)
-  if [ -n "$NGROK_PID" ] && [ "$NGROK_PID" != "0" ]; then
-    pm2 restart ecosystem.config.js --only go-server --update-env > /dev/null || pm2 restart go-server --update-env > /dev/null
-  else
-    pkill -9 -x ngrok 2>/dev/null || true
-    pkill -9 -x proot 2>/dev/null || true
-    pm2 startOrRestart ecosystem.config.js --update-env > /dev/null
-  fi
+  pkill -9 -x ngrok 2>/dev/null || true
+  pkill -9 -x proot 2>/dev/null || true
+  pm2 delete ngrok-tunnel > /dev/null 2>&1 || true
+  pm2 startOrRestart ecosystem.config.js --update-env > /dev/null
   pm2 save > /dev/null 2>&1 || true
 EOF
 
@@ -219,20 +208,15 @@ ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" '
   pm2 logs go-server --lines 20 --nostream
 
   echo ""
-  echo "=== Public ngrok Endpoint ==="
-  ENDPOINT=$(curl -s --max-time 3 http://localhost:4040/api/tunnels 2>/dev/null | grep -oE "https://[a-zA-Z0-9.-]+\.ngrok(-free)?\.(app|dev)" | head -n 1 || true)
-  if [ -n "${ENDPOINT}" ]; then
-    echo "🌐 Active URL: ${ENDPOINT}"
-  else
-    echo "ℹ️  ngrok tunnel initializing (check localhost:4040 shortly)"
-  fi
+  echo "=== Active Endpoint (Tailscale) ==="
+  echo "🌐 URL: http://100.92.194.87:8080"
 '
 
 TOTAL_TIME=$(( $(date +%s) - START_TIME ))
 echo ""
 echo "✨ Deploy completed successfully in ${TOTAL_TIME}s!"
 
-ENDPOINT=$(ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" 'curl -s --max-time 3 http://localhost:4040/api/tunnels 2>/dev/null | grep -oE "https://[a-zA-Z0-9.-]+\.ngrok(-free)?\.(app|dev)" | head -n 1 || true' 2>/dev/null || true)
+ENDPOINT="http://100.92.194.87:8080"
 SUCCESS_MSG="✅ <b>Deploy สำเร็จสมบูรณ์</b> ใน ${TOTAL_TIME}s! บริการพร้อมใช้งาน"
 SUCCESS_MSG+=$'\n'
 SUCCESS_MSG+="📦 <b>สิ่งที่อัปเดต:</b> ${ESCAPED_DEPLOY_MSG}"
