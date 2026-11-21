@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -459,6 +461,39 @@ func setupRouter(app *App) *gin.Engine {
 			return
 		}
 		c.JSON(http.StatusOK, result)
+	})
+
+	// Reverse Proxy to local Gatus health dashboard (port 8081)
+	gatusTarget, _ := url.Parse("http://127.0.0.1:8081")
+	gatusProxy := httputil.NewSingleHostReverseProxy(gatusTarget)
+	origDirector := gatusProxy.Director
+	gatusProxy.Director = func(req *http.Request) {
+		origDirector(req)
+		req.Host = gatusTarget.Host
+		if strings.HasPrefix(req.URL.Path, "/status") {
+			req.URL.Path = strings.TrimPrefix(req.URL.Path, "/status")
+			if req.URL.Path == "" {
+				req.URL.Path = "/"
+			}
+		}
+	}
+
+	r.Any("/status/*path", func(c *gin.Context) {
+		gatusProxy.ServeHTTP(c.Writer, c.Request)
+	})
+	r.GET("/status", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/status/")
+	})
+
+	// Forward Gatus SPA bundles and API calls to avoid 404s
+	r.Any("/api/v1/*path", func(c *gin.Context) {
+		gatusProxy.ServeHTTP(c.Writer, c.Request)
+	})
+	r.Any("/js/*path", func(c *gin.Context) {
+		gatusProxy.ServeHTTP(c.Writer, c.Request)
+	})
+	r.Any("/css/*path", func(c *gin.Context) {
+		gatusProxy.ServeHTTP(c.Writer, c.Request)
 	})
 
 	return r

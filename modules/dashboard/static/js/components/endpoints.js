@@ -9,7 +9,7 @@ document.addEventListener('alpine:init', () => {
     submitting: false,
     status: '',
     message: '',
-    gatusUrl: 'http://100.92.194.87:8081',
+    gatusUrl: '/status/',
     form: {
       name: '',
       url: '',

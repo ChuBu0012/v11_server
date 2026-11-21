@@ -64,15 +64,10 @@ func New(configPath string) *Module {
 		}
 	}
 
-	tsIP := os.Getenv("TAILSCALE_IP")
-	if tsIP == "" {
-		tsIP = DefaultTailscaleIP
+	gatusURL := os.Getenv("GATUS_PUBLIC_URL")
+	if gatusURL == "" {
+		gatusURL = "/status/"
 	}
-	gatusPort := os.Getenv("GATUS_PORT")
-	if gatusPort == "" {
-		gatusPort = DefaultGatusPort
-	}
-	gatusURL := fmt.Sprintf("http://%s:%s", tsIP, gatusPort)
 
 	return &Module{
 		configPath: configPath,

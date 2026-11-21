@@ -488,3 +488,19 @@ func TestEndpointsRoute_Integration(t *testing.T) {
 		t.Fatalf("POST /api/endpoints empty status = %d, want 400", rrBad.Code)
 	}
 }
+
+func TestStatusReverseProxyRoute_Integration(t *testing.T) {
+	_, router, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// GET /status redirects to /status/
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMovedPermanently {
+		t.Fatalf("GET /status status = %d, want 301", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/status/" {
+		t.Errorf("GET /status redirect location = %q, want /status/", loc)
+	}
+}
