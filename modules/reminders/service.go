@@ -91,10 +91,25 @@ func scheduleKeyboard(id int64) *bot.InlineKeyboardMarkup {
 	return &bot.InlineKeyboardMarkup{InlineKeyboard: [][]bot.InlineKeyboardButton{{{Text: "เลื่อน 5 นาที", CallbackData: fmt.Sprintf("qs:s5:%d", id)}, {Text: "เลื่อน 10 นาที", CallbackData: fmt.Sprintf("qs:s10:%d", id)}, {Text: "เลื่อน 30 นาที", CallbackData: fmt.Sprintf("qs:s30:%d", id)}}, {{Text: "เสร็จแล้ว", CallbackData: fmt.Sprintf("qs:done:%d", id)}}}}
 }
 
+var (
+	thaiWeekdays = [...]string{
+		"วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์",
+	}
+	thaiMonths = [...]string{
+		"", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+	}
+)
+
+func formatThaiDateTime(t time.Time) string {
+	w := thaiWeekdays[t.Weekday()]
+	m := thaiMonths[t.Month()]
+	return fmt.Sprintf("%s %d %s %s", w, t.Day(), m, t.Format("15:04"))
+}
+
 func formatMessage(d Delivery) string {
 	loc := location()
 	event := d.EventAt.In(loc)
-	when := event.Format("วันจันทร์ 2 ม.ค. 15:04")
+	when := formatThaiDateTime(event)
 	timing := "ถึงเวลาแล้ว"
 	if d.Kind == "snooze" {
 		timing = "เตือนซ้ำหลังเลื่อน"

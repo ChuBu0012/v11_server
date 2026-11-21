@@ -174,3 +174,97 @@ func stringContains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestSendMessage_ParseErrorFallback(t *testing.T) {
+	var attempts int
+	var receivedParseModes []string
+
+	mockTransport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		attempts++
+		var p SendMessagePayload
+		_ = json.NewDecoder(req.Body).Decode(&p)
+		receivedParseModes = append(receivedParseModes, p.ParseMode)
+
+		if attempts == 1 {
+			// First attempt fails with 400 can't parse entities
+			return &http.Response{
+				StatusCode: http.StatusBadRequest,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"ok":false,"error_code":400,"description":"Bad Request: can't parse entities: Can't find end of the entity"}`)),
+			}, nil
+		}
+
+		// Retry attempt succeeds
+		msgJSON := `{"ok":true,"result":{"message_id":77,"chat":{"id":123456},"text":"test"}}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(msgJSON)),
+		}, nil
+	})
+
+	httpClient := &http.Client{Transport: mockTransport}
+	client := NewClient("TEST_TOKEN", WithBaseURL("https://api.telegram.org"), WithHTTPClient(httpClient))
+
+	msg, err := client.SendMessage(context.Background(), 123456, "<b>unclosed tag", nil)
+	if err != nil {
+		t.Fatalf("expected fallback to succeed, got: %v", err)
+	}
+	if msg == nil || msg.MessageID != 77 {
+		t.Fatalf("expected message id 77, got: %v", msg)
+	}
+	if attempts != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempts)
+	}
+	if receivedParseModes[0] != "HTML" {
+		t.Errorf("expected first attempt HTML, got %q", receivedParseModes[0])
+	}
+	if receivedParseModes[1] != "" {
+		t.Errorf("expected retry attempt empty parse_mode, got %q", receivedParseModes[1])
+	}
+}
+
+func TestEditMessageText_ParseErrorFallback(t *testing.T) {
+	var attempts int
+	var receivedParseModes []string
+
+	mockTransport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		attempts++
+		var p EditMessageTextPayload
+		_ = json.NewDecoder(req.Body).Decode(&p)
+		receivedParseModes = append(receivedParseModes, p.ParseMode)
+
+		if attempts == 1 {
+			// First attempt fails with 400 can't parse entities
+			return &http.Response{
+				StatusCode: http.StatusBadRequest,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"ok":false,"error_code":400,"description":"Bad Request: can't parse entities: Can't find end of the entity"}`)),
+			}, nil
+		}
+
+		// Retry attempt succeeds
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"ok":true,"result":true}`)),
+		}, nil
+	})
+
+	httpClient := &http.Client{Transport: mockTransport}
+	client := NewClient("TEST_TOKEN", WithBaseURL("https://api.telegram.org"), WithHTTPClient(httpClient))
+
+	err := client.EditMessageText(context.Background(), 123456, 77, "<b>unclosed tag", nil)
+	if err != nil {
+		t.Fatalf("expected fallback to succeed, got: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempts)
+	}
+	if receivedParseModes[0] != "HTML" {
+		t.Errorf("expected first attempt HTML, got %q", receivedParseModes[0])
+	}
+	if receivedParseModes[1] != "" {
+		t.Errorf("expected retry attempt empty parse_mode, got %q", receivedParseModes[1])
+	}
+}

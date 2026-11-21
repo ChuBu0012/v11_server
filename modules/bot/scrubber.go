@@ -128,7 +128,8 @@ var (
 	mdInlineCodeRegex     = regexp.MustCompile("`([^`\n]+)`")
 	mdBoldAsteriskRegex   = regexp.MustCompile(`\*\*([^*\n]+?)\*\*`)
 	mdBoldUnderscoreRegex = regexp.MustCompile(`__([^_\n]+?)__`)
-	mdItalicAsteriskRegex = regexp.MustCompile(`(^|[^\*])\*([^*\n]+?)\*([^\*]|$)`)
+	mdItalicAsteriskRegex = regexp.MustCompile(`(^|[^\*])\*([^*\n]+?)\*`)
+	mdStrikethroughRegex  = regexp.MustCompile(`~~([^~\n]+?)~~`)
 	mdHeaderRegex         = regexp.MustCompile(`(?m)^#{1,6}\s*(.*)$`)
 	mdBulletRegex         = regexp.MustCompile(`(?m)^[\t ]*[-*][\t ]+(.*)$`)
 	mdLinkRegex           = regexp.MustCompile(`\[([^\]]+)\]\((https?://[^\s\)]+)\)`)
@@ -182,12 +183,15 @@ func (s *OutputScrubber) MarkdownToTelegramHTML(text string) string {
 	escaped = mdBoldUnderscoreRegex.ReplaceAllString(escaped, "<b>$1</b>")
 
 	// 6. Convert Italic (*italic*) -> <i>italic</i>
-	escaped = mdItalicAsteriskRegex.ReplaceAllString(escaped, "${1}<i>$2</i>${3}")
+	escaped = mdItalicAsteriskRegex.ReplaceAllString(escaped, "${1}<i>$2</i>")
 
-	// 7. Convert Markdown Links [text](url) -> <a href="url">text</a>
+	// 7. Convert Strikethrough (~~strike~~) -> <s>strike</s>
+	escaped = mdStrikethroughRegex.ReplaceAllString(escaped, "<s>$1</s>")
+
+	// 8. Convert Markdown Links [text](url) -> <a href="url">text</a>
 	escaped = mdLinkRegex.ReplaceAllString(escaped, `<a href="$2">$1</a>`)
 
-	// 8. Restore protected inline code and code blocks
+	// 9. Restore protected inline code and code blocks
 	for i, code := range inlineCodes {
 		escaped = strings.ReplaceAll(escaped, fmt.Sprintf("\x00IC_%d\x00", i), code)
 	}

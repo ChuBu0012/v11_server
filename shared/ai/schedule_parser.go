@@ -16,6 +16,12 @@ const (
 	bangkokOffset   = 7 * 60 * 60
 )
 
+var (
+	reSpecificTime    = regexp.MustCompile(`(?i)(\d{1,2}[:.]\d{2}|\d{1,2}\s*(am|pm|น\.|โมง|นาฬิกา))`)
+	reDateIndicator   = regexp.MustCompile(`(?i)(วันนี้|พรุ่งนี้|มะรืน|(?:วัน)?(?:จันทร์|อังคาร|พุธ|พฤหัส(?:บดี)?|ศุกร์|เสาร์|อาทิตย์)|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}/\d{1,2})`)
+	reDotTimeNotation = regexp.MustCompile(`\b([01]?\d|2[0-3])\.([0-5]\d)\b`)
+)
+
 // SchedulePreview matches the reminder input schema for creating reminders.
 type SchedulePreview struct {
 	Title      string `json:"title"`
@@ -104,7 +110,7 @@ func IsObviouslyAmbiguous(prompt string) (bool, string) {
 	lower := strings.ToLower(prompt)
 
 	// Patterns without any specific time (digits followed by : or am/pm/น./โมง/นาฬิกา)
-	hasSpecificTime := regexp.MustCompile(`(\d{1,2}[:.]\d{2}|\d{1,2}\s*(am|pm|น\.|โมง|นาฬิกา))`).MatchString(lower)
+	hasSpecificTime := reSpecificTime.MatchString(lower)
 
 	// Vague Thai time expressions without specific time
 	vagueThai := []string{"ตอนสายๆ", "สายๆ", "ตอนบ่ายๆ", "บ่ายๆ", "ตอนเย็นๆ", "เย็นๆ", "ตอนค่ำๆ", "ค่ำๆ", "ดึกๆ", "สักวัน", "สัปดาห์หน้า", "เดือนหน้า", "ว่างๆ", "เร็วๆ นี้"}
@@ -115,7 +121,7 @@ func IsObviouslyAmbiguous(prompt string) (bool, string) {
 	}
 
 	// If prompt contains generic reminder words with NO time and NO date at all
-	hasDateIndicator := regexp.MustCompile(`(วันนี้|พรุ่งนี้|มะรืน|วัน[จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์]|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}/\d{1,2})`).MatchString(lower)
+	hasDateIndicator := reDateIndicator.MatchString(lower)
 	if !hasSpecificTime && !hasDateIndicator {
 		return true, "ต้องการให้แจ้งเตือนวันที่และเวลาใดครับ? (เช่น พรุ่งนี้ 09:00 น.)"
 	}
@@ -162,8 +168,7 @@ func ParseSchedulePrompt(ctx context.Context, client *Client, prompt string, use
 	now := time.Now().In(loc)
 
 	// Normalize common Thai dot-time notation (e.g. "11.59" -> "11:59")
-	reDotTime := regexp.MustCompile(`\b([01]?\d|2[0-3])\.([0-5]\d)\b`)
-	normalizedPrompt := reDotTime.ReplaceAllString(prompt, "$1:$2")
+	normalizedPrompt := reDotTimeNotation.ReplaceAllString(prompt, "$1:$2")
 
 	systemPrompt := fmt.Sprintf(`You are Pocket Sentinel's schedule parsing AI.
 Current reference time: %s (Timezone: %s).

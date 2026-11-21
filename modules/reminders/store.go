@@ -18,6 +18,10 @@ func NewStore(db *sql.DB) (*Store, error) {
 		`CREATE TABLE IF NOT EXISTS reminder_occurrences (id INTEGER PRIMARY KEY AUTOINCREMENT, reminder_id INTEGER NOT NULL REFERENCES reminders(id) ON DELETE CASCADE, event_at TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'scheduled', completed_at TEXT, UNIQUE(reminder_id,event_at))`,
 		`CREATE TABLE IF NOT EXISTS reminder_deliveries (id INTEGER PRIMARY KEY AUTOINCREMENT, occurrence_id INTEGER NOT NULL REFERENCES reminder_occurrences(id) ON DELETE CASCADE, reminder_id INTEGER NOT NULL REFERENCES reminders(id) ON DELETE CASCADE, event_at TEXT NOT NULL, due_at TEXT NOT NULL, offset_minutes INTEGER NOT NULL, kind TEXT NOT NULL DEFAULT 'notice', state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, retry_at TEXT, last_error TEXT NOT NULL DEFAULT '', sent_at TEXT, telegram_message_id INTEGER, UNIQUE(reminder_id,event_at,offset_minutes,kind))`,
 		`CREATE INDEX IF NOT EXISTS idx_reminder_delivery_due ON reminder_deliveries(state,due_at,retry_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_reminders_enabled_starts ON reminders(enabled, starts_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_reminder_occurrences_state_completed ON reminder_occurrences(state, completed_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_reminder_deliveries_occurrence ON reminder_deliveries(occurrence_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_reminder_deliveries_reminder ON reminder_deliveries(reminder_id)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
@@ -111,7 +115,16 @@ func (s *Store) List(ctx context.Context) ([]Reminder, error) {
 		_ = json.Unmarshal([]byte(raw), &x.Offsets)
 		x.Enabled = enabled == 1
 		x.Paused = paused == 1
-		completed, queryErr := s.db.QueryContext(ctx, `SELECT event_at FROM reminder_occurrences WHERE reminder_id=? AND state='done' AND completed_at>=?`, x.ID, time.Now().Add(-35*24*time.Hour).UTC().Format(time.RFC3339Nano))
+		items = append(items, x)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close() // Release connection before fetching related occurrences
+
+	cutoff := time.Now().Add(-35 * 24 * time.Hour).UTC().Format(time.RFC3339Nano)
+	for i := range items {
+		completed, queryErr := s.db.QueryContext(ctx, `SELECT event_at FROM reminder_occurrences WHERE reminder_id=? AND state='done' AND completed_at>=?`, items[i].ID, cutoff)
 		if queryErr != nil {
 			return nil, queryErr
 		}
@@ -122,16 +135,15 @@ func (s *Store) List(ctx context.Context) ([]Reminder, error) {
 				return nil, err
 			}
 			parsed, _ := time.Parse(time.RFC3339Nano, event)
-			x.CompletedOccurrences = append(x.CompletedOccurrences, parsed)
+			items[i].CompletedOccurrences = append(items[i].CompletedOccurrences, parsed)
 		}
 		if err := completed.Err(); err != nil {
 			completed.Close()
 			return nil, err
 		}
 		completed.Close()
-		items = append(items, x)
 	}
-	return items, rows.Err()
+	return items, nil
 }
 
 func (s *Store) Delete(ctx context.Context, id int64) error {

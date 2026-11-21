@@ -83,8 +83,23 @@ func (t *TelegramNotifier) Send(ctx context.Context, msg string) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 
 	if resp.StatusCode != http.StatusOK {
+		bodyStr := string(body)
+		if strings.Contains(bodyStr, "can't parse entities") {
+			// Retry once without parse_mode=HTML as plain text so the alert is not lost
+			data.Del("parse_mode")
+			if retryReq, retryErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(data.Encode())); retryErr == nil {
+				retryReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				if retryResp, retryErr := t.client.Do(retryReq); retryErr == nil {
+					defer retryResp.Body.Close()
+					_, _ = io.Copy(io.Discard, io.LimitReader(retryResp.Body, 4096))
+					if retryResp.StatusCode == http.StatusOK {
+						return nil
+					}
+				}
+			}
+		}
 		// Never include bot token in error details
-		return fmt.Errorf("telegram: API returned %d: %s", resp.StatusCode, redactBody(string(body), t.botToken))
+		return fmt.Errorf("telegram: API returned %d: %s", resp.StatusCode, redactBody(bodyStr, t.botToken))
 	}
 	return nil
 }

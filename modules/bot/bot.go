@@ -171,7 +171,28 @@ func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, rep
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, c.redactToken(fmt.Errorf("sendMessage returned %d: %s", resp.StatusCode, string(body)))
+		bodyStr := string(body)
+		if strings.Contains(bodyStr, "can't parse entities") && payload.ParseMode != "" {
+			payload.ParseMode = ""
+			if retryData, retryErr := json.Marshal(payload); retryErr == nil {
+				if retryReq, retryErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(retryData)); retryErr == nil {
+					retryReq.Header.Set("Content-Type", "application/json")
+					if retryResp, retryErr := c.httpClient.Do(retryReq); retryErr == nil {
+						defer retryResp.Body.Close()
+						if retryBody, retryErr := io.ReadAll(io.LimitReader(retryResp.Body, 64*1024)); retryErr == nil && retryResp.StatusCode == http.StatusOK {
+							var retryAPIResp APIResponse
+							if json.Unmarshal(retryBody, &retryAPIResp) == nil && retryAPIResp.OK {
+								var msg Message
+								if json.Unmarshal(retryAPIResp.Result, &msg) == nil {
+									return &msg, nil
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return nil, c.redactToken(fmt.Errorf("sendMessage returned %d: %s", resp.StatusCode, bodyStr))
 	}
 
 	var apiResp APIResponse
@@ -180,6 +201,26 @@ func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, rep
 	}
 
 	if !apiResp.OK {
+		if strings.Contains(apiResp.Description, "can't parse entities") && payload.ParseMode != "" {
+			payload.ParseMode = ""
+			if retryData, retryErr := json.Marshal(payload); retryErr == nil {
+				if retryReq, retryErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(retryData)); retryErr == nil {
+					retryReq.Header.Set("Content-Type", "application/json")
+					if retryResp, retryErr := c.httpClient.Do(retryReq); retryErr == nil {
+						defer retryResp.Body.Close()
+						if retryBody, retryErr := io.ReadAll(io.LimitReader(retryResp.Body, 64*1024)); retryErr == nil && retryResp.StatusCode == http.StatusOK {
+							var retryAPIResp APIResponse
+							if json.Unmarshal(retryBody, &retryAPIResp) == nil && retryAPIResp.OK {
+								var msg Message
+								if json.Unmarshal(retryAPIResp.Result, &msg) == nil {
+									return &msg, nil
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 		return nil, c.redactToken(fmt.Errorf("telegram API error (%d): %s", apiResp.ErrorCode, apiResp.Description))
 	}
 
@@ -226,7 +267,25 @@ func (c *Client) EditMessageText(ctx context.Context, chatID int64, messageID in
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return c.redactToken(fmt.Errorf("editMessageText returned %d: %s", resp.StatusCode, string(body)))
+		bodyStr := string(body)
+		if strings.Contains(bodyStr, "can't parse entities") && payload.ParseMode != "" {
+			payload.ParseMode = ""
+			if retryData, retryErr := json.Marshal(payload); retryErr == nil {
+				if retryReq, retryErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(retryData)); retryErr == nil {
+					retryReq.Header.Set("Content-Type", "application/json")
+					if retryResp, retryErr := c.httpClient.Do(retryReq); retryErr == nil {
+						defer retryResp.Body.Close()
+						if retryBody, retryErr := io.ReadAll(io.LimitReader(retryResp.Body, 64*1024)); retryErr == nil && retryResp.StatusCode == http.StatusOK {
+							var retryAPIResp APIResponse
+							if json.Unmarshal(retryBody, &retryAPIResp) == nil && (retryAPIResp.OK || strings.Contains(retryAPIResp.Description, "message is not modified")) {
+								return nil
+							}
+						}
+					}
+				}
+			}
+		}
+		return c.redactToken(fmt.Errorf("editMessageText returned %d: %s", resp.StatusCode, bodyStr))
 	}
 
 	var apiResp APIResponse
@@ -238,6 +297,23 @@ func (c *Client) EditMessageText(ctx context.Context, chatID int64, messageID in
 		// If message is not modified, ignore that specific error as benign
 		if strings.Contains(apiResp.Description, "message is not modified") {
 			return nil
+		}
+		if strings.Contains(apiResp.Description, "can't parse entities") && payload.ParseMode != "" {
+			payload.ParseMode = ""
+			if retryData, retryErr := json.Marshal(payload); retryErr == nil {
+				if retryReq, retryErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(retryData)); retryErr == nil {
+					retryReq.Header.Set("Content-Type", "application/json")
+					if retryResp, retryErr := c.httpClient.Do(retryReq); retryErr == nil {
+						defer retryResp.Body.Close()
+						if retryBody, retryErr := io.ReadAll(io.LimitReader(retryResp.Body, 64*1024)); retryErr == nil && retryResp.StatusCode == http.StatusOK {
+							var retryAPIResp APIResponse
+							if json.Unmarshal(retryBody, &retryAPIResp) == nil && (retryAPIResp.OK || strings.Contains(retryAPIResp.Description, "message is not modified")) {
+								return nil
+							}
+						}
+					}
+				}
+			}
 		}
 		return c.redactToken(fmt.Errorf("telegram API error (%d): %s", apiResp.ErrorCode, apiResp.Description))
 	}

@@ -471,6 +471,16 @@ func TestScrubber_MarkdownToTelegramHTML(t *testing.T) {
 			input:    "ดูรายละเอียดที่ [Pocket Sentinel](https://spindle-said-hemstitch.ngrok-free.dev)",
 			expected: `ดูรายละเอียดที่ <a href="https://spindle-said-hemstitch.ngrok-free.dev">Pocket Sentinel</a>`,
 		},
+		{
+			name:     "Strikethrough",
+			input:    "ข้อความนี้ ~~ยกเลิกแล้ว~~ ใช้งานได้",
+			expected: "ข้อความนี้ <s>ยกเลิกแล้ว</s> ใช้งานได้",
+		},
+		{
+			name:     "Consecutive italics",
+			input:    "*ข้อ 1* *ข้อ 2*",
+			expected: "<i>ข้อ 1</i> <i>ข้อ 2</i>",
+		},
 	}
 
 	for _, tc := range tests {

@@ -73,8 +73,18 @@ func SummarizeMonitorInsight(ctx context.Context, client *Client, evidence Monit
 		return fallback
 	}
 	cleaned := strings.TrimSpace(raw)
-	cleaned = strings.TrimPrefix(cleaned, "```json")
-	cleaned = strings.TrimSuffix(cleaned, "```")
+	if strings.HasPrefix(cleaned, "```") {
+		lines := strings.Split(cleaned, "\n")
+		if len(lines) >= 2 {
+			if strings.HasPrefix(lines[0], "```") {
+				lines = lines[1:]
+			}
+			if len(lines) > 0 && strings.HasPrefix(lines[len(lines)-1], "```") {
+				lines = lines[:len(lines)-1]
+			}
+			cleaned = strings.TrimSpace(strings.Join(lines, "\n"))
+		}
+	}
 	var response monitorAIResponse
 	if err := json.Unmarshal([]byte(strings.TrimSpace(cleaned)), &response); err != nil || strings.TrimSpace(response.Summary) == "" {
 		fallback.FallbackMessage = "AI ส่งผลลัพธ์ที่อ่านไม่ได้ จึงแสดง insight จากค่าระบบโดยตรง"

@@ -132,3 +132,52 @@ func TestNoopNotifierWhenUnconfigured(t *testing.T) {
 		t.Errorf("Expected nil error from NoopNotifier, got %v", err)
 	}
 }
+
+func TestTelegramNotifierParseErrorFallback(t *testing.T) {
+	var attempts int
+	var receivedParseModes []string
+
+	mockClient := &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			attempts++
+			_ = req.ParseForm()
+			receivedParseModes = append(receivedParseModes, req.FormValue("parse_mode"))
+
+			if attempts == 1 {
+				// Telegram returns 400 Bad Request with entity parse error
+				return &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body:       io.NopCloser(bytes.NewBufferString(`{"ok":false,"error_code":400,"description":"Bad Request: can't parse entities: Can't find end of the entity"}`)),
+					Header:     make(http.Header),
+				}, nil
+			}
+
+			// Retry without parse_mode succeeds
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"ok":true,"result":{"message_id":42}}`)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	notifier := NewTelegramNotifier("bot-token-123", "987654", 5*time.Second,
+		WithBaseURL("https://api.telegram.org"),
+		WithHTTPClient(mockClient),
+	)
+
+	err := notifier.Send(context.Background(), "<b>unclosed tag")
+	if err != nil {
+		t.Fatalf("expected fallback to succeed, got: %v", err)
+	}
+
+	if attempts != 2 {
+		t.Fatalf("expected 2 attempts (initial + retry), got %d", attempts)
+	}
+	if receivedParseModes[0] != "HTML" {
+		t.Errorf("attempt 1 parse_mode expected HTML, got %q", receivedParseModes[0])
+	}
+	if receivedParseModes[1] != "" {
+		t.Errorf("attempt 2 parse_mode expected empty (plain text), got %q", receivedParseModes[1])
+	}
+}
