@@ -489,47 +489,18 @@ func TestEndpointsRoute_Integration(t *testing.T) {
 	}
 }
 
-func TestStatusReverseProxyRoute_Integration(t *testing.T) {
+func TestStatusRedirectRoute_Integration(t *testing.T) {
 	_, router, cleanup := setupTestApp(t)
 	defer cleanup()
 
-	// GET /status redirects to /status/
+	// GET /status redirects to Gatus port 8081
 	req := httptest.NewRequest(http.MethodGet, "/status", nil)
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 	if rr.Code != http.StatusMovedPermanently {
 		t.Fatalf("GET /status status = %d, want 301", rr.Code)
 	}
-	if loc := rr.Header().Get("Location"); loc != "/status/" {
-		t.Errorf("GET /status redirect location = %q, want /status/", loc)
-	}
-}
-
-type testCloseNotifierRecorder struct {
-	*httptest.ResponseRecorder
-	closed chan bool
-}
-
-func (cn *testCloseNotifierRecorder) CloseNotify() <-chan bool {
-	return cn.closed
-}
-
-func TestGatusStaticProxyRoutes_Integration(t *testing.T) {
-	_, router, cleanup := setupTestApp(t)
-	defer cleanup()
-
-	for _, path := range []string{"/img/logo.svg", "/favicon.ico", "/favicon-16x16.png", "/favicon-32x32.png", "/apple-touch-icon.png"} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec := httptest.NewRecorder()
-		cnRec := &testCloseNotifierRecorder{
-			ResponseRecorder: rec,
-			closed:           make(chan bool, 1),
-		}
-		router.ServeHTTP(cnRec, req)
-		// Because Gatus backend might not be running in unit test, ReverseProxy returns 502 Bad Gateway,
-		// but crucially NOT 404 Not Found from Gin router.
-		if cnRec.Code == http.StatusNotFound {
-			t.Fatalf("GET %s returned 404, want proxy handling (non-404)", path)
-		}
+	if loc := rr.Header().Get("Location"); loc != "http://100.92.194.87:8081/" {
+		t.Errorf("GET /status redirect location = %q, want http://100.92.194.87:8081/", loc)
 	}
 }

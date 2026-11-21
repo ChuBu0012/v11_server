@@ -1,10 +1,11 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v42';
+const CACHE_NAME = 'sentinel-shell-v43';
 const SHELL_ASSETS = [
   '/',
   '/tele-bridge',
   '/relay',
   '/schedule',
+  '/endpoints',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -18,7 +19,6 @@ const SHELL_ASSETS = [
   '/static/js/components/charts.js',
   '/static/js/components/digest.js',
   '/static/js/components/events.js',
-  '/static/js/components/endpoints.js',
   '/static/js/components/relay.js',
   '/static/js/components/schedule-summary.js',
   '/static/js/components/schedule.js',
@@ -47,13 +47,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Pass all Gatus and API requests directly through network (never cache in PWA)
+  // Pass API, health, live map, and external requests directly through network
   if (
     url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/status') ||
-    url.pathname.startsWith('/js/') ||
-    url.pathname.startsWith('/css/') ||
-    url.pathname.startsWith('/img/') ||
     url.pathname.startsWith('/health') ||
     url.pathname.startsWith('/live/')
   ) {

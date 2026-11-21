@@ -66,7 +66,7 @@ func New(configPath string) *Module {
 
 	gatusURL := os.Getenv("GATUS_PUBLIC_URL")
 	if gatusURL == "" {
-		gatusURL = "/status/"
+		gatusURL = "http://100.92.194.87:8081/"
 	}
 
 	return &Module{
@@ -376,17 +376,17 @@ func (m *Module) fetchGatusStatuses() map[string]liveStatus {
 }
 
 func (m *Module) restartGatus() {
-	pm2Bin := "pm2"
-	if _, err := exec.LookPath(pm2Bin); err != nil {
-		if _, err := os.Stat("/data/data/com.termux/files/usr/bin/pm2"); err == nil {
-			pm2Bin = "/data/data/com.termux/files/usr/bin/pm2"
-		} else {
-			log.Printf("[endpoints] pm2 binary not found, skipping restart")
-			return
-		}
+	var cmd *exec.Cmd
+	termuxPM2 := "/data/data/com.termux/files/usr/bin/pm2"
+	if _, err := os.Stat(termuxPM2); err == nil {
+		cmd = exec.Command("node", termuxPM2, "restart", "gatus")
+	} else if pm2Bin, err := exec.LookPath("pm2"); err == nil {
+		cmd = exec.Command(pm2Bin, "restart", "gatus")
+	} else {
+		log.Printf("[endpoints] pm2 binary not found, skipping restart")
+		return
 	}
 
-	cmd := exec.Command(pm2Bin, "restart", "gatus")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("[endpoints] Warning: pm2 restart gatus failed: %v (output: %s)", err, string(out))

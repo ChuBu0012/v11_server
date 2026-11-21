@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>จัดการ Endpoint — Pocket Sentinel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <style>
+    .endpoint-card { padding: 18px; margin-bottom: 20px; }
+    .ep-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+    .ep-row:last-child { border-bottom: none; }
+    .chip.online { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+    .chip.down { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }
+  </style>
+</head>
+<body class="theme-dark" x-data="endpointManager()" x-init="init()">
+  <header class="page-head">
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+      <a href="http://100.92.194.87:8081/" class="btn btn-sm btn-ghost">
+        <span>← กลับไป Gatus</span>
+      </a>
+      <a href="/" class="btn btn-sm btn-ghost">
+        <span>🏠 แดชบอร์ดหลัก</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="hero card fade-in" style="margin-bottom: 24px;">
+      <h1>จัดการ Health Endpoints</h1>
+      <p class="hero-copy">เพิ่มหรือลบจุดตรวจสุขภาพใน Gatus โดยไม่ต้องแก้ไขไฟล์คอนฟิกโดยตรง</p>
+    </div>
+
+    <!-- 1. Add Endpoint Form -->
+    <div class="card endpoint-card">
+      <h2 style="font-size: 17px; font-weight: 600; margin-bottom: 14px;">➕ เพิ่ม Endpoint ใหม่</h2>
+      <form @submit.prevent="addEndpoint()" style="display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px;">ชื่อ Endpoint / บริการ</label>
+          <input class="input" type="text" x-model="form.name" placeholder="เช่น Pocket Sentinel, My API" required maxlength="80">
+        </div>
+        <div>
+          <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px;">URL ที่ต้องการตรวจ</label>
+          <input class="input" type="text" x-model="form.url" placeholder="https://example.com หรือ http://localhost:8080/health" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px;">กลุ่มบริการ (Group)</label>
+            <select class="input" x-model="form.group">
+              <option value="Core Services">Core Services</option>
+              <option value="Websites">Websites</option>
+              <option value="APIs">APIs</option>
+              <option value="Network & Outbound">Network & Outbound</option>
+              <option value="Infrastructure">Infrastructure</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px;">ความถี่ในการตรวจ</label>
+            <select class="input" x-model="form.interval">
+              <option value="30s">ทุก 30 วินาที</option>
+              <option value="60s">ทุก 1 นาที</option>
+              <option value="2m">ทุก 2 นาที</option>
+              <option value="5m">ทุก 5 นาที</option>
+            </select>
+          </div>
+        </div>
+
+        <template x-if="message">
+          <div :class="'alert ' + (status === 'error' ? 'err' : 'ok')" style="padding: 10px 14px; font-size: 13.5px;" x-text="message"></div>
+        </template>
+
+        <button type="submit" class="btn btn-primary" :disabled="submitting" style="margin-top: 6px;">
+          <span x-text="submitting ? 'กำลังบันทึกและรีสตาร์ท Gatus…' : 'บันทึก Endpoint'"></span>
+        </button>
+      </form>
+    </div>
+
+    <!-- 2. Current Endpoints List -->
+    <div class="card endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <h2 style="font-size: 17px; font-weight: 600;">📋 รายการ Endpoint ปัจจุบัน</h2>
+        <button type="button" class="btn btn-sm btn-ghost" @click="loadEndpoints()" :disabled="loading">
+          <span>🔄 รีเฟรช</span>
+        </button>
+      </div>
+
+      <template x-if="loading">
+        <div class="loading" style="padding: 20px 0;"><div class="spinner"></div> กำลังโหลดข้อมูล...</div>
+      </template>
+
+      <template x-if="!loading && endpoints.length === 0">
+        <div class="muted" style="padding: 16px 0; text-align: center;">ไม่มี Endpoint ในระบบ</div>
+      </template>
+
+      <div class="ep-list">
+        <template x-for="(ep, idx) in endpoints" :key="idx">
+          <div class="ep-row">
+            <div style="min-width: 0; flex: 1; padding-right: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span :class="'chip ' + (ep.alive ? 'online' : 'down')" style="font-size: 11px; font-weight: 700;" x-text="ep.alive ? 'ONLINE' : 'DOWN'"></span>
+                <strong style="font-size: 14.5px;" x-text="ep.name"></strong>
+                <span class="muted" style="font-size: 12px;" x-text="'(' + (ep.group || 'General') + ')'"></span>
+              </div>
+              <div class="muted mono" style="font-size: 12px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="ep.url"></div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="muted mono" style="font-size: 12px;" x-text="ep.duration_ms ? ep.duration_ms + 'ms' : ep.interval"></span>
+              <button type="button" class="btn btn-sm btn-ghost btn-danger" style="padding: 2px 8px;" @click="deleteEndpoint(ep.name)" :disabled="submitting" title="ลบ Endpoint">
+                <span>✕</span>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <footer class="page-footer">Pocket Sentinel · vivo 1804 · Termux arm64</footer>
+  </main>
+
+  <script>
+    function endpointManager() {
+      return {
+        endpoints: [],
+        loading: false,
+        submitting: false,
+        message: '',
+        status: '',
+        form: { name: '', url: '', group: 'Core Services', interval: '60s' },
+        async init() {
+          await this.loadEndpoints();
+        },
+        async loadEndpoints() {
+          this.loading = true;
+          try {
+            const res = await fetch('/api/endpoints');
+            const data = await res.json();
+            if (data.status === 'ok') {
+              this.endpoints = data.endpoints || [];
+            }
+          } catch (e) {
+            console.error('Failed to load endpoints:', e);
+          } finally {
+            this.loading = false;
+          }
+        },
+        async addEndpoint() {
+          this.submitting = true;
+          this.message = '';
+          this.status = '';
+          try {
+            const res = await fetch('/api/endpoints', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.form)
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+              this.status = 'ok';
+              this.message = '✅ เพิ่ม Endpoint และรีสตาร์ท Gatus สำเร็จ!';
+              this.form = { name: '', url: '', group: 'Core Services', interval: '60s' };
+              await this.loadEndpoints();
+            } else {
+              this.status = 'error';
+              this.message = data.message || 'บันทึกไม่สำเร็จ';
+            }
+          } catch (e) {
+            this.status = 'error';
+            this.message = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+          } finally {
+            this.submitting = false;
+          }
+        },
+        async deleteEndpoint(name) {
+          if (!confirm(`คุณต้องการลบ endpoint "${name}" หรือไม่?`)) return;
+          this.submitting = true;
+          try {
+            const res = await fetch('/api/endpoints/' + encodeURIComponent(name), { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'ok') {
+              await this.loadEndpoints();
+            } else {
+              alert(data.message || 'ลบไม่สำเร็จ');
+            }
+          } catch (e) {
+            alert('เกิดข้อผิดพลาดในการลบ endpoint');
+          } finally {
+            this.submitting = false;
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html>

@@ -20,6 +20,9 @@ var scheduleHTML []byte
 //go:embed live_map.html
 var liveMapHTML []byte
 
+//go:embed endpoints.html
+var endpointsHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -65,6 +68,8 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/relay", m.HandleTeleBridge)
 	r.GET("/schedule", m.HandleSchedule)
 	r.HEAD("/schedule", m.HandleSchedule)
+	r.GET("/endpoints", m.HandleEndpoints)
+	r.HEAD("/endpoints", m.HandleEndpoints)
 	r.GET("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
 	r.HEAD("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
 
@@ -94,6 +99,12 @@ func (m *Module) HandleLiveMap(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 	c.Data(http.StatusOK, "text/html; charset=utf-8", liveMapHTML)
+}
+
+// HandleEndpoints serves the dedicated Gatus health endpoints management interface.
+func (m *Module) HandleEndpoints(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", endpointsHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.

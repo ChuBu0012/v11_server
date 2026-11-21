@@ -12,6 +12,8 @@
 - [2026-11-21 | Learning/Post-mortem] SQLite Connection Pool PRAGMA: In Go `database/sql`, always configure SQLite PRAGMAs (busy_timeout, journal_mode, synchronous) via DSN query parameters (`_pragma=busy_timeout(10000)...`), never via `db.Exec()`, ensuring all connections in the pool inherit the configuration.
 - [2026-11-21 | Learning/Post-mortem] Mobile Telemetry Throttling: Debounce high-frequency mobile GPS/telemetry at the service layer (ignore stationary jitter < 5m within 10s with identical battery) to prevent SQLite write lock collisions and bandwidth exhaustion.
 - [2026-11-21 | Testing] Gin ReverseProxy tests: Wrap `httptest.ResponseRecorder` with `http.CloseNotifier` (`testCloseNotifierRecorder`) to prevent runtime type-assertion panics in unit tests.
+- [2026-11-21 | Learning/Device] Android Termux Port Binding: Android limits unprivileged users (`u0_a244`) from binding to ports < 1024 (e.g. port 80 fails with `EACCES: permission denied`). Always use unprivileged ports (8080, 8081) on Tailscale IP (`http://100.92.194.87:8080`).
+- [2026-11-21 | Learning/Device] Termux exec.Command Node Shebang: Node CLI scripts with `#!/usr/bin/env node` fail when spawned via Go `exec.Command` because `/usr/bin/env` does not exist in Android root; invoke `node /data/data/com.termux/files/usr/bin/<cli>` directly.
 
 ## Must Not
 - [2026-11-14 | AGENTS.md] Never use `sudo`, `systemctl`, `service`, or `docker` on Android/Termux.

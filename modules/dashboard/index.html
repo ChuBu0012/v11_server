@@ -20,7 +20,6 @@
   <script src="/static/js/components/charts.js"></script>
   <script src="/static/js/components/digest.js"></script>
   <script src="/static/js/components/events.js"></script>
-  <script src="/static/js/components/endpoints.js"></script>
   <script src="/static/js/components/schedule-summary.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
@@ -275,97 +274,6 @@
               <span class="log-message" x-text="formatRowMessage(entry)"></span>
             </div>
           </template>
-        </div>
-      </section>
-    </div>
-
-    <!-- 8. Endpoints & Health Check (Gatus) -->
-    <div x-data="endpointsComponent()">
-      <section class="section" aria-labelledby="endpoints-title">
-        <div class="section-head">
-          <div>
-            <h2 id="endpoints-title">สถานะบริการและ Endpoint</h2>
-            <p>ตรวจสอบสถานะผ่าน Gatus · ตรวจจับสถานะและความพร้อมใช้งาน</p>
-          </div>
-          <a :href="gatusUrl" target="_blank" rel="noopener" class="btn btn-sm btn-ghost" title="เปิด Gatus Dashboard เต็มจอ">
-            <span>แดชบอร์ด Gatus ↗</span>
-          </a>
-        </div>
-
-        <div class="card" style="padding: 16px;">
-          <!-- List of Endpoints -->
-          <div class="endpoints-list" style="margin-bottom: 16px;">
-            <template x-if="loading">
-              <div class="loading"><div class="spinner"></div> กำลังโหลดรายการ endpoint…</div>
-            </template>
-            <template x-if="!loading && endpoints.length === 0">
-              <div class="muted" style="padding: 10px 0;">ยังไม่มี endpoint ในระบบ</div>
-            </template>
-            <template x-for="(ep, idx) in endpoints" :key="idx">
-              <div class="endpoint-row" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--hairline);">
-                <div style="min-width: 0; flex: 1; padding-right: 12px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span :class="'chip ' + (ep.alive ? 'ok' : 'err')" style="font-size: 11px; padding: 2px 8px;" x-text="ep.alive ? 'ONLINE' : 'DOWN'"></span>
-                    <strong style="font-size: 14.5px;" x-text="ep.name"></strong>
-                    <span class="muted" style="font-size: 12px;" x-text="'(' + (ep.group || 'General') + ')'"></span>
-                  </div>
-                  <div class="muted mono" style="font-size: 12.5px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="ep.url"></div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span class="muted mono" style="font-size: 12px;" x-text="ep.duration_ms ? ep.duration_ms + 'ms' : ep.interval"></span>
-                  <button type="button" class="btn btn-sm btn-ghost btn-danger" style="padding: 0 6px;" @click="deleteEndpoint(ep.name)" :disabled="submitting" title="ลบ endpoint">
-                    <span style="font-size: 16px;">✕</span>
-                  </button>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- Add Endpoint Form -->
-          <div style="background: var(--pearl); border-radius: var(--r-md); padding: 14px; border: 1px solid var(--hairline);">
-            <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">➕ เพิ่ม Endpoint ใหม่</div>
-            
-            <form @submit.prevent="addEndpoint()" style="display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                <div class="field">
-                  <label class="sr-only" for="ep-name">ชื่อ Endpoint</label>
-                  <input id="ep-name" class="input" type="text" x-model="form.name" placeholder="ชื่อบริการ เช่น My API, Web Portal" required maxlength="80">
-                </div>
-                <div class="field">
-                  <label class="sr-only" for="ep-url">URL</label>
-                  <input id="ep-url" class="input" type="text" x-model="form.url" placeholder="https://example.com หรือ http://localhost:8080/..." required>
-                </div>
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div class="field">
-                  <select class="input" x-model="form.group">
-                    <option value="Core Services">Core Services</option>
-                    <option value="Websites">Websites</option>
-                    <option value="APIs">APIs</option>
-                    <option value="Network & Outbound">Network & Outbound</option>
-                    <option value="Infrastructure">Infrastructure</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <select class="input" x-model="form.interval">
-                    <option value="30s">ตรวจทุก 30 วินาที</option>
-                    <option value="60s">ตรวจทุก 1 นาที</option>
-                    <option value="2m">ตรวจทุก 2 นาที</option>
-                    <option value="5m">ตรวจทุก 5 นาที</option>
-                  </select>
-                </div>
-              </div>
-
-              <template x-if="message">
-                <div :class="'alert ' + (status === 'error' ? 'err' : '')" style="font-size: 13px; padding: 8px 12px;" x-text="message"></div>
-              </template>
-
-              <button type="submit" class="btn btn-primary" :disabled="submitting" style="margin-top: 4px;">
-                <span x-text="submitting ? 'กำลังบันทึกและรีสตาร์ท Gatus…' : 'บันทึก Endpoint'"></span>
-              </button>
-            </form>
-          </div>
         </div>
       </section>
     </div>

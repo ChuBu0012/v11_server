@@ -37,6 +37,7 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
 
 ## Decisions
 - [2026-11-21] Decommissioned public ngrok ingress and transitioned entirely to Tailscale (`http://100.92.194.87:8080`) to eliminate 1GB/month bandwidth quota limits and protocol overhead. Removed ngrok-tunnel PM2 process.
+- [2026-11-21] Decommissioned Gatus reverse proxy from Pocket Sentinel (`main.go`) and cleaned up root asset proxy routes; replaced `/status` with 301 redirect to standalone Gatus at `http://100.92.194.87:8081/`. Removed inline endpoint card section from `index.html`. Added dedicated Apple HIG Endpoint Manager at `/endpoints` (`modules/dashboard/endpoints.html`). Configured Gatus UI floating action button to route to `/endpoints` and set `logo: /apple-touch-icon.png` to fix broken logo. Completely uninstalled ngrok and cloudflared from vivo V11. Bumped `sw.js` cache to `sentinel-shell-v43`. All tests pass.
 - [2026-11-14] Switched from Cloudflare to ngrok for public tunneling with free static domain.
 - [2026-11-14] Wrapped ngrok in `run-ngrok.sh` using `termux-chroot` + `SSL_CERT_FILE=/etc/tls/cert.pem` to solve Android Kernel 4.4 syscall issues and TLS root CA lookup in Termux.
 - [2026-11-14] Cross-compilation on macOS: `CGO_ENABLED=0 GOOS=android GOARCH=arm64` (never `GOOS=linux` due to Kernel 4.4 `faccessat2` crash).
