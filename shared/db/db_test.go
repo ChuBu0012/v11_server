@@ -70,4 +70,15 @@ func TestInitDB(t *testing.T) {
 	if err := db.QueryRow("SELECT COUNT(*) FROM watcher_checks WHERE watcher_id=?", watcherID).Scan(&checkCount); err != nil || checkCount != 0 {
 		t.Errorf("Expected 0 watcher checks after cascade delete, got %d (err: %v)", checkCount, err)
 	}
+
+	// Verify all pool connections inherit busy_timeout from DSN
+	for i := 0; i < 5; i++ {
+		var timeout int
+		if err := db.QueryRow("PRAGMA busy_timeout").Scan(&timeout); err != nil {
+			t.Fatalf("Failed to read busy_timeout on connection %d: %v", i, err)
+		}
+		if timeout != 10000 {
+			t.Errorf("Expected busy_timeout 10000, got %d on iteration %d", timeout, i)
+		}
+	}
 }

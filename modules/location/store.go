@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const storeOperationTimeout = 3 * time.Second
+const storeOperationTimeout = 10 * time.Second
 
 var errInvalidLocationData = errors.New("invalid location data")
 

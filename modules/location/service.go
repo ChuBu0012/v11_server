@@ -81,8 +81,16 @@ func (s *Service) ProcessPoint(ctx context.Context, point LocationPoint) ([]Noti
 	if err != nil {
 		return nil, fmt.Errorf("read latest locations: %w", err)
 	}
-	if previous := latest[point.DeviceID]; previous != nil && !point.RecordedAt.After(previous.RecordedAt) {
-		return nil, nil
+	if previous := latest[point.DeviceID]; previous != nil {
+		if !point.RecordedAt.After(previous.RecordedAt) {
+			return nil, nil
+		}
+		// Debounce high-frequency stationary updates: if moved < 5m, arrived within 10s,
+		// battery is identical, and accuracy is not an improvement, skip redundant DB writes.
+		dist := DistanceMeters(previous.Latitude, previous.Longitude, point.Latitude, point.Longitude)
+		if dist < 5.0 && point.RecordedAt.Sub(previous.RecordedAt) < 10*time.Second && previous.Battery == point.Battery && point.Accuracy >= previous.Accuracy {
+			return nil, nil
+		}
 	}
 	if err := s.store.SavePoint(ctx, point); err != nil {
 		return nil, err

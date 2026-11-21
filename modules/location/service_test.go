@@ -245,4 +245,69 @@ func TestServiceRejectsLocationBeforePersistingWhenStoreFails(t *testing.T) {
 	}
 }
 
+func TestServiceDebouncesHighFrequencyStationaryPoints(t *testing.T) {
+	_, store := openLocationTestStore(t)
+	now := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+	service := NewService(store, nil, WithClock(func() time.Time { return now }))
+	ctx := context.Background()
+
+	// 1. Initial point -> must be saved
+	p1 := samplePoint(DeviceMe, now, 0)
+	p1.Battery = 80
+	p1.Accuracy = 10
+	if _, err := service.ProcessPoint(ctx, p1); err != nil {
+		t.Fatalf("p1 failed: %v", err)
+	}
+
+	// 2. High-frequency duplicate 2 seconds later (moved 1 meter, same battery, same accuracy) -> must debounce
+	p2 := samplePoint(DeviceMe, now.Add(2*time.Second), metersToLatitude(1))
+	p2.Battery = 80
+	p2.Accuracy = 10
+	events, err := service.ProcessPoint(ctx, p2)
+	if err != nil || events != nil {
+		t.Fatalf("p2 expected debounce, got events=%v, err=%v", events, err)
+	}
+
+	// Verify only 1 point persisted in store
+	latest, err := store.LatestPoints(ctx)
+	if err != nil || latest[DeviceMe] == nil {
+		t.Fatalf("LatestPoints: %v", err)
+	}
+	if !latest[DeviceMe].RecordedAt.Equal(now) {
+		t.Fatalf("expected latest recordedAt to be p1 (%v), got %v", now, latest[DeviceMe].RecordedAt)
+	}
+
+	// 3. Point with battery change 4 seconds later -> must be saved
+	p3 := samplePoint(DeviceMe, now.Add(4*time.Second), metersToLatitude(1))
+	p3.Battery = 79
+	p3.Accuracy = 10
+	if _, err := service.ProcessPoint(ctx, p3); err != nil {
+		t.Fatalf("p3 failed: %v", err)
+	}
+	latest, _ = store.LatestPoints(ctx)
+	if latest[DeviceMe].Battery != 79 {
+		t.Fatalf("expected latest battery 79, got %d", latest[DeviceMe].Battery)
+	}
+
+	// 4. Point with significant movement (20 meters) -> must be saved
+	p4 := samplePoint(DeviceMe, now.Add(6*time.Second), metersToLatitude(20))
+	p4.Battery = 79
+	p4.Accuracy = 10
+	if _, err := service.ProcessPoint(ctx, p4); err != nil {
+		t.Fatalf("p4 failed: %v", err)
+	}
+
+	// 5. Point after 15 seconds stationary -> must be saved
+	p5 := samplePoint(DeviceMe, now.Add(25*time.Second), metersToLatitude(20))
+	p5.Battery = 79
+	p5.Accuracy = 10
+	if _, err := service.ProcessPoint(ctx, p5); err != nil {
+		t.Fatalf("p5 failed: %v", err)
+	}
+	latest, _ = store.LatestPoints(ctx)
+	if !latest[DeviceMe].RecordedAt.Equal(now.Add(25 * time.Second)) {
+		t.Fatalf("expected latest recordedAt p5, got %v", latest[DeviceMe].RecordedAt)
+	}
+}
+
 func metersToLatitude(meters float64) float64 { return meters / 111195.0 }
