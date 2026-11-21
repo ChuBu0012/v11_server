@@ -479,6 +479,7 @@ func setupRouter(app *App) *gin.Engine {
 	}
 
 	r.Any("/status/*path", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		gatusProxy.ServeHTTP(c.Writer, c.Request)
 	})
 	r.GET("/status", func(c *gin.Context) {
@@ -490,6 +491,7 @@ func setupRouter(app *App) *gin.Engine {
 		gatusProxy.ServeHTTP(c.Writer, c.Request)
 	})
 	r.Any("/js/*path", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		gatusProxy.ServeHTTP(c.Writer, c.Request)
 	})
 	r.Any("/css/*path", func(c *gin.Context) {
