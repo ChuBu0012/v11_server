@@ -116,3 +116,10 @@ dashboard changes, keep complex Three.js/Chart.js/File objects outside Alpine
 reactive state, resize hidden canvases in `$nextTick()`, keep an `init()` data
 fallback for custom-event listeners, and bump `CACHE_NAME` plus the asset list
 in `modules/dashboard/sw.js` when frontend assets change.
+
+## 10. Subpath SPA Reverse Proxy & Service Worker Guardrails
+- **Router Base Path:** เมื่อทำ Reverse Proxy ให้กับ external SPA (เช่น Gatus, Vue, React) ภายใต้ subpath (เช่น `/status/`) ต้องตรวจสอบ client-side router เสมอ หากใช้ `createWebHistory("/")` แบบ hardcoded หน้าจอจะว่างเปล่าเพราะ router หา route ไม่เจอ ต้องแพตช์ให้ใช้ dynamic base: `createWebHistory(location.pathname.startsWith("/status") ? "/status/" : "/")` เพื่อให้ใช้ได้ทั้งบน subpath และ root domain (Tailscale)
+- **Root Asset Routing:** SPAs จะโหลด assets จาก root เช่น `/img/*`, `/js/*`, `/css/*`, `/favicon.ico`, `/api/v1/*` เสมอ ใน `main.go` ต้องเปิด route proxy ดัก path เหล่านี้ส่งต่อให้ backend ทั้งหมด
+- **Service Worker Bypass:** ใน `modules/dashboard/sw.js` ต้องใส่เงื่อนไข bypass subpath (`/status*`) และ asset paths (`/js/*`, `/css/*`, `/img/*`) ส่งตรงไปยัง network เสมอ ห้ามให้ PWA cache ดักจับเด็ดขาด และต้อง bump `CACHE_NAME` ทุกครั้งที่มีการเปลี่ยนแปลง
+- **Testing ReverseProxy:** ใน Go tests ของ Gin ที่เรียก ReverseProxy ห้ามใช้ `httptest.NewRecorder()` เดี่ยว ๆ เพราะจะ panic `http.CloseNotifier` ให้ครอบด้วย `testCloseNotifierRecorder` เสมอ (ดูรายละเอียดที่ `.agents/skills/spa-reverse-proxy/SKILL.md`)
+
