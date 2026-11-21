@@ -73,11 +73,29 @@ type APIResponse struct {
 
 // SendMessagePayload is the request payload for sendMessage.
 type SendMessagePayload struct {
-	ChatID              int64                 `json:"chat_id"`
-	Text                string                `json:"text"`
-	ParseMode           string                `json:"parse_mode,omitempty"`
-	ReplyMarkup         *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
-	DisableNotification bool                  `json:"disable_notification,omitempty"`
+	ChatID              int64  `json:"chat_id"`
+	Text                string `json:"text"`
+	ParseMode           string `json:"parse_mode,omitempty"`
+	ReplyMarkup         any    `json:"reply_markup,omitempty"`
+	DisableNotification bool   `json:"disable_notification,omitempty"`
+}
+
+// ReplyKeyboardMarkup represents a custom keyboard with reply options.
+type ReplyKeyboardMarkup struct {
+	Keyboard        [][]KeyboardButton `json:"keyboard"`
+	ResizeKeyboard  bool               `json:"resize_keyboard,omitempty"`
+	OneTimeKeyboard bool               `json:"one_time_keyboard,omitempty"`
+	IsPersistent    bool               `json:"is_persistent,omitempty"`
+}
+
+// KeyboardButton represents one button of the reply keyboard.
+type KeyboardButton struct {
+	Text string `json:"text"`
+}
+
+// ReplyKeyboardRemove removes the current custom keyboard.
+type ReplyKeyboardRemove struct {
+	RemoveKeyboard bool `json:"remove_keyboard"`
 }
 
 // EditMessageTextPayload is the request payload for editMessageText.

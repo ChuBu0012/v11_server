@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
+	"time"
 )
 
 // StatusCardProvider supplies real-time status card HTML and uptime.
@@ -12,20 +14,165 @@ type StatusCardProvider interface {
 	GetUptimeString() string
 }
 
+// PanelCardProvider supplies formatted HTML for the interactive /panel tabs.
+type PanelCardProvider interface {
+	GetPanelCard(ctx context.Context, tab string) (string, error)
+}
+
 // KeyboardsModule manages inline keyboards and callback query routing.
 type KeyboardsModule struct {
 	client     *Client
+	sender     TelegramSender
 	statusProv StatusCardProvider
+	panelProv  PanelCardProvider
 	torch      *TorchController
+	rebootFunc func()
 }
 
 // NewKeyboardsModule creates an inline keyboard manager.
 func NewKeyboardsModule(client *Client, statusProv StatusCardProvider, torch *TorchController) *KeyboardsModule {
-	return &KeyboardsModule{
+	km := &KeyboardsModule{
 		client:     client,
 		statusProv: statusProv,
 		torch:      torch,
 	}
+	if pp, ok := statusProv.(PanelCardProvider); ok {
+		km.panelProv = pp
+	}
+	return km
+}
+
+// SetSender sets the TelegramSender instance.
+func (k *KeyboardsModule) SetSender(s TelegramSender) {
+	k.sender = s
+}
+
+func (k *KeyboardsModule) editMessage(ctx context.Context, chatID int64, messageID int64, text string, replyMarkup *InlineKeyboardMarkup) error {
+	if k.client != nil {
+		return k.client.EditMessageText(ctx, chatID, messageID, text, replyMarkup)
+	}
+	if editor, ok := k.sender.(interface {
+		EditMessageText(ctx context.Context, chatID int64, messageID int64, text string, replyMarkup *InlineKeyboardMarkup) error
+	}); ok {
+		return editor.EditMessageText(ctx, chatID, messageID, text, replyMarkup)
+	}
+	return nil
+}
+
+func (k *KeyboardsModule) answerCallback(ctx context.Context, queryID string, text string, alert bool) error {
+	if k.client != nil {
+		return k.client.AnswerCallbackQuery(ctx, queryID, text, alert)
+	}
+	return nil
+}
+
+// SetPanelProvider sets the panel card provider.
+func (k *KeyboardsModule) SetPanelProvider(p PanelCardProvider) {
+	k.panelProv = p
+}
+
+// SetRebootFunc assigns the reboot handler.
+func (k *KeyboardsModule) SetRebootFunc(f func()) {
+	k.rebootFunc = f
+}
+
+// MakeDefaultReplyKeyboard creates a persistent, compact 3x2 reply keyboard for chat shortcuts.
+func MakeDefaultReplyKeyboard() *ReplyKeyboardMarkup {
+	return &ReplyKeyboardMarkup{
+		Keyboard: [][]KeyboardButton{
+			{
+				{Text: "🎛️ แผงควบคุม"},
+				{Text: "📊 สถานะระบบ"},
+			},
+			{
+				{Text: "🗺️ พิกัดสด"},
+				{Text: "📰 สรุปประจำวัน"},
+			},
+			{
+				{Text: "☀️ มอร์นิ่งอินไซต์"},
+				{Text: "🤖 สั่งงาน AI"},
+			},
+		},
+		ResizeKeyboard: true,
+		IsPersistent:   true,
+	}
+}
+
+// MakeRemoveReplyKeyboard removes the current custom keyboard.
+func MakeRemoveReplyKeyboard() *ReplyKeyboardRemove {
+	return &ReplyKeyboardRemove{
+		RemoveKeyboard: true,
+	}
+}
+
+// MakePanelKeyboard returns the tabbed inline keyboard for /panel.
+func MakePanelKeyboard(activeTab string) *InlineKeyboardMarkup {
+	if activeTab == "" {
+		activeTab = "system"
+	}
+
+	tabBtn := func(key, label string) InlineKeyboardButton {
+		if key == activeTab {
+			return InlineKeyboardButton{Text: "• " + label + " •", CallbackData: "panel:tab:" + key}
+		}
+		return InlineKeyboardButton{Text: label, CallbackData: "panel:tab:" + key}
+	}
+
+	tabsRow := []InlineKeyboardButton{
+		tabBtn("system", "📊 ระบบ"),
+		tabBtn("services", "🌐 บริการ"),
+		tabBtn("digest", "📰 ข่าว/ทอง"),
+		tabBtn("location", "🗺️ พิกัด"),
+	}
+
+	var actionRows [][]InlineKeyboardButton
+
+	switch activeTab {
+	case "services":
+		actionRows = [][]InlineKeyboardButton{
+			{
+				{Text: "🔄 ตรวจสอบด่วน", CallbackData: "panel:refresh:services"},
+				{Text: "📋 เช็ค PM2", CopyText: &CopyTextButton{Text: "/task [low] pm2 list"}},
+			},
+			{
+				{Text: "➕ จัดการ Endpoints", URL: "http://100.92.194.87:8080/endpoints"},
+			},
+		}
+	case "digest":
+		actionRows = [][]InlineKeyboardButton{
+			{
+				{Text: "🔄 รีเฟรช", CallbackData: "panel:refresh:digest"},
+				{Text: "📰 สรุปเต็ม /digest", CopyText: &CopyTextButton{Text: "/digest"}},
+			},
+			{
+				{Text: "☀️ มอร์นิ่งอินไซต์", CopyText: &CopyTextButton{Text: "/insight"}},
+			},
+		}
+	case "location":
+		actionRows = [][]InlineKeyboardButton{
+			{
+				{Text: "🔄 รีเฟรช", CallbackData: "panel:refresh:location"},
+				{Text: "📍 พิกัดสด /map", CopyText: &CopyTextButton{Text: "/map"}},
+			},
+			{
+				{Text: "🗺️ เปิดแผนที่สด", URL: "http://100.92.194.87:8080/?app=map"},
+			},
+		}
+	default: // "system"
+		actionRows = [][]InlineKeyboardButton{
+			{
+				{Text: "🔄 รีเฟรช", CallbackData: "panel:refresh:system"},
+				{Text: "🔦 สลับไฟฉาย", CallbackData: "panel:torch_toggle"},
+			},
+			{
+				{Text: "🏓 Ping", CallbackData: "ping_check"},
+				{Text: "🔄 Reboot", CallbackData: "panel:action:reboot"},
+			},
+		}
+	}
+
+	rows := append([][]InlineKeyboardButton{tabsRow}, actionRows...)
+	return &InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 // MakeStatusKeyboard returns the interactive inline keyboard per specification.
@@ -50,7 +197,7 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 	}
 	return &InlineKeyboardMarkup{
 		InlineKeyboard: [][]InlineKeyboardButton{
-			{{Text: "🔄 สถานะ", CallbackData: "status_refresh"}, {Text: "🏓 Ping", CallbackData: "ping_check"}},
+			{copyCommand("🎛️ แผงควบคุม", "/panel"), {Text: "🔄 สถานะ", CallbackData: "status_refresh"}},
 			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}, copyCommand("🗺️ ดูพิกัด /live", "/live")},
 			{
 				copyCommand("💬 ถาม agy", "/ask [median] อธิบายภาพรวมสถานะระบบ Pocket Sentinel ในปัจจุบัน"),
@@ -87,20 +234,75 @@ func (k *KeyboardsModule) HandleCallbackQuery(ctx context.Context, q *CallbackQu
 
 	log.Printf("[bot:callback] handling callback '%s' from user %s (chat=%d, msg=%d)", q.Data, q.From.Username, chatID, messageID)
 
-	switch q.Data {
-	case "status_refresh":
+	switch {
+	case strings.HasPrefix(q.Data, "panel:tab:"):
+		tab := strings.TrimPrefix(q.Data, "panel:tab:")
+		_ = k.answerCallback(ctx, q.ID, "", false)
+		if chatID != 0 && messageID != 0 && k.panelProv != nil {
+			card, err := k.panelProv.GetPanelCard(ctx, tab)
+			if err != nil {
+				card = fmt.Sprintf("⚠️ ไม่สามารถโหลดแท็บได้: %v", err)
+			}
+			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard(tab))
+		}
+
+	case strings.HasPrefix(q.Data, "panel:refresh:"):
+		tab := strings.TrimPrefix(q.Data, "panel:refresh:")
+		_ = k.answerCallback(ctx, q.ID, "🔄 อัปเดตข้อมูลสดแล้ว", false)
+		if chatID != 0 && messageID != 0 && k.panelProv != nil {
+			card, err := k.panelProv.GetPanelCard(ctx, tab)
+			if err != nil {
+				card = fmt.Sprintf("⚠️ ไม่สามารถรีเฟรชได้: %v", err)
+			}
+			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard(tab))
+		}
+
+	case q.Data == "panel:torch_toggle":
+		var toast string
+		if k.torch != nil {
+			_, err := k.torch.Toggle(ctx)
+			if err != nil {
+				toast = fmt.Sprintf("❌ Torch error: %v", err)
+			} else {
+				if k.torch.IsOn() {
+					toast = "🔦 ไฟฉายเปิดแล้ว (ตัดอัตโนมัติใน 3 นาที)"
+				} else {
+					toast = "🔦 ไฟฉายปิดแล้ว"
+				}
+			}
+			_ = k.answerCallback(ctx, q.ID, toast, false)
+			if chatID != 0 && messageID != 0 && k.panelProv != nil {
+				card, err := k.panelProv.GetPanelCard(ctx, "system")
+				if err == nil {
+					_ = k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard("system"))
+				}
+			}
+		} else {
+			_ = k.answerCallback(ctx, q.ID, "Hardware torch not configured", true)
+		}
+
+	case q.Data == "panel:action:reboot":
+		_ = k.answerCallback(ctx, q.ID, "🔄 กำลังเตรียม Restart Go Server...", false)
+		if k.rebootFunc != nil {
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				k.rebootFunc()
+			}()
+		}
+
+	case q.Data == "status_refresh":
 		// Acknowledge immediately to dismiss Telegram loading spinner
-		_ = k.client.AnswerCallbackQuery(ctx, q.ID, "🔄 Updating status...", false)
+		_ = k.answerCallback(ctx, q.ID, "🔄 Updating status...", false)
 
 		if chatID != 0 && messageID != 0 && k.statusProv != nil {
 			card, err := k.statusProv.GetStatusCard(ctx)
 			if err != nil {
 				card = fmt.Sprintf("⚠️ Failed to refresh status: %v", err)
 			}
-			return k.client.EditMessageText(ctx, chatID, messageID, card, MakeStatusKeyboard())
+			return k.editMessage(ctx, chatID, messageID, card, MakeStatusKeyboard())
 		}
 
-	case "torch_toggle":
+	case q.Data == "torch_toggle":
 		var toast string
 		if k.torch != nil {
 			msg, err := k.torch.Toggle(ctx)
@@ -113,30 +315,30 @@ func (k *KeyboardsModule) HandleCallbackQuery(ctx context.Context, q *CallbackQu
 					toast = "🔦 Torch turned OFF"
 				}
 			}
-			_ = k.client.AnswerCallbackQuery(ctx, q.ID, toast, false)
+			_ = k.answerCallback(ctx, q.ID, toast, false)
 
 			// If the callback came from a status card, refresh it in-place
 			if chatID != 0 && messageID != 0 && k.statusProv != nil {
 				card, err := k.statusProv.GetStatusCard(ctx)
 				if err == nil {
-					_ = k.client.EditMessageText(ctx, chatID, messageID, card, MakeStatusKeyboard())
+					_ = k.editMessage(ctx, chatID, messageID, card, MakeStatusKeyboard())
 				}
 			}
 			_ = msg
 		} else {
-			_ = k.client.AnswerCallbackQuery(ctx, q.ID, "Hardware torch not configured", true)
+			_ = k.answerCallback(ctx, q.ID, "Hardware torch not configured", true)
 		}
 
-	case "ping_check":
+	case q.Data == "ping_check":
 		uptimeStr := "OK"
 		if k.statusProv != nil {
 			uptimeStr = k.statusProv.GetUptimeString()
 		}
 		toast := fmt.Sprintf("🏓 Pong! (Uptime: %s, Server: OK)", uptimeStr)
-		_ = k.client.AnswerCallbackQuery(ctx, q.ID, toast, false)
+		_ = k.answerCallback(ctx, q.ID, toast, false)
 
 	default:
-		_ = k.client.AnswerCallbackQuery(ctx, q.ID, "Unknown action", false)
+		_ = k.answerCallback(ctx, q.ID, "Unknown action", false)
 	}
 
 	return nil

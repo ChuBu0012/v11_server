@@ -137,7 +137,12 @@ func (c *Client) SendMessageSilent(ctx context.Context, chatID int64, text strin
 	return c.sendMessage(ctx, chatID, text, replyMarkup, true)
 }
 
-func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, replyMarkup *InlineKeyboardMarkup, silent bool) (*Message, error) {
+// SendMessageWithReplyMarkup sends an HTML formatted text message with any reply markup (InlineKeyboardMarkup, ReplyKeyboardMarkup, or ReplyKeyboardRemove).
+func (c *Client) SendMessageWithReplyMarkup(ctx context.Context, chatID int64, text string, replyMarkup any) (*Message, error) {
+	return c.sendMessage(ctx, chatID, text, replyMarkup, false)
+}
+
+func (c *Client) sendMessage(ctx context.Context, chatID int64, text string, replyMarkup any, silent bool) (*Message, error) {
 	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", c.baseURL, c.token)
 
 	payload := SendMessagePayload{

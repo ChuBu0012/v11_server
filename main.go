@@ -167,6 +167,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	var botPoller *bot.Poller
 	var botClient *bot.Client
 	var botRouter *bot.Router
+	var statusProv *bot.DefaultStatusProvider
 	var reminderService *reminders.Service
 	var reminderTelegramReady bool
 	if cfg.TelegramEnabled() {
@@ -184,7 +185,17 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botAuth := bot.NewAuthorizer(cfg.TelegramChatID, logsMod)
 		torchCtrl := bot.NewTorchController()
 		execRunner := bot.NewSafeExecutor()
-		statusProv := bot.NewDefaultStatusProvider(startTime)
+		statusProv = bot.NewDefaultStatusProvider(startTime)
+		if digestStore != nil {
+			statusProv.SetDigestSummaryFunc(func(ctx context.Context) (string, error) {
+				latestRun, err := digestStore.GetLatestRun(ctx)
+				if err != nil || latestRun == nil {
+					return "", err
+				}
+				prevGold, _ := digestStore.PreviousGold(ctx, latestRun.ID)
+				return digest.RenderView(latestRun, "overview", prevGold), nil
+			})
+		}
 		rebootHandler := func() {
 			log.Printf("[bot] /reboot: triggering graceful shutdown for PM2 resurrection...")
 			p, err := os.FindProcess(os.Getpid())
@@ -304,6 +315,18 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 				friend := latest[location.DeviceFriend]
 				return formatTelegramLocationStatus(me, friend, liveURL)
 			})
+			if statusProv != nil {
+				statusProv.SetLocationSummaryFunc(func(ctx context.Context) (string, error) {
+					latest, err := locationStore.LatestPoints(ctx)
+					if err != nil {
+						return "", err
+					}
+					me := latest[location.DeviceMe]
+					friend := latest[location.DeviceFriend]
+					msg, _, err := formatTelegramLocationStatus(me, friend, liveURL)
+					return msg, err
+				})
+			}
 		}
 		locationRetention = worker.New("location-retention", 24*time.Hour, func(ctx context.Context) error {
 			deleted, err := locationStore.PruneOld(ctx, time.Now().UTC().Add(-7*24*time.Hour))

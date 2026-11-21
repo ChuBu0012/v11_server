@@ -185,6 +185,13 @@ func NewRouter(
 	if r.sender == nil {
 		r.sender = client
 	}
+	r.keyboards.SetSender(r.sender)
+	if r.rebootFunc != nil {
+		r.keyboards.SetRebootFunc(r.rebootFunc)
+	}
+	if pp, ok := statusProv.(PanelCardProvider); ok {
+		r.keyboards.SetPanelProvider(pp)
+	}
 	if r.guard == nil {
 		r.guard = NewPromptGuard()
 	}
@@ -209,6 +216,31 @@ func (r *Router) sendMessage(ctx context.Context, chatID int64, text string, rep
 		return r.client.SendMessage(ctx, chatID, text, replyMarkup)
 	}
 	return nil, nil
+}
+
+func (r *Router) sendReplyMarkup(ctx context.Context, chatID int64, text string, replyMarkup any) (*Message, error) {
+	if r.client != nil {
+		return r.client.SendMessageWithReplyMarkup(ctx, chatID, text, replyMarkup)
+	}
+	if sender, ok := r.sender.(interface {
+		SendMessageWithReplyMarkup(ctx context.Context, chatID int64, text string, replyMarkup any) (*Message, error)
+	}); ok {
+		return sender.SendMessageWithReplyMarkup(ctx, chatID, text, replyMarkup)
+	}
+	if ikm, ok := replyMarkup.(*InlineKeyboardMarkup); ok {
+		return r.sendMessage(ctx, chatID, text, ikm)
+	}
+	return r.sendMessage(ctx, chatID, text, nil)
+}
+
+func (r *Router) getPanelCard(ctx context.Context, tab string) (string, error) {
+	if pp, ok := r.statusProv.(PanelCardProvider); ok {
+		return pp.GetPanelCard(ctx, tab)
+	}
+	if r.statusProv != nil {
+		return r.statusProv.GetStatusCard(ctx)
+	}
+	return "🎛️ <b>Pocket Sentinel · ควบคุมระบบ</b>\n(Status provider not configured)", nil
 }
 
 func (r *Router) editMessage(ctx context.Context, chatID int64, messageID int64, text string, replyMarkup *InlineKeyboardMarkup) error {
@@ -294,6 +326,25 @@ func (r *Router) HandleUpdate(ctx context.Context, u Update) error {
 
 func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
+
+	// Map persistent reply keyboard buttons directly to canonical slash commands
+	switch text {
+	case "🎛️ แผงควบคุม":
+		text = "/panel"
+	case "📊 สถานะระบบ":
+		text = "/status"
+	case "🗺️ พิกัดสด":
+		text = "/map"
+	case "📰 สรุปประจำวัน":
+		text = "/digest"
+	case "☀️ มอร์นิ่งอินไซต์":
+		text = "/insight"
+	case "🤖 สั่งงาน AI":
+		text = "/help"
+	case "⌨️ ซ่อนแป้นพิมพ์":
+		text = "/keyboard_hide"
+	}
+
 	if !strings.HasPrefix(text, "/") {
 		return nil // Ignore non-command chat messages
 	}
@@ -317,6 +368,9 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 	case "/start", "/help":
 		helpHTML := "🛡️ <b>Pocket Sentinel</b>\n" +
 			"<i>เลือกปุ่มเพื่อดูสถานะ ควบคุมไฟฉาย หรือคัดลอกคำสั่งตัวอย่าง</i>\n\n" +
+			"<b>🎛️ แผงควบคุมระบบ</b>\n" +
+			"<code>/panel</code> เปิดแผงควบคุมระบบแบบโต้ตอบ (ระบบ / บริการ / ข่าวทอง / พิกัด)\n" +
+			"<code>/keyboard</code> เปิดแป้นพิมพ์ลัด | <code>/keyboard_hide</code> ซ่อนแป้นพิมพ์\n\n" +
 			"<b>📍 แผนที่และพิกัดสด</b>\n" +
 			"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n\n" +
 			"<b>📊 ดูสถานะ</b>\n" +
@@ -333,7 +387,28 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/reboot</code> รีสตาร์ต Go server\n" +
 			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
 			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
+		if cmd == "/start" {
+			_, _ = r.sendReplyMarkup(ctx, chatID, helpHTML, MakeDefaultReplyKeyboard())
+		}
 		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
+		return err
+
+	case "/panel":
+		panelHTML, err := r.getPanelCard(ctx, "system")
+		if err != nil {
+			panelHTML = "⚠️ ไม่สามารถโหลดแผงควบคุมได้: " + html.EscapeString(err.Error())
+		}
+		_, err = r.sendMessage(ctx, chatID, panelHTML, MakePanelKeyboard("system"))
+		return err
+
+	case "/keyboard", "/show_keyboard":
+		msg := "⌨️ เปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว"
+		_, err := r.sendReplyMarkup(ctx, chatID, msg, MakeDefaultReplyKeyboard())
+		return err
+
+	case "/keyboard_hide", "/hide_keyboard":
+		msg := "⌨️ ซ่อนแป้นพิมพ์ลัดแล้ว — พิมพ์ <code>/keyboard</code> หรือ <code>/start</code> หากต้องการเปิดอีกครั้ง"
+		_, err := r.sendReplyMarkup(ctx, chatID, msg, MakeRemoveReplyKeyboard())
 		return err
 
 	case "/live", "/map":
