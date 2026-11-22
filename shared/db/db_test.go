@@ -23,7 +23,7 @@ func TestInitDB(t *testing.T) {
 	tables := []string{
 		"event_logs", "health_samples", "alert_states", "watchers", "watcher_checks",
 		"location_points", "location_battery_states", "location_geofences", "location_geofence_states",
-		"location_colocation_state", "location_settings",
+		"location_colocation_state", "location_settings", "ask_cache",
 	}
 	for _, tbl := range tables {
 		var name string

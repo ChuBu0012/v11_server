@@ -152,6 +152,29 @@ func (e *Engine) GenerateWithProvider(ctx context.Context, req Request) (string,
 	return "", "", ErrAllProvidersFailed
 }
 
+// GenerateWithModel executes the request prioritizing the named provider if specified.
+// If model is empty or "auto", it delegates to GenerateWithProvider.
+func (e *Engine) GenerateWithModel(ctx context.Context, model string, req Request) (string, string, error) {
+	norm := strings.ToLower(strings.TrimSpace(model))
+	if norm != "" && norm != "auto" {
+		for _, p := range e.providers {
+			if p != nil && strings.ToLower(p.Name()) == norm && p.HasKey() {
+				timeout := e.timeout
+				if req.Timeout > 0 {
+					timeout = req.Timeout
+				}
+				content, err := e.executeSingle(ctx, p, req, timeout)
+				if err == nil {
+					return content, p.Name(), nil
+				}
+				log.Printf("[ai:engine] requested provider %s failed (%v), falling back to priority chain", norm, err)
+				break
+			}
+		}
+	}
+	return e.GenerateWithProvider(ctx, req)
+}
+
 // GenerateJSON requests structured JSON output and automatically unmarshals into target.
 // If a provider returns unparseable JSON, it falls back to the next provider in the chain.
 func (e *Engine) GenerateJSON(ctx context.Context, systemPrompt, userPrompt string, target interface{}) (string, error) {

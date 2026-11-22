@@ -42,6 +42,25 @@ type Router struct {
 	insightFunc       func(ctx context.Context) (string, error)
 	quotaFunc         func(ctx context.Context, refresh bool) (string, error)
 	quotaPostTaskFunc func(ctx context.Context) (string, error)
+	ringCtrl          *RingController
+	askRouter         *AskTriageRouter
+}
+
+// WithRingController configures the device ring/alarm controller.
+func WithRingController(ctrl *RingController) RouterOption {
+	return func(r *Router) {
+		r.ringCtrl = ctrl
+		if r.keyboards != nil {
+			r.keyboards.SetRingController(ctrl)
+		}
+	}
+}
+
+// WithAskRouter configures the hybrid Fast LLM & cache router for /ask.
+func WithAskRouter(ar *AskTriageRouter) RouterOption {
+	return func(r *Router) {
+		r.askRouter = ar
+	}
 }
 
 // WithQuotaFunc sets the callback for on-demand AI quota tracking.
@@ -202,6 +221,9 @@ func NewRouter(
 		r.sender = client
 	}
 	r.keyboards.SetSender(r.sender)
+	if r.ringCtrl != nil {
+		r.keyboards.SetRingController(r.ringCtrl)
+	}
 	if r.rebootFunc != nil {
 		r.keyboards.SetRebootFunc(r.rebootFunc)
 	}
@@ -413,9 +435,10 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/ping</code> ตรวจการตอบสนอง\n" +
 			"<code>/torch status</code> ตรวจไฟฉาย\n\n" +
 			"<b>🤖 ถาม-ตอบ และงาน Agent</b>\n" +
-			"<code>/ask [low|median|high] &lt;คำถาม&gt;</code> ถามคำถามกับ Agent\n" +
+			"<code>/ask [model] [effort] &lt;คำถาม&gt;</code> ถาม AI ตอบเร็วทันใจ (รองรับ auto, groq, gemini, agy)\n" +
 			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
 			"<code>/task_status</code> ดูงาน Agent\n" +
+			"<code>/ring [on|off]</code> ส่งเสียงเรียกหาโทรศัพท์ (ดังสุด + สั่น + แจ้งเตือนปิดเสียงบนจอ)\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
 			"<code>/quota</code> เช็คโควตา AI (Gemini, Claude &amp; GPT) พร้อมเวลารีเซ็ต\n" +
 			"<code>/insight</code> สรุปสุขภาพเครื่อง การเดินทาง และตารางวันนี้\n" +
@@ -603,33 +626,112 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 
 		return ackErr
 
-	case "/ask":
-		if r.runner == nil {
-			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Agent Runner ไม่ได้ถูกตั้งค่า:</b> Agent Runner feature is not configured.", keyboard)
+	case "/ring":
+		if r.ringCtrl == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Ring Controller ไม่ได้ถูกตั้งค่า:</b> Hardware sound controller is not configured.", keyboard)
 			return err
 		}
+		subCmd := ""
+		if len(parts) > 1 {
+			subCmd = strings.ToLower(strings.TrimSpace(parts[1]))
+		}
+		if subCmd == "off" || subCmd == "stop" {
+			msg, err := r.ringCtrl.Stop(ctx)
+			if err != nil {
+				_, sendErr := r.sendMessage(ctx, chatID, fmt.Sprintf("❌ ไม่สามารถปิดเสียงได้: %v", err), keyboard)
+				return sendErr
+			}
+			_, sendErr := r.sendMessage(ctx, chatID, msg, keyboard)
+			return sendErr
+		}
 
+		msg, err := r.ringCtrl.Ring(ctx)
+		if err != nil {
+			_, sendErr := r.sendMessage(ctx, chatID, fmt.Sprintf("❌ ไม่สามารถส่งเสียงได้: %v", err), keyboard)
+			return sendErr
+		}
+
+		ringKeyboard := &InlineKeyboardMarkup{
+			InlineKeyboard: [][]InlineKeyboardButton{
+				{
+					{Text: "🔇 ปิดเสียงทันที", CallbackData: "ring:off"},
+				},
+			},
+		}
+		_, sendErr := r.sendMessage(ctx, chatID, msg, ringKeyboard)
+		return sendErr
+
+	case "/ask":
 		rawInput := ""
 		if len(text) > len(parts[0]) {
 			rawInput = strings.TrimSpace(text[len(parts[0]):])
 		}
 
 		if rawInput == "" {
-			usageHTML := "💬 <b>ถามคำถามกับ Agent (agy)</b>\n" +
-				"ส่งคำถามในรูปแบบนี้:\n<code>/ask [low|median|high] &lt;คำถามหรือข้อสงสัย&gt;</code>\n\n" +
-				"⚡ <b>ระดับความลึกในการคิด (Effort):</b>\n" +
-				"• <code>[low]</code> คำถามง่าย ๆ / ตอบเร็ว\n" +
-				"• <code>[median]</code> หรือ <code>[medium]</code> คำถามทั่วไป / วิเคราะห์มาตรฐาน (ค่าเริ่มต้น)\n" +
-				"• <code>[high]</code> คิดวิเคราะห์เชิงลึก / ซับซ้อน\n\n" +
+			usageHTML := "💬 <b>ถามคำถามกับ AI (Fast &amp; Smart)</b>\n" +
+				"ส่งคำถามในรูปแบบนี้:\n<code>/ask [model] [effort] &lt;คำถามหรือข้อสงสัย&gt;</code>\n\n" +
+				"⚡ <b>เลือกโมเดล (Model - พิมพ์ต่อท้าย /ask ได้เลย ไม่ต้องใส่วงเล็บ):</b>\n" +
+				"• <code>auto</code> AI วิเคราะห์และเลือกโมเดลให้อัตโนมัติ (ค่าเริ่มต้น)\n" +
+				"• <code>groq</code> หรือ <code>gemini</code> ตอบเร็วพิเศษ (&lt; 2 วินาที)\n" +
+				"• <code>agy</code> สั่งงานเชิงลึกด้วย Agent พร้อมเครื่องมือไฟล์/ระบบ\n\n" +
+				"🎯 <b>ระดับความลึก (Effort):</b>\n" +
+				"• <code>low</code> | <code>medium</code> | <code>high</code> (ค่าเริ่มต้น: <code>medium</code>)\n\n" +
 				"💡 ตัวอย่าง:\n" +
-				"<code>/ask [low] ระบบ Pocket Sentinel ทำหน้าที่อะไรบ้าง</code>"
+				"• <code>/ask ทำไมทองคำราคาขึ้น</code>\n" +
+				"• <code>/ask groq high อธิบายทฤษฎีควอนตัม</code>\n" +
+				"• <code>/ask agy ตรวจสอบ git status ล่าสุด</code>"
 			_, err := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
 			return err
 		}
 
-		effort, cleanPrompt := ParseTaskEffort(rawInput)
+		askOpts := ParseAskInput(rawInput)
+		cleanPrompt := askOpts.CleanPrompt
 		if cleanPrompt == "" {
 			cleanPrompt = rawInput
+		}
+
+		framedPrompt, err := r.guard.ValidateAndFrameQuestion(cleanPrompt)
+		if err != nil {
+			if errors.Is(err, ErrPromptTooLong) {
+				lenHTML := fmt.Sprintf("⚠️ <b>ความยาวข้อความเกินกำหนด:</b> คำถามต้องไม่เกิน %d ตัวอักษร (ปัจจุบัน %d ตัวอักษร)",
+					MaxPromptLength, utf8.RuneCountInString(cleanPrompt))
+				_, sendErr := r.sendMessage(ctx, chatID, lenHTML, keyboard)
+				return sendErr
+			}
+			if errors.Is(err, ErrPromptEmpty) {
+				usageHTML := "💬 <b>ถามคำถามกับ AI</b>\n<code>/ask [model] [effort] &lt;คำถาม&gt;</code>\n\n" +
+					"กรุณาระบุคำถามที่ต้องการถาม"
+				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
+				return sendErr
+			}
+			secHTML := "🛡️ <b>Security Warning:</b> คำถามถูกปฏิเสธเนื่องจากละเมิดนโยบายความปลอดภัย (Prompt Injection / Forbidden Content)"
+			_, sendErr := r.sendMessage(ctx, chatID, secHTML, keyboard)
+			return sendErr
+		}
+
+		// Fast Router Path (Groq / Gemini / Cache)
+		if r.askRouter != nil {
+			triageVerdict, _ := r.askRouter.Triage(ctx, cleanPrompt, askOpts.Model)
+			if triageVerdict == VerdictFastLLM {
+				fastRes, err := r.askRouter.ExecuteFast(ctx, askOpts)
+				if err == nil && fastRes != nil {
+					sourceFooter := ""
+					if fastRes.IsCached {
+						sourceFooter = fmt.Sprintf("\n\n<i>⚡ ตอบทันทีจาก Cache (%s)</i>", formatCachedAgo(fastRes.CachedAt))
+					} else {
+						sourceFooter = fmt.Sprintf("\n\n<i>⏱ %s (%.2fs)</i>", strings.ToUpper(fastRes.Provider), fastRes.Duration.Seconds())
+					}
+					formatted := fmt.Sprintf("💬 <b>คำตอบจาก AI:</b>\n\n%s%s", r.scrubber.EscapeHTML(fastRes.ResponseText), sourceFooter)
+					_, sendErr := r.sendMessage(ctx, chatID, formatted, keyboard)
+					return sendErr
+				}
+				log.Printf("[bot:router] Fast LLM execution failed (%v), delegating to agy runner", err)
+			}
+		}
+
+		if r.runner == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ <b>Agent Runner ไม่ได้ถูกตั้งค่า:</b> Agent Runner feature is not configured.", keyboard)
+			return err
 		}
 
 		if !r.runner.CanAcquireLock() {
@@ -643,29 +745,10 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			return err
 		}
 
-		framedPrompt, err := r.guard.ValidateAndFrameQuestion(cleanPrompt)
-		if err != nil {
-			if errors.Is(err, ErrPromptTooLong) {
-				lenHTML := fmt.Sprintf("⚠️ <b>ความยาวข้อความเกินกำหนด:</b> คำถามต้องไม่เกิน %d ตัวอักษร (ปัจจุบัน %d ตัวอักษร)",
-					MaxPromptLength, utf8.RuneCountInString(cleanPrompt))
-				_, sendErr := r.sendMessage(ctx, chatID, lenHTML, keyboard)
-				return sendErr
-			}
-			if errors.Is(err, ErrPromptEmpty) {
-				usageHTML := "💬 <b>ถามคำถามกับ Agent (agy)</b>\n<code>/ask [low|median|high] &lt;คำถาม&gt;</code>\n\n" +
-					"กรุณาระบุคำถามที่ต้องการถาม Agent"
-				_, sendErr := r.sendMessage(ctx, chatID, usageHTML, helpKeyboard)
-				return sendErr
-			}
-			secHTML := "🛡️ <b>Security Warning:</b> คำถามถูกปฏิเสธเนื่องจากละเมิดนโยบายความปลอดภัย (Prompt Injection / Forbidden Content)"
-			_, sendErr := r.sendMessage(ctx, chatID, secHTML, keyboard)
-			return sendErr
-		}
-
 		taskReq := TaskRequest{
 			ChatID:    chatID,
 			RawPrompt: framedPrompt,
-			Effort:    effort,
+			Effort:    askOpts.Effort,
 			CreatedAt: time.Now(),
 		}
 
@@ -718,8 +801,12 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			runes := []rune(promptSnippet)
 			promptSnippet = string(runes[:60]) + "..."
 		}
-		ackHTML := fmt.Sprintf("💬 <b>รับคำถามแล้ว:</b> <i>\"%s\"</i>\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏱ กำลังค้นหาคำตอบในเบื้องหลัง...\n💡 ระบบจะแจ้งเตือนเมื่อได้รับคำตอบจาก agy",
-			r.scrubber.EscapeHTML(promptSnippet), strings.ToUpper(effort), timeoutDesc)
+		delegationNotice := ""
+		if askOpts.Model == "auto" {
+			delegationNotice = "\n🔄 <b>ส่งต่อให้ agy:</b> งานนี้ต้องใช้ Agent เครื่องมือเฉพาะทาง"
+		}
+		ackHTML := fmt.Sprintf("💬 <b>รับคำถามแล้ว:</b> <i>\"%s\"</i>%s\n⚡ ระดับ Effort: <code>%s</code> | Timeout: %s\n⏱ กำลังค้นหาคำตอบในเบื้องหลัง...\n💡 ระบบจะแจ้งเตือนเมื่อได้รับคำตอบจาก agy",
+			r.scrubber.EscapeHTML(promptSnippet), delegationNotice, strings.ToUpper(askOpts.Effort), timeoutDesc)
 		ackMsg, ackErr := r.sendMessage(ctx, chatID, ackHTML, keyboard)
 		ackSent <- ackMsg
 
@@ -746,7 +833,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 						cancel()
 					}
 				}
-			}(ackMsg.MessageID, promptSnippet, effort, timeoutDesc)
+			}(ackMsg.MessageID, promptSnippet, askOpts.Effort, timeoutDesc)
 		}
 
 		return ackErr
@@ -994,4 +1081,21 @@ func (r *Router) sendQuotaUsageFollowUp(chatID int64, delay time.Duration) {
 	if _, sendErr := r.sendMessage(ctx, chatID, msg, nil); sendErr != nil {
 		log.Printf("[bot:router] failed to send post-task quota message: %v", sendErr)
 	}
+}
+
+// formatCachedAgo returns a concise Thai relative time string for cached responses.
+func formatCachedAgo(t time.Time) string {
+	diff := time.Since(t).Round(time.Minute)
+	if diff < time.Minute {
+		return "เมื่อสักครู่"
+	}
+	if diff < time.Hour {
+		return fmt.Sprintf("%d นาทีที่แล้ว", int(diff.Minutes()))
+	}
+	hours := int(diff.Hours())
+	mins := int(diff.Minutes()) % 60
+	if mins == 0 {
+		return fmt.Sprintf("%d ชั่วโมงที่แล้ว", hours)
+	}
+	return fmt.Sprintf("%d ชม. %d นาทีที่แล้ว", hours, mins)
 }

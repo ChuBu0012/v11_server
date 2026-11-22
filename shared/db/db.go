@@ -219,6 +219,18 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	ON ai_quota_snapshots(bucket_id, recorded_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_ai_quota_snapshots_recorded_at
 	ON ai_quota_snapshots(recorded_at DESC);
+
+	CREATE TABLE IF NOT EXISTS ask_cache (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		prompt_hash TEXT NOT NULL UNIQUE,
+		prompt_text TEXT NOT NULL,
+		model_name TEXT NOT NULL,
+		response_text TEXT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		expires_at DATETIME NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS idx_ask_cache_hash ON ask_cache(prompt_hash);
+	CREATE INDEX IF NOT EXISTS idx_ask_cache_expires ON ask_cache(expires_at);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

@@ -171,6 +171,10 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	quotaRepo := ailimit.NewRepository(dbConn)
 	var quotaSvc *ailimit.Service
 
+	// AI Multi-Provider Fallback Engine initialization (Groq -> Gemini -> OpenRouter)
+	aiEngine := ai.NewDefaultEngine(cfg.GroqAPIKey, cfg.GeminiAPIKey, cfg.OpenRouterAPIKey)
+	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
+
 	var botPoller *bot.Poller
 	var botClient *bot.Client
 	var botRouter *bot.Router
@@ -191,6 +195,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		}
 		botAuth := bot.NewAuthorizer(cfg.TelegramChatID, logsMod)
 		torchCtrl := bot.NewTorchController()
+		ringCtrl := bot.NewRingController()
 		execRunner := bot.NewSafeExecutor()
 		statusProv = bot.NewDefaultStatusProvider(startTime)
 		if digestStore != nil {
@@ -307,6 +312,11 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			return quotaSvc.FormatPostTaskQuotaMessage(resp), nil
 		}))
 
+		askCacheStore := bot.NewAskCacheStore(dbConn)
+		askRouter := bot.NewAskTriageRouter(aiEngine, askCacheStore)
+		routerOpts = append(routerOpts, bot.WithAskRouter(askRouter))
+		routerOpts = append(routerOpts, bot.WithRingController(ringCtrl))
+
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
 	}
@@ -322,10 +332,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	if reminderStore != nil {
 		reminderMod = reminders.NewModule(reminderStore, reminderTelegramReady)
 	}
-
-	// AI Multi-Provider Fallback Engine initialization (Groq -> Gemini -> OpenRouter)
-	aiEngine := ai.NewDefaultEngine(cfg.GroqAPIKey, cfg.GeminiAPIKey, cfg.OpenRouterAPIKey)
-	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
 
 	locationCredentials := location.Credentials{
 		SecretToken: cfg.LocationSecretToken, ViewerToken: cfg.LocationViewerToken,

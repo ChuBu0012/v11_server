@@ -1032,7 +1032,7 @@ func TestRouter_Ask_EmptyArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get response: %v", err)
 	}
-	if !strings.Contains(msg.Text, "ถามคำถามกับ Agent") || !strings.Contains(msg.Text, "low|median|high") {
+	if !strings.Contains(msg.Text, "ถามคำถามกับ AI") {
 		t.Errorf("Expected /ask usage syntax, got: %s", msg.Text)
 	}
 	if mockExecCalled {
@@ -1051,7 +1051,7 @@ func TestRouter_Ask_EmptyArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get response: %v", err)
 	}
-	if !strings.Contains(msg2.Text, "ถามคำถามกับ Agent") {
+	if !strings.Contains(msg2.Text, "ถามคำถามกับ AI") {
 		t.Errorf("Expected /ask usage syntax for whitespace, got: %s", msg2.Text)
 	}
 }
@@ -1195,5 +1195,165 @@ func TestRouter_QuotaCommand(t *testing.T) {
 	}
 	if !foundQuotaBtn {
 		t.Errorf("Expected /quota button in MakeHelpKeyboard")
+	}
+}
+
+func TestRouter_Ask_FastLLM_Success(t *testing.T) {
+	mockExecCalled := false
+	mockExec := func(ctx context.Context, dir string, env []string, binPath string, args ...string) ([]byte, int, error) {
+		mockExecCalled = true
+		return []byte("output"), 0, nil
+	}
+	runner := NewAgentRunner(WithCustomExec(mockExec))
+
+	mockEng := &mockAskEngine{hasKey: true, response: "ท้องฟ้าเป็นสีฟ้าเนื่องจากการกระเจิงแบบเรย์ลี"}
+	askRouter := NewAskTriageRouter(mockEng, nil)
+
+	router, recorder := setupTestRouterWithRecorder(t, runner, WithAskRouter(askRouter))
+
+	ctx := context.Background()
+	err := router.HandleUpdate(ctx, Update{
+		UpdateID: 1,
+		Message:  &Message{MessageID: 101, Chat: &Chat{ID: 123456}, Text: "/ask ทำไมท้องฟ้าสีฟ้า"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate failed: %v", err)
+	}
+
+	msg, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to receive fast reply: %v", err)
+	}
+	if !strings.Contains(msg.Text, "คำตอบจาก AI") || !strings.Contains(msg.Text, "เรย์ลี") {
+		t.Errorf("Unexpected fast reply: %s", msg.Text)
+	}
+	if mockExecCalled {
+		t.Errorf("Expected agy runner not to be called for Fast LLM question")
+	}
+}
+
+func TestRouter_Ask_AutoDelegation_ToAgy(t *testing.T) {
+	mockExecCalled := false
+	mockExec := func(ctx context.Context, dir string, env []string, binPath string, args ...string) ([]byte, int, error) {
+		mockExecCalled = true
+		return []byte("แก้โค้ดเสร็จแล้ว\n\n### สรุปคำตอบ\n- อัปเดตฟังก์ชันเรียบร้อย"), 0, nil
+	}
+	runner := NewAgentRunner(WithCustomExec(mockExec))
+
+	mockEng := &mockAskEngine{hasKey: true, response: "FAST"}
+	askRouter := NewAskTriageRouter(mockEng, nil)
+
+	router, recorder := setupTestRouterWithRecorder(t, runner, WithAskRouter(askRouter))
+
+	ctx := context.Background()
+	err := router.HandleUpdate(ctx, Update{
+		UpdateID: 1,
+		Message:  &Message{MessageID: 102, Chat: &Chat{ID: 123456}, Text: "/ask ช่วยแก้บั๊กใน runner.go หน่อย"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate failed: %v", err)
+	}
+
+	// 1. Immediate ACK with delegation notice
+	ack, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to receive ACK: %v", err)
+	}
+	if !strings.Contains(ack.Text, "ส่งต่อให้ agy") {
+		t.Errorf("Expected delegation notice in ACK, got: %s", ack.Text)
+	}
+
+	// 2. Result
+	res, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to receive result: %v", err)
+	}
+	if !strings.Contains(res.Text, "อัปเดตฟังก์ชันเรียบร้อย") {
+		t.Errorf("Unexpected delegated result: %s", res.Text)
+	}
+	if !mockExecCalled {
+		t.Errorf("Expected agy mockExec to be called for delegated agent task")
+	}
+}
+
+func TestRouter_Ring_Command(t *testing.T) {
+	var executedCmds []string
+	mockRunner := func(ctx context.Context, name string, args ...string) error {
+		executedCmds = append(executedCmds, name)
+		return nil
+	}
+	ringCtrl := NewRingController(WithRingCommandRunner(mockRunner))
+
+	router, recorder := setupTestRouterWithRecorder(t, nil, WithRingController(ringCtrl))
+
+	ctx := context.Background()
+
+	// 1. Trigger /ring
+	err := router.HandleUpdate(ctx, Update{
+		UpdateID: 1,
+		Message:  &Message{MessageID: 201, Chat: &Chat{ID: 123456}, Text: "/ring"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate /ring failed: %v", err)
+	}
+
+	msg, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to get ring message: %v", err)
+	}
+	if !strings.Contains(msg.Text, "ส่งเสียงเรียกโทรศัพท์แล้ว") {
+		t.Errorf("Unexpected ring message: %s", msg.Text)
+	}
+	if !ringCtrl.IsRinging() {
+		t.Errorf("Expected ringCtrl.IsRinging() to be true")
+	}
+
+	// Verify reply markup has "ring:off" button
+	rawJSON, _ := json.Marshal(msg.ReplyMarkup)
+	var km InlineKeyboardMarkup
+	_ = json.Unmarshal(rawJSON, &km)
+	if len(km.InlineKeyboard) == 0 || km.InlineKeyboard[0][0].CallbackData != "ring:off" {
+		t.Errorf("Expected callback_data 'ring:off', got %s", string(rawJSON))
+	}
+
+	// 2. Trigger /ring off
+	err = router.HandleUpdate(ctx, Update{
+		UpdateID: 2,
+		Message:  &Message{MessageID: 202, Chat: &Chat{ID: 123456}, Text: "/ring off"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate /ring off failed: %v", err)
+	}
+
+	stopMsg, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to get ring off message: %v", err)
+	}
+	if !strings.Contains(stopMsg.Text, "ปิดเสียงโทรศัพท์เรียบร้อยแล้ว") {
+		t.Errorf("Unexpected ring off message: %s", stopMsg.Text)
+	}
+	if ringCtrl.IsRinging() {
+		t.Errorf("Expected ringCtrl.IsRinging() to be false after /ring off")
+	}
+
+	// 3. Trigger callback query ring:off
+	_, _ = ringCtrl.Ring(ctx)
+	if !ringCtrl.IsRinging() {
+		t.Fatalf("Expected ringing before callback test")
+	}
+	err = router.HandleUpdate(ctx, Update{
+		UpdateID: 3,
+		CallbackQuery: &CallbackQuery{
+			ID:      "cb_123",
+			Data:    "ring:off",
+			From:    &User{ID: 123456, Username: "owner"},
+			Message: &Message{MessageID: 203, Chat: &Chat{ID: 123456}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate callback ring:off failed: %v", err)
+	}
+	if ringCtrl.IsRinging() {
+		t.Errorf("Expected ringCtrl.IsRinging() to be false after callback ring:off")
 	}
 }

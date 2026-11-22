@@ -26,6 +26,7 @@ type KeyboardsModule struct {
 	statusProv StatusCardProvider
 	panelProv  PanelCardProvider
 	torch      *TorchController
+	ring       *RingController
 	rebootFunc func()
 }
 
@@ -69,6 +70,11 @@ func (k *KeyboardsModule) answerCallback(ctx context.Context, queryID string, te
 // SetPanelProvider sets the panel card provider.
 func (k *KeyboardsModule) SetPanelProvider(p PanelCardProvider) {
 	k.panelProv = p
+}
+
+// SetRingController sets the RingController instance.
+func (k *KeyboardsModule) SetRingController(r *RingController) {
+	k.ring = r
 }
 
 // SetRebootFunc assigns the reboot handler.
@@ -165,7 +171,10 @@ func MakePanelKeyboard(activeTab string) *InlineKeyboardMarkup {
 				{Text: "🔦 สลับไฟฉาย", CallbackData: "panel:torch_toggle"},
 			},
 			{
+				{Text: "🔔 ส่งเสียงหาเครื่อง", CallbackData: "panel:ring_toggle"},
 				{Text: "🏓 Ping", CallbackData: "ping_check"},
+			},
+			{
 				{Text: "🔄 Reboot", CallbackData: "panel:action:reboot"},
 			},
 		}
@@ -200,12 +209,12 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 			{copyCommand("🎛️ แผงควบคุม", "/panel"), {Text: "🔄 สถานะ", CallbackData: "status_refresh"}},
 			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}, copyCommand("🗺️ ดูพิกัด /live", "/live")},
 			{
-				copyCommand("💬 ถาม agy", "/ask [median] อธิบายภาพรวมสถานะระบบ Pocket Sentinel ในปัจจุบัน"),
-				copyCommand("📋 เช็คเครื่อง", "/task [low] ตรวจสอบ RAM, พื้นที่ disk และสถานะ PM2 go-server"),
+				copyCommand("💬 ถาม AI", "/ask ทำไมท้องฟ้าเป็นสีฟ้า"),
+				copyCommand("🔔 เรียกเครื่อง", "/ring"),
 			},
 			{
+				copyCommand("📋 เช็คเครื่อง", "/task [low] ตรวจสอบ RAM, พื้นที่ disk และสถานะ PM2 go-server"),
 				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ gatus"),
-				copyCommand("📋 Task status", "/task_status"),
 			},
 			{
 				copyCommand("⚡ โควตา AI", "/quota"),
@@ -294,6 +303,38 @@ func (k *KeyboardsModule) HandleCallbackQuery(ctx context.Context, q *CallbackQu
 			}
 		} else {
 			_ = k.answerCallback(ctx, q.ID, "Hardware torch not configured", true)
+		}
+
+	case q.Data == "panel:ring_toggle":
+		var toast string
+		if k.ring != nil {
+			if k.ring.IsRinging() {
+				_, _ = k.ring.Stop(ctx)
+				toast = "🔕 ปิดเสียงโทรศัพท์แล้ว"
+			} else {
+				_, _ = k.ring.Ring(ctx)
+				toast = "🔔 กำลังส่งเสียงเรียกโทรศัพท์ (ตัดใน 30 วิ)"
+			}
+			_ = k.answerCallback(ctx, q.ID, toast, false)
+			if chatID != 0 && messageID != 0 && k.panelProv != nil {
+				card, err := k.panelProv.GetPanelCard(ctx, "system")
+				if err == nil {
+					_ = k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard("system"))
+				}
+			}
+		} else {
+			_ = k.answerCallback(ctx, q.ID, "Ring controller not configured", true)
+		}
+
+	case q.Data == "ring:off":
+		if k.ring != nil {
+			msg, _ := k.ring.Stop(ctx)
+			_ = k.answerCallback(ctx, q.ID, "🔕 ปิดเสียงเรียบร้อยแล้ว", false)
+			if chatID != 0 && messageID != 0 {
+				_ = k.editMessage(ctx, chatID, messageID, msg, nil)
+			}
+		} else {
+			_ = k.answerCallback(ctx, q.ID, "Ring controller not configured", true)
 		}
 
 	case q.Data == "panel:action:reboot":
