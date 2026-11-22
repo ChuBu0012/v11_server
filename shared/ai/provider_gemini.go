@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -13,7 +14,7 @@ import (
 
 const (
 	defaultGeminiBaseURL = "https://generativelanguage.googleapis.com"
-	defaultGeminiModel   = "gemini-2.5-flash"
+	defaultGeminiModel   = "gemini-3.5-flash-lite"
 )
 
 // GeminiProvider implements Provider for Google Generative Language API.
@@ -53,13 +54,28 @@ func WithGeminiHTTPClient(hc *http.Client) GeminiOption {
 
 // NewGeminiProvider creates a new Gemini client.
 func NewGeminiProvider(apiKey string, opts ...GeminiOption) *GeminiProvider {
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialer := &net.Dialer{
+				Timeout:   10 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}
+			return dialer.DialContext(ctx, "tcp4", addr)
+		},
+		ForceAttemptHTTP2: true,
+		MaxIdleConns:      10,
+		IdleConnTimeout:   90 * time.Second,
+	}
+
 	p := &GeminiProvider{
 		apiKey:  strings.TrimSpace(apiKey),
 		baseURL: defaultGeminiBaseURL,
 		model:   defaultGeminiModel,
 		timeout: 15 * time.Second,
 		client: &http.Client{
-			Timeout: 15 * time.Second,
+			Timeout:   15 * time.Second,
+			Transport: tr,
 		},
 	}
 	for _, opt := range opts {

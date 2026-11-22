@@ -139,7 +139,7 @@ func Load() (*Config, error) {
 	cfg.GeminiAPIKey = strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	cfg.GeminiModel = strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
 	if cfg.GeminiModel == "" {
-		cfg.GeminiModel = "gemini-2.5-flash"
+		cfg.GeminiModel = "gemini-3.5-flash-lite"
 	}
 	cfg.WatchtowerPIN = os.Getenv("WATCHTOWER_PIN")
 	cfg.OpenRouterAPIKey = strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))

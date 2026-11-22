@@ -106,7 +106,7 @@ func TestLoadOverrides(t *testing.T) {
 		"GROQ_API_KEY":          "gsk-test-groq-key",
 		"GROQ_MODEL":            "llama-3.1-8b-instant",
 		"GEMINI_API_KEY":        "AIza-test-gemini-key",
-		"GEMINI_MODEL":          "gemini-2.0-flash",
+		"GEMINI_MODEL":          "gemini-3.5-flash-lite",
 		"WATCHTOWER_PIN":        "wt-pin-1234",
 		"OPENROUTER_API_KEY":    "sk-or-v1-secret-key",
 		"LOCATION_SECRET_TOKEN": "owner-device-token-32-characters",
@@ -150,8 +150,8 @@ func TestLoadOverrides(t *testing.T) {
 	if cfg.GeminiAPIKey != "AIza-test-gemini-key" {
 		t.Errorf("GeminiAPIKey = %v, want AIza-test-gemini-key", cfg.GeminiAPIKey)
 	}
-	if cfg.GeminiModel != "gemini-2.0-flash" {
-		t.Errorf("GeminiModel = %v, want gemini-2.0-flash", cfg.GeminiModel)
+	if cfg.GeminiModel != "gemini-3.5-flash-lite" {
+		t.Errorf("GeminiModel = %v, want gemini-3.5-flash-lite", cfg.GeminiModel)
 	}
 	if cfg.OpenRouterAPIKey != "sk-or-v1-secret-key" {
 		t.Errorf("OpenRouterAPIKey = %v, want sk-or-v1-secret-key", cfg.OpenRouterAPIKey)
