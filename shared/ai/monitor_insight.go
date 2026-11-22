@@ -52,10 +52,10 @@ type monitorAIResponse struct {
 }
 
 // SummarizeMonitorInsight explains provided measurements without making system state decisions.
-func SummarizeMonitorInsight(ctx context.Context, client *Client, evidence MonitorEvidence) *MonitorInsight {
+func SummarizeMonitorInsight(ctx context.Context, client AIEngine, evidence MonitorEvidence) *MonitorInsight {
 	fallback := fallbackMonitorInsight(evidence)
 	if client == nil || !client.HasAPIKey() {
-		fallback.FallbackMessage = "ยังไม่ได้ตั้งค่า OpenRouter API key จึงแสดง insight จากค่าระบบโดยตรง"
+		fallback.FallbackMessage = "ยังไม่ได้ตั้งค่า AI API key จึงแสดง insight จากค่าระบบโดยตรง"
 		return fallback
 	}
 

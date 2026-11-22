@@ -140,13 +140,13 @@ func FallbackIncidentSummary(incident IncidentMetadata, reason string) *Incident
 // SummarizeIncident analyzes filtered probe metadata and produces a structured summary
 // strictly separating Facts from Hypotheses. AI NEVER decides up/down state or alert triggers.
 // If AI fails or key is missing, it returns a deterministic fallback summary.
-func SummarizeIncident(ctx context.Context, client *Client, incident IncidentMetadata) (*IncidentSummary, error) {
+func SummarizeIncident(ctx context.Context, client AIEngine, incident IncidentMetadata) (*IncidentSummary, error) {
 	// Sanitize URL and error summary before anything touches AI
 	sanitizedURL := SanitizeURL(incident.URL)
 	sanitizedErr := SanitizeErrorSummary(incident.ErrorSummary)
 
 	if client == nil || !client.HasAPIKey() {
-		return FallbackIncidentSummary(incident, "openrouter API key is not configured"), nil
+		return FallbackIncidentSummary(incident, "AI engine has no configured API key"), nil
 	}
 
 	systemPrompt := `You are Pocket Sentinel's SRE Incident Analyzer.

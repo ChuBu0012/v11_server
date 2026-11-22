@@ -101,6 +101,7 @@ type App struct {
 	locationStore     *location.Store
 	locationRetention *worker.Worker
 	aiClient          *ai.Client
+	aiEngine          *ai.Engine
 	insight           *insight.Service
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
@@ -322,7 +323,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		reminderMod = reminders.NewModule(reminderStore, reminderTelegramReady)
 	}
 
-	// OpenRouter AI client initialization
+	// AI Multi-Provider Fallback Engine initialization (Groq -> Gemini -> OpenRouter)
+	aiEngine := ai.NewDefaultEngine(cfg.GroqAPIKey, cfg.GeminiAPIKey, cfg.OpenRouterAPIKey)
 	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
 
 	locationCredentials := location.Credentials{
@@ -383,11 +385,15 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		log.Printf("Warning: failed to initialize insight store: %v", err)
 	} else {
 		var providers []insight.Provider
-		if aiClient.HasAPIKey() {
-			providers = append(providers, insight.Provider{Name: "openrouter", Gen: aiClient, Timeout: 15 * time.Second})
-		}
-		if strings.TrimSpace(cfg.GeminiAPIKey) != "" {
-			providers = append(providers, insight.Provider{Name: "gemini", Gen: digest.NewGeminiClient(cfg.GeminiAPIKey), Timeout: 30 * time.Second})
+		if aiEngine.HasAPIKey() {
+			providers = append(providers, insight.Provider{Name: "ai-fallback-engine", Gen: aiEngine, Timeout: 35 * time.Second})
+		} else {
+			if aiClient.HasAPIKey() {
+				providers = append(providers, insight.Provider{Name: "openrouter", Gen: aiClient, Timeout: 15 * time.Second})
+			}
+			if strings.TrimSpace(cfg.GeminiAPIKey) != "" {
+				providers = append(providers, insight.Provider{Name: "gemini", Gen: digest.NewGeminiClient(cfg.GeminiAPIKey), Timeout: 30 * time.Second})
+			}
 		}
 		var locStore *location.Store
 		if locationErr == nil {
@@ -428,6 +434,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationStore:     locationStore,
 		locationRetention: locationRetention,
 		aiClient:          aiClient,
+		aiEngine:          aiEngine,
 		insight:           insightSvc,
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
@@ -504,7 +511,7 @@ func setupRouter(app *App) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
 			return
 		}
-		result, err := ai.ParseSchedulePrompt(c.Request.Context(), app.aiClient, req.Prompt, "Asia/Bangkok")
+		result, err := ai.ParseSchedulePrompt(c.Request.Context(), app.aiEngine, req.Prompt, "Asia/Bangkok")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -525,7 +532,7 @@ func setupRouter(app *App) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "text cannot be empty"})
 			return
 		}
-		result, err := ai.ProofreadText(c.Request.Context(), app.aiClient, req.Text)
+		result, err := ai.ProofreadText(c.Request.Context(), app.aiEngine, req.Text)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

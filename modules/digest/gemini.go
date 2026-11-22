@@ -193,6 +193,7 @@ func (g *GeminiClient) generateText(ctx context.Context, prompt string, temperat
 	if err != nil {
 		return "", fmt.Errorf("gemini: create request failed: %s", redactKey(err.Error(), g.apiKey))
 	}
+	req.Header.Set("x-goog-api-key", g.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := g.client.Do(req)

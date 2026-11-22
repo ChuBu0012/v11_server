@@ -28,8 +28,13 @@ type Config struct {
 	TelegramChatID   string        // ENV: TELEGRAM_CHAT_ID
 	TelegramTimeout  time.Duration // ENV: TELEGRAM_TIMEOUT (default: 10s)
 
+	// Groq AI
+	GroqAPIKey string // ENV: GROQ_API_KEY
+	GroqModel  string // ENV: GROQ_MODEL (default: llama-3.3-70b-versatile)
+
 	// Gemini AI
 	GeminiAPIKey string // ENV: GEMINI_API_KEY
+	GeminiModel  string // ENV: GEMINI_MODEL (default: gemini-2.0-flash)
 
 	// Personal Watchtower
 	WatchtowerPIN string // ENV: WATCHTOWER_PIN
@@ -126,9 +131,18 @@ func Load() (*Config, error) {
 
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
-	cfg.GeminiAPIKey = os.Getenv("GEMINI_API_KEY")
+	cfg.GroqAPIKey = strings.TrimSpace(os.Getenv("GROQ_API_KEY"))
+	cfg.GroqModel = strings.TrimSpace(os.Getenv("GROQ_MODEL"))
+	if cfg.GroqModel == "" {
+		cfg.GroqModel = "openai/gpt-oss-120b"
+	}
+	cfg.GeminiAPIKey = strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+	cfg.GeminiModel = strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
+	if cfg.GeminiModel == "" {
+		cfg.GeminiModel = "gemini-2.5-flash"
+	}
 	cfg.WatchtowerPIN = os.Getenv("WATCHTOWER_PIN")
-	cfg.OpenRouterAPIKey = os.Getenv("OPENROUTER_API_KEY")
+	cfg.OpenRouterAPIKey = strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
 
 	var err error
 	if cfg.LocationSecretToken, cfg.LocationSecretTokenExplicit, err = configuredLocationToken("LOCATION_SECRET_TOKEN"); err != nil {
@@ -196,10 +210,10 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GroqAPIKey:%s, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
-		token, chatID, c.TelegramTimeout, geminiKey, secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
+		token, chatID, c.TelegramTimeout, secretState(c.GroqAPIKey), geminiKey, secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
 		secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
 	)
 }

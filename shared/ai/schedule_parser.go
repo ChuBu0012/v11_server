@@ -140,7 +140,7 @@ func IsObviouslyAmbiguous(prompt string) (bool, string) {
 // ParseSchedulePrompt parses a natural language Thai/English prompt into a Reminder SchedulePreview.
 // It detects ambiguous dates/times and prompts for clarification instead of hallucinating timestamps.
 // If the AI call fails or key is missing, it falls back deterministically to manual form entry.
-func ParseSchedulePrompt(ctx context.Context, client *Client, prompt string, userTZ string) (*ScheduleParseResult, error) {
+func ParseSchedulePrompt(ctx context.Context, client AIEngine, prompt string, userTZ string) (*ScheduleParseResult, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return FallbackSchedule("", "empty prompt"), nil
@@ -157,7 +157,7 @@ func ParseSchedulePrompt(ctx context.Context, client *Client, prompt string, use
 	}
 
 	if client == nil || !client.HasAPIKey() {
-		return FallbackSchedule(prompt, "openrouter API key is not configured"), nil
+		return FallbackSchedule(prompt, "AI engine has no configured API key"), nil
 	}
 
 	tz := strings.TrimSpace(userTZ)

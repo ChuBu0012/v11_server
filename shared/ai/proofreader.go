@@ -71,7 +71,7 @@ func verifyPreservation(original, suggested string) bool {
 // ProofreadText checks Thai and English text for typos, grammar, and clarity while strictly
 // preserving URLs, code blocks, English technical terms, proper nouns, and intended meaning.
 // If AI fails or key is missing, it falls back deterministically to the original text.
-func ProofreadText(ctx context.Context, client *Client, text string) (*ProofreadResult, error) {
+func ProofreadText(ctx context.Context, client AIEngine, text string) (*ProofreadResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return &ProofreadResult{
@@ -82,7 +82,7 @@ func ProofreadText(ctx context.Context, client *Client, text string) (*Proofread
 	}
 
 	if client == nil || !client.HasAPIKey() {
-		return FallbackProofread(text, "openrouter API key is not configured"), nil
+		return FallbackProofread(text, "AI engine has no configured API key"), nil
 	}
 
 	systemPrompt := `You are an expert Thai and English proofreader for Pocket Sentinel's Telegram bridge.
