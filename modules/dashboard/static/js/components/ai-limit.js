@@ -34,15 +34,28 @@ document.addEventListener('alpine:init', () => {
     updatedAt: '',
     updatedText: 'กำลังโหลด…',
 
-    // Raw buckets & groups
-    buckets: [],
-    groups: [],
+    // Unified Single Gauge State ("หลอดเดียวเข้าใจเลย")
+    unifiedQuota: {
+      percent: 100,
+      badgeClass: 'ok',
+      badgeText: 'ปกติ',
+      meterClass: '',
+      fiveHourPercent: 100,
+      fiveHourCountdown: '—',
+      weeklyPercent: 100,
+      weeklyCountdown: '—',
+      nextResetText: '—'
+    },
+
+    // Raw Gemini bucket references for ticker
+    gemini5hReset: '',
+    geminiWeeklyReset: '',
 
     // Insight state
-    insight: null,
     insightTitle: 'กำลังวิเคราะห์สถานะ…',
     insightText: 'กำลังคำนวณอัตราการใช้โควตา',
     insightLevel: 'normal',
+    showInsight: false,
 
     init() {
       this.loadLimits();
@@ -141,50 +154,90 @@ document.addEventListener('alpine:init', () => {
         this.updatedText = `อัปเดต: ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')} น.`;
       }
 
-      this.insight = data.insight || null;
-      if (this.insight) {
-        this.insightTitle = this.insight.title || 'คำแนะนำสถานะโควตา';
-        this.insightText = `${this.insight.summary} — ${this.insight.recommendation}`;
-        this.insightLevel = this.insight.level || 'normal';
+      // Filter out Claude / 3P models completely as requested by user
+      const rawBuckets = data.buckets || [];
+      const geminiBuckets = rawBuckets.filter((b) => b.bucket_id && b.bucket_id.startsWith('gemini'));
+
+      const b5h = geminiBuckets.find((b) => b.window === '5h') || null;
+      const bWeekly = geminiBuckets.find((b) => b.window === 'weekly') || null;
+
+      let fiveHourPercent = 100;
+      let weeklyPercent = 100;
+
+      if (b5h) {
+        fiveHourPercent = Math.round(b5h.remaining_percent);
+        this.gemini5hReset = b5h.reset_time || '';
+      }
+      if (bWeekly) {
+        weeklyPercent = Math.round(bWeekly.remaining_percent);
+        this.geminiWeeklyReset = bWeekly.reset_time || '';
       }
 
-      const rawBuckets = data.buckets || [];
-      this.buckets = rawBuckets.map((b) => {
-        const remaining = Math.round(b.remaining_percent);
-        let badgeClass = 'ok';
-        let badgeText = 'ปกติ';
-        let meterClass = '';
+      // Single Unified Available Limit: bottleneck of 5h and weekly
+      let effPercent = 100;
+      if (b5h && bWeekly) {
+        effPercent = Math.min(fiveHourPercent, weeklyPercent);
+      } else if (b5h) {
+        effPercent = fiveHourPercent;
+      } else if (bWeekly) {
+        effPercent = weeklyPercent;
+      }
 
-        if (remaining <= 15) {
-          badgeClass = 'crit';
-          badgeText = 'วิกฤต';
-          meterClass = 'critical';
-        } else if (remaining <= 35) {
-          badgeClass = 'warn';
-          badgeText = 'เหลือน้อย';
-          meterClass = 'warning';
-        }
+      let badgeClass = 'ok';
+      let badgeText = 'ปกติ';
+      let meterClass = '';
 
-        return {
-          ...b,
-          remaining_percent: remaining,
-          badgeClass,
-          badgeText,
-          meterClass,
-          countdown: this.calcCountdown(b.reset_time)
-        };
-      });
+      if (effPercent <= 15) {
+        badgeClass = 'crit';
+        badgeText = 'วิกฤต';
+        meterClass = 'critical';
+        this.insightLevel = 'critical';
+        this.insightTitle = '⚠️ โควตา Gemini วิกฤต!';
+        this.insightText = `โควตาพร้อมใช้เหลือเพียง ${effPercent}% แนะนำลดระดับ Effort หรือพักคำสั่งงานหนัก`;
+        this.showInsight = true;
+      } else if (effPercent <= 40) {
+        badgeClass = 'warn';
+        badgeText = 'เหลือน้อย';
+        meterClass = 'warning';
+        this.insightLevel = 'warning';
+        this.insightTitle = '⚡ โควตา Gemini เริ่มเหลือน้อย';
+        this.insightText = `โควตาพร้อมใช้เหลือ ${effPercent}% ควรบริหารจัดการรอบการส่งคำสั่งอย่างประหยัด`;
+        this.showInsight = true;
+      } else {
+        this.insightLevel = 'normal';
+        this.insightTitle = '✅ โควตา Gemini พร้อมใช้งาน';
+        this.insightText = `โควตาพร้อมใช้ ${effPercent}% อยู่ในเกณฑ์ปกติ สามารถส่งคำสั่งงานต่อได้ตามปกติ`;
+        this.showInsight = false;
+      }
 
-      this.groups = data.groups || [];
-      this.hasData = this.buckets.length > 0;
+      const fiveHourCountdown = this.calcCountdown(this.gemini5hReset);
+      const weeklyCountdown = this.calcCountdown(this.geminiWeeklyReset);
 
-      // Render or update chart with historical snapshots
+      this.unifiedQuota = {
+        percent: effPercent,
+        badgeClass,
+        badgeText,
+        meterClass,
+        fiveHourPercent,
+        fiveHourCountdown,
+        weeklyPercent,
+        weeklyCountdown,
+        nextResetText: fiveHourCountdown
+      };
+
+      this.hasData = geminiBuckets.length > 0;
+
+      // Render single-line unified trend chart
       this.renderChart(data.history || []);
     },
 
     updateCountdowns() {
-      for (let i = 0; i < this.buckets.length; i++) {
-        this.buckets[i].countdown = this.calcCountdown(this.buckets[i].reset_time);
+      if (this.gemini5hReset) {
+        this.unifiedQuota.fiveHourCountdown = this.calcCountdown(this.gemini5hReset);
+        this.unifiedQuota.nextResetText = this.unifiedQuota.fiveHourCountdown;
+      }
+      if (this.geminiWeeklyReset) {
+        this.unifiedQuota.weeklyCountdown = this.calcCountdown(this.geminiWeeklyReset);
       }
     },
 
@@ -219,44 +272,72 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
-      // Group history by bucket_id
-      const series = {
-        'gemini-5h':     { label: 'Gemini (5h)', color: '#38bdf8', data: [] },
-        'gemini-weekly': { label: 'Gemini (Weekly)', color: '#2563eb', data: [] },
-        '3p-5h':         { label: 'Claude/GPT (5h)', color: '#f59e0b', data: [] },
-        '3p-weekly':     { label: 'Claude/GPT (Weekly)', color: '#ef4444', data: [] }
-      };
+      // Group history snapshots by recorded_at timestamp (minute-bucketed)
+      // and calculate single effective percentage per sample
+      const snapshotMap = new Map();
+      const sorted = [...history].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
 
-      const timeSet = new Set();
-      history.forEach((h) => {
+      sorted.forEach((h) => {
         if (!h.recorded_at) return;
-        const timeKey = new Date(h.recorded_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-        timeSet.add(timeKey);
-        if (series[h.bucket_id]) {
-          series[h.bucket_id].data.push({ x: timeKey, y: Math.round(h.remaining_fraction * 100) });
+        // Ignore Claude / 3P models completely
+        if (!h.bucket_id || !h.bucket_id.startsWith('gemini')) return;
+
+        const dateObj = new Date(h.recorded_at);
+        const timeKey = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        const slotKey = Math.floor(dateObj.getTime() / (60 * 1000));
+
+        if (!snapshotMap.has(slotKey)) {
+          snapshotMap.set(slotKey, { timeKey, h5: null, weekly: null });
+        }
+        const item = snapshotMap.get(slotKey);
+        const pct = Math.round(h.remaining_fraction * 100);
+        if (h.bucket_id === 'gemini-5h') {
+          item.h5 = pct;
+        } else if (h.bucket_id === 'gemini-weekly') {
+          item.weekly = pct;
         }
       });
 
-      const labels = Array.from(timeSet);
+      const labels = [];
+      const dataPoints = [];
+      const metadata = [];
+
+      snapshotMap.forEach((item) => {
+        labels.push(item.timeKey);
+        let eff = 100;
+        if (item.h5 !== null && item.weekly !== null) {
+          eff = Math.min(item.h5, item.weekly);
+        } else if (item.h5 !== null) {
+          eff = item.h5;
+        } else if (item.weekly !== null) {
+          eff = item.weekly;
+        }
+        dataPoints.push(eff);
+        metadata.push({ h5: item.h5, weekly: item.weekly });
+      });
+
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f0f0f0';
       const tickColor = isDark ? '#8e8e93' : '#86868b';
 
-      const datasets = Object.values(series).map((s) => ({
-        label: s.label,
-        data: s.data,
-        borderColor: s.color,
-        backgroundColor: s.color,
-        borderWidth: 2,
-        pointRadius: s.data.length > 30 ? 0 : 2,
-        pointHoverRadius: 5,
-        tension: 0.2,
+      // One unified line: Clean, intuitive, Apple HIG styled
+      const dataset = {
+        label: 'โควตา Gemini คงเหลือ (%)',
+        data: dataPoints,
+        borderColor: '#38bdf8',
+        backgroundColor: 'rgba(56, 189, 248, 0.15)',
+        fill: true,
+        borderWidth: 2.5,
+        pointRadius: dataPoints.length > 30 ? 0 : 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#38bdf8',
+        tension: 0.25,
         spanGaps: true
-      }));
+      };
 
       if (quotaChartInstance) {
         quotaChartInstance.data.labels = labels;
-        quotaChartInstance.data.datasets = datasets;
+        quotaChartInstance.data.datasets = [dataset];
         quotaChartInstance.options.scales.x.grid.color = gridColor;
         quotaChartInstance.options.scales.x.ticks.color = tickColor;
         quotaChartInstance.options.scales.y.grid.color = gridColor;
@@ -265,7 +346,7 @@ document.addEventListener('alpine:init', () => {
       } else {
         quotaChartInstance = new Chart(el, {
           type: 'line',
-          data: { labels, datasets },
+          data: { labels, datasets: [dataset] },
           options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -285,7 +366,15 @@ document.addEventListener('alpine:init', () => {
               },
               tooltip: {
                 callbacks: {
-                  label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`
+                  label: (ctx) => {
+                    const idx = ctx.dataIndex;
+                    const meta = metadata[idx] || {};
+                    const parts = [];
+                    if (meta.h5 !== null && meta.h5 !== undefined) parts.push(`5 ชม.: ${meta.h5}%`);
+                    if (meta.weekly !== null && meta.weekly !== undefined) parts.push(`รายสัปดาห์: ${meta.weekly}%`);
+                    const detail = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+                    return `โควตาพร้อมใช้: ${ctx.parsed.y}%${detail}`;
+                  }
                 }
               }
             },

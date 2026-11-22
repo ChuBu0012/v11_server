@@ -208,42 +208,41 @@
           </button>
         </div>
 
-        <!-- Insight Alert Banner -->
-        <div class="alert notice" :class="insightAlertClass" x-show="insight" x-cloak>
+        <!-- Insight Alert Banner (แสดงเฉพาะเมื่อเหลือน้อยหรือวิกฤต) -->
+        <div class="alert notice" :class="insightAlertClass" x-show="showInsight" x-cloak>
           <strong x-text="insightTitle"></strong>: <span x-text="insightText"></span>
         </div>
 
-        <!-- Metric Grid -->
+        <!-- Unified Single Gauge Card ("หลอดเดียวเข้าใจเลย") -->
         <div class="metric-grid">
-          <template x-if="buckets.length === 0">
-            <article class="metric metric-wide">
-              <span class="metric-label">สถานะโควตา</span>
-              <strong class="metric-value">กำลังโหลด…</strong>
-              <small class="metric-sub">กดปุ่มรีเฟรชเพื่อดึงข้อมูลโควตาจากเซิร์ฟเวอร์</small>
-            </article>
-          </template>
-          <template x-for="bucket in buckets" :key="bucket.bucket_id">
-            <article class="metric">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="metric-label" x-text="bucket.group_name"></span>
-                <span class="chip" :class="bucket.badgeClass" x-text="bucket.badgeText"></span>
-              </div>
-              <strong class="metric-value" x-text="bucket.remaining_percent + '%'">—</strong>
-              <small class="metric-sub">
-                <span x-text="bucket.display_name"></span> · รีเซ็ตใน <span x-text="bucket.countdown"></span>
-              </small>
-              <div class="meter" aria-hidden="true">
-                <div class="meter-fill" :style="'width: ' + bucket.remaining_percent + '%'" :class="bucket.meterClass"></div>
-              </div>
-            </article>
-          </template>
+          <article class="metric metric-wide" style="padding: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="metric-label" style="font-weight: 600; font-size: 0.95rem;">โควตา Gemini พร้อมใช้งาน</span>
+              <span class="chip" :class="unifiedQuota.badgeClass" x-text="unifiedQuota.badgeText"></span>
+            </div>
+            <div style="display:flex; align-items:baseline; gap: 8px; margin: 8px 0 4px 0;">
+              <strong class="metric-value" style="font-size: 2.2rem; line-height: 1;" x-text="unifiedQuota.percent + '%'">—</strong>
+              <small class="metric-sub" style="margin:0;">(ประเมินจากคอขวดที่จำกัดการใช้งานจริง)</small>
+            </div>
+            
+            <!-- หลอดเดียวเห็นชัดเต็มตา -->
+            <div class="meter" aria-hidden="true" style="height: 10px; margin: 10px 0 10px 0; border-radius: 5px;">
+              <div class="meter-fill" :style="'width: ' + unifiedQuota.percent + '%'" :class="unifiedQuota.meterClass"></div>
+            </div>
+
+            <!-- รายละเอียดปลีกย่อยในบรรทัดเดียว ไม่รกตา -->
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap: 8px; font-size: 0.82rem; color: var(--muted); padding-top: 6px; border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));">
+              <span>⏱ <b>รอบ 5 ชั่วโมง:</b> <strong x-text="unifiedQuota.fiveHourPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.fiveHourCountdown"></span>)</span>
+              <span>📅 <b>รายสัปดาห์:</b> <strong x-text="unifiedQuota.weeklyPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.weeklyCountdown"></span>)</span>
+            </div>
+          </article>
         </div>
 
         <!-- Historical Usage Trend Chart -->
         <div class="chart-grid" style="margin-top: 12px;">
           <article class="card chart-card" style="grid-column: 1 / -1;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-              <h3 class="chart-title" style="margin:0;">แนวโน้มโควตาคงเหลือ (%)</h3>
+              <h3 class="chart-title" style="margin:0;">แนวโน้มโควตา Gemini คงเหลือ (%)</h3>
               <div class="segmented range-controls" role="group" aria-label="Quota chart range">
                 <button class="range-btn" type="button" :aria-pressed="hours === 6" @click="setHours(6)">6h</button>
                 <button class="range-btn" type="button" :aria-pressed="hours === 24" @click="setHours(24)">24h</button>

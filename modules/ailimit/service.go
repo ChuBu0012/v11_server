@@ -190,6 +190,11 @@ func (s *Service) GenerateInsight(buckets []QuotaBucket, history []QuotaSnapshot
 
 	for i := range buckets {
 		b := &buckets[i]
+		// Ignore Claude / 3P models as requested by user (limits exhaust too quickly)
+		if strings.Contains(strings.ToLower(b.GroupName), "claude") || strings.HasPrefix(b.BucketID, "3p") {
+			continue
+		}
+
 		if b.RemainingPercent <= 15.0 {
 			if criticalBucket == nil || b.RemainingPercent < criticalBucket.RemainingPercent {
 				criticalBucket = b
@@ -204,10 +209,7 @@ func (s *Service) GenerateInsight(buckets []QuotaBucket, history []QuotaSnapshot
 	if criticalBucket != nil {
 		targetName := fmt.Sprintf("%s (%s)", criticalBucket.GroupName, criticalBucket.DisplayName)
 		countdown := formatDuration(time.Until(criticalBucket.ResetTime))
-		rec := "แนะนำให้สลับไปใช้โมเดล Gemini 3.8 Flash หรือพักการใช้งานโควตานี้จนกว่าจะรีเซ็ต"
-		if strings.Contains(strings.ToLower(criticalBucket.GroupName), "gemini") {
-			rec = "โควตา Gemini เหลือน้อยมาก แนะนำลดระดับ Effort หรือใช้คำสั่งขนาดกะทัดรัด"
-		}
+		rec := "โควตา Gemini เหลือน้อยมาก แนะนำลดระดับ Effort หรือใช้คำสั่งขนาดกะทัดรัด"
 
 		return QuotaInsight{
 			Level:          "critical",
@@ -234,9 +236,9 @@ func (s *Service) GenerateInsight(buckets []QuotaBucket, history []QuotaSnapshot
 
 	return QuotaInsight{
 		Level:          "normal",
-		Title:          "✅ โควตาทุกค่ายพร้อมใช้งานสมบูรณ์",
-		Summary:        "โควตาระยะสั้นและรายสัปดาห์ของทุกโมเดลอยู่ในระดับปกติ พร้อมสำหรับงานพัฒนาเต็มรูปแบบ",
-		Recommendation: "สามารถเรียกใช้งานโมเดลหลักได้ตามปกติ ทั้ง Gemini และ 3P models",
+		Title:          "✅ โควตา Gemini พร้อมใช้งานสมบูรณ์",
+		Summary:        "โควตาระยะสั้นและรายสัปดาห์ของ Gemini อยู่ในเกณฑ์ปกติ พร้อมสำหรับงานพัฒนาเต็มรูปแบบ",
+		Recommendation: "สามารถเรียกใช้งานโมเดล Gemini ได้ตามปกติอย่างเต็มประสิทธิภาพ",
 		AlertTriggered: false,
 	}
 }
@@ -250,6 +252,11 @@ func (s *Service) evaluateAlerts(ctx context.Context, buckets []QuotaBucket) {
 	defer s.debounceMu.Unlock()
 
 	for _, b := range buckets {
+		// Ignore Claude / 3P models as requested by user (limits exhaust too quickly)
+		if strings.Contains(strings.ToLower(b.GroupName), "claude") || strings.HasPrefix(b.BucketID, "3p") {
+			continue
+		}
+
 		if !b.IsLow {
 			continue
 		}
@@ -262,13 +269,13 @@ func (s *Service) evaluateAlerts(ctx context.Context, buckets []QuotaBucket) {
 
 		countdown := formatDuration(time.Until(b.ResetTime))
 		alertMsg := fmt.Sprintf(
-			"🚨 <b>แจ้งเตือนโควตา AI ใกล้หมด!</b>\n"+
+			"🚨 <b>แจ้งเตือนโควตา Gemini ใกล้หมด!</b>\n"+
 				"<i>Pocket Sentinel · AI Limit Monitor</i>\n\n"+
 				"⚠️ <b>%s — %s</b>\n"+
 				"• คงเหลือ: 🔴 <b>%.0f%%</b> (ใช้ไป %.0f%%)\n"+
 				"• รีเซ็ตเต็มในอีก: ⏱ <b>%s</b>\n"+
 				"• เวลารีเซ็ต: <code>%s</code>\n\n"+
-				"💡 <i>คำแนะนำ: แนะนำสลับใช้ Gemini 3.8 Flash หรือพักการเรียกคำสั่งหนักเพื่อประหยัดโควตา</i>",
+				"💡 <i>คำแนะนำ: แนะนำลดระดับ Effort หรือพักการเรียกคำสั่งหนักเพื่อประหยัดโควตา</i>",
 			b.GroupName, b.DisplayName,
 			b.RemainingPercent, b.UsedPercent,
 			countdown,
@@ -284,51 +291,56 @@ func (s *Service) evaluateAlerts(ctx context.Context, buckets []QuotaBucket) {
 	}
 }
 
-// FormatTelegramMessage formats the current status into an informative HTML card.
+// FormatTelegramMessage formats the current status into an informative single-gauge HTML card.
 func (s *Service) FormatTelegramMessage(resp *QuotaResponse) string {
 	if resp == nil || len(resp.Buckets) == 0 {
 		return "⚠️ <b>ไม่พบข้อมูลโควตา AI</b>\n<i>กดปุ่มเพื่อลองตรวจสอบใหม่อีกครั้ง</i>"
 	}
 
-	var sb strings.Builder
-	sb.WriteString("⚡ <b>สถานะโควตา AI (Antigravity)</b>\n")
-	sb.WriteString(fmt.Sprintf("<i>อัปเดต: %s</i>\n\n", resp.UpdatedAt.Local().Format("15:04 น.")))
-
-	for _, g := range resp.Groups {
-		icon := "🔹"
-		if strings.Contains(strings.ToLower(g.GroupName), "claude") {
-			icon = "🔸"
+	var gemini5h, geminiWeekly *QuotaBucket
+	for i := range resp.Buckets {
+		b := &resp.Buckets[i]
+		if b.BucketID == "gemini-5h" {
+			gemini5h = b
+		} else if b.BucketID == "gemini-weekly" {
+			geminiWeekly = b
 		}
-		sb.WriteString(fmt.Sprintf("%s <b>%s</b>\n", icon, g.GroupName))
-
-		for _, b := range g.Buckets {
-			dot := "🟩"
-			if b.RemainingPercent <= 15 {
-				dot = "🟥"
-			} else if b.RemainingPercent <= 40 {
-				dot = "🟨"
-			}
-
-			countdown := formatDuration(time.Until(b.ResetTime))
-			label := b.DisplayName
-			if b.Window == "5h" {
-				label = "5-Hour Limit"
-			} else if b.Window == "weekly" {
-				label = "Weekly Limit"
-			}
-
-			critSuffix := ""
-			if b.IsLow {
-				critSuffix = " <i>(วิกฤต!)</i>"
-			}
-
-			sb.WriteString(fmt.Sprintf("• %s: %s <b>%.0f%%</b>%s (รีเซ็ตใน %s)\n",
-				label, dot, b.RemainingPercent, critSuffix, countdown))
-		}
-		sb.WriteString("\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("💡 <b>คำแนะนำ:</b>\n<i>%s</i>", resp.Insight.Recommendation))
+	effectivePercent := 100.0
+	if gemini5h != nil && geminiWeekly != nil {
+		if gemini5h.RemainingPercent < geminiWeekly.RemainingPercent {
+			effectivePercent = gemini5h.RemainingPercent
+		} else {
+			effectivePercent = geminiWeekly.RemainingPercent
+		}
+	} else if gemini5h != nil {
+		effectivePercent = gemini5h.RemainingPercent
+	} else if geminiWeekly != nil {
+		effectivePercent = geminiWeekly.RemainingPercent
+	}
+
+	dot := "🟩"
+	statusText := "ปกติ พร้อมใช้งานต่อเนื่อง"
+	if effectivePercent <= 15 {
+		dot = "🟥"
+		statusText = "วิกฤต! แนะนำประหยัดการส่งคำสั่ง"
+	} else if effectivePercent <= 40 {
+		dot = "🟨"
+		statusText = "เริ่มเหลือน้อย ควรระวัง"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("⚡ <b>โควตาโมเดล Gemini (Antigravity)</b>\n")
+	sb.WriteString(fmt.Sprintf("<i>อัปเดต: %s</i>\n\n", resp.UpdatedAt.Local().Format("15:04 น.")))
+	sb.WriteString(fmt.Sprintf("📊 <b>โควตาพร้อมใช้งาน: %s %.0f%%</b>\n", dot, effectivePercent))
+	if gemini5h != nil {
+		sb.WriteString(fmt.Sprintf("• รอบ 5 ชม.: <b>%.0f%%</b> (รีเซ็ตใน %s)\n", gemini5h.RemainingPercent, formatDuration(time.Until(gemini5h.ResetTime))))
+	}
+	if geminiWeekly != nil {
+		sb.WriteString(fmt.Sprintf("• รายสัปดาห์: <b>%.0f%%</b> (รีเซ็ตใน %s)\n", geminiWeekly.RemainingPercent, formatDuration(time.Until(geminiWeekly.ResetTime))))
+	}
+	sb.WriteString(fmt.Sprintf("\n💡 <b>สถานะ:</b> <i>%s</i>", statusText))
 
 	return sb.String()
 }

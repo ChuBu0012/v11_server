@@ -44,8 +44,8 @@ Claude and GPT models	Five Hour Limit Remaining	100%	2026-11-22T10:23:00Z`, nil
 		t.Fatalf("expected 4 buckets, got %d", len(resp.Buckets))
 	}
 
-	if resp.Insight.Level != "critical" {
-		t.Errorf("expected critical insight because 3p-weekly is 10%%, got: %s", resp.Insight.Level)
+	if resp.Insight.Level != "normal" {
+		t.Errorf("expected normal insight because Claude is ignored and Gemini is healthy, got: %s", resp.Insight.Level)
 	}
 
 	// Test GetStatus
