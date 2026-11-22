@@ -345,6 +345,56 @@ func (s *Service) FormatTelegramMessage(resp *QuotaResponse) string {
 	return sb.String()
 }
 
+// FormatPostTaskQuotaMessage formats the quota usage into a concise follow-up notification.
+func (s *Service) FormatPostTaskQuotaMessage(resp *QuotaResponse) string {
+	if resp == nil || len(resp.Buckets) == 0 {
+		return ""
+	}
+
+	var gemini5h, geminiWeekly *QuotaBucket
+	for i := range resp.Buckets {
+		b := &resp.Buckets[i]
+		if b.BucketID == "gemini-5h" {
+			gemini5h = b
+		} else if b.BucketID == "gemini-weekly" {
+			geminiWeekly = b
+		}
+	}
+
+	effectivePercent := 100.0
+	if gemini5h != nil && geminiWeekly != nil {
+		if gemini5h.RemainingPercent < geminiWeekly.RemainingPercent {
+			effectivePercent = gemini5h.RemainingPercent
+		} else {
+			effectivePercent = geminiWeekly.RemainingPercent
+		}
+	} else if gemini5h != nil {
+		effectivePercent = gemini5h.RemainingPercent
+	} else if geminiWeekly != nil {
+		effectivePercent = geminiWeekly.RemainingPercent
+	}
+
+	dot := "🟩"
+	if effectivePercent <= 15 {
+		dot = "🟥"
+	} else if effectivePercent <= 40 {
+		dot = "🟨"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("⚡ <b>สรุปโควตาหลังการใช้งาน (Gemini)</b>\n")
+	sb.WriteString(fmt.Sprintf("<i>ตรวจวัดเมื่อ: %s</i>\n\n", resp.UpdatedAt.Local().Format("15:04 น.")))
+	sb.WriteString(fmt.Sprintf("📊 <b>โควตาคงเหลือ: %s %.0f%%</b> (ใช้ไป %.0f%%)\n", dot, effectivePercent, 100.0-effectivePercent))
+	if gemini5h != nil {
+		sb.WriteString(fmt.Sprintf("• รอบ 5 ชม.: <b>%.0f%%</b> (รีเซ็ตใน %s)\n", gemini5h.RemainingPercent, formatDuration(time.Until(gemini5h.ResetTime))))
+	}
+	if geminiWeekly != nil {
+		sb.WriteString(fmt.Sprintf("• รายสัปดาห์: <b>%.0f%%</b> (รีเซ็ตใน %s)\n", geminiWeekly.RemainingPercent, formatDuration(time.Until(geminiWeekly.ResetTime))))
+	}
+
+	return sb.String()
+}
+
 func formatDuration(d time.Duration) string {
 	if d <= 0 {
 		return "กำลังรีเซ็ต"

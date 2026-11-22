@@ -298,6 +298,13 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			}
 			return quotaSvc.FormatTelegramMessage(resp), nil
 		}))
+		routerOpts = append(routerOpts, bot.WithQuotaPostTaskFunc(func(ctx context.Context) (string, error) {
+			resp, err := quotaSvc.Collect(ctx)
+			if err != nil {
+				return "", err
+			}
+			return quotaSvc.FormatPostTaskQuotaMessage(resp), nil
+		}))
 
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)

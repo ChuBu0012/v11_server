@@ -33,20 +33,28 @@ type Router struct {
 	callbackHandler func(ctx context.Context, callback *CallbackQuery) error
 	callbackRoutes  map[string]func(ctx context.Context, callback *CallbackQuery) error
 
-	runner       *AgentRunner
-	guard        *PromptGuard
-	scrubber     *OutputScrubber
-	ramProvider  func() float64
-	locationFunc func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
-	deployer     DeployStarter
-	insightFunc  func(ctx context.Context) (string, error)
-	quotaFunc    func(ctx context.Context, refresh bool) (string, error)
+	runner            *AgentRunner
+	guard             *PromptGuard
+	scrubber          *OutputScrubber
+	ramProvider       func() float64
+	locationFunc      func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
+	deployer          DeployStarter
+	insightFunc       func(ctx context.Context) (string, error)
+	quotaFunc         func(ctx context.Context, refresh bool) (string, error)
+	quotaPostTaskFunc func(ctx context.Context) (string, error)
 }
 
 // WithQuotaFunc sets the callback for on-demand AI quota tracking.
 func WithQuotaFunc(f func(ctx context.Context, refresh bool) (string, error)) RouterOption {
 	return func(r *Router) {
 		r.quotaFunc = f
+	}
+}
+
+// WithQuotaPostTaskFunc sets the callback for post-task AI quota reporting.
+func WithQuotaPostTaskFunc(f func(ctx context.Context) (string, error)) RouterOption {
+	return func(r *Router) {
+		r.quotaPostTaskFunc = f
 	}
 }
 
@@ -358,6 +366,8 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		text = "/panel"
 	case "📊 สถานะระบบ":
 		text = "/status"
+	case "⚡ โควตา AI":
+		text = "/quota"
 	case "🗺️ พิกัดสด":
 		text = "/map"
 	case "📰 สรุปประจำวัน":
@@ -533,6 +543,9 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			if sendResErr != nil {
 				log.Printf("[bot:router] failed to send task result to chat %d: %v", chatID, sendResErr)
 			}
+			if r.quotaPostTaskFunc != nil || r.quotaFunc != nil {
+				go r.sendQuotaUsageFollowUp(chatID, 30*time.Second)
+			}
 		})
 
 		if errors.Is(dispatchErr, ErrAgentBusy) {
@@ -677,6 +690,9 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			_, sendResErr := r.sendMessage(bgCtx, chatID, formatted, nil)
 			if sendResErr != nil {
 				log.Printf("[bot:router] failed to send question result to chat %d: %v", chatID, sendResErr)
+			}
+			if r.quotaPostTaskFunc != nil || r.quotaFunc != nil {
+				go r.sendQuotaUsageFollowUp(chatID, 30*time.Second)
 			}
 		})
 
@@ -953,4 +969,29 @@ func formatTimeoutTH(d time.Duration) string {
 
 func escapeDeployError(err error) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(err.Error())
+}
+
+func (r *Router) sendQuotaUsageFollowUp(chatID int64, delay time.Duration) {
+	time.Sleep(delay)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	var msg string
+	var err error
+	if r.quotaPostTaskFunc != nil {
+		msg, err = r.quotaPostTaskFunc(ctx)
+	} else if r.quotaFunc != nil {
+		msg, err = r.quotaFunc(ctx, true)
+	}
+	if err != nil {
+		log.Printf("[bot:router] failed to fetch post-task quota: %v", err)
+		return
+	}
+	if strings.TrimSpace(msg) == "" {
+		return
+	}
+
+	if _, sendErr := r.sendMessage(ctx, chatID, msg, nil); sendErr != nil {
+		log.Printf("[bot:router] failed to send post-task quota message: %v", sendErr)
+	}
 }
