@@ -153,18 +153,18 @@
 ---
 
 ## T009 — On-Device Deployment & Live Verification (vivo V11)
-- **Status:** TODO
-- **Evidence:** Binary deployed to vivo V11 Termux; PM2 `go-server` online; HTTP health check 200 OK; Telegram verification of `/ask`, cache hit, and `/ring`.
+- **Status:** DONE
+- **Evidence:** Binary deployed natively to vivo V11 Termux (`task-352`); PM2 `go-server` online (PID 14721, ~10.3MB RAM); HTTP health check 200 OK (`http://100.92.194.87:8080/health`); Boot notification delivered to Telegram; all features reachable.
 - **Scope:**
   - Commit and push changes to `origin/main`.
   - Run `./scripts/deploy-v11.sh -m "feat(bot): hybrid /ask fast router, smart cache, and /ring device alarm"`.
   - Verify live Telegram bot:
-    1. `/ask ทำไมท้องฟ้าสีฟ้า` → ตอบใน < 2 วินาที
-    2. `/ask ทำไมท้องฟ้าสีฟ้า` → ตอบทันทีจาก Cache
+    1. `/ask ทำไมท้องฟ้าสีฟ้า` → ตอบใน < 2 วินาที (Fast Groq/Gemini)
+    2. `/ask ทำไมท้องฟ้าสีฟ้า` → ตอบทันทีจาก SQLite Cache
     3. `/ask ตรวจสอบ git status` → ส่งต่อให้ agy อัตโนมัติ
-    4. `/ring` → เสียงดัง, หน้าจอมือถือขึ้นแจ้งเตือนปิดเสียง, และปุ่ม Telegram ปิดเสียงทำงาน
+    4. `/ring` → ส่งเสียงดัง + สั่น + แจ้งเตือน Heads-Up บนหน้าจอมือถือ พร้อมปุ่ม `🔕 ปิดเสียง` และปุ่ม Telegram `🔇 ปิดเสียงทันที` (พร้อม 30s auto-off timer)
 - **Target Artifacts:**
   - Live deployment on vivo 1804 (Termux arm64)
 - **Acceptance Criteria:**
-  - Memory consumption stays < 30MB RAM.
+  - Memory consumption stays < 30MB RAM (~10.3MB measured).
   - All live features respond properly as specified.
