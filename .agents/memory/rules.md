@@ -14,6 +14,8 @@
 - [2026-11-21 | Testing] Gin ReverseProxy tests: Wrap `httptest.ResponseRecorder` with `http.CloseNotifier` (`testCloseNotifierRecorder`) to prevent runtime type-assertion panics in unit tests.
 - [2026-11-21 | Learning/Device] Android Termux Port Binding: Android limits unprivileged users (`u0_a244`) from binding to ports < 1024 (e.g. port 80 fails with `EACCES: permission denied`). Always use unprivileged ports (8080, 8081) on Tailscale IP (`http://100.92.194.87:8080`).
 - [2026-11-21 | Learning/Device] Termux exec.Command Node Shebang: Node CLI scripts with `#!/usr/bin/env node` fail when spawned via Go `exec.Command` because `/usr/bin/env` does not exist in Android root; invoke `node /data/data/com.termux/files/usr/bin/<cli>` directly.
+- [2026-11-22 | User alignment / Post-mortem] Agent Notification: Always execute `~/.local/bin/v11-notify -s success -p "v11_server" -t "..." -m "..."` immediately upon task completion to report status to Telegram without waiting for user prompt.
+- [2026-11-22 | Learning / Performance] Fast Remote Deploy: When deploying code already pushed to GitHub, prefer `ssh v11 "cd ~/go-app && ./scripts/deploy-v11.sh -m '...'"` (git pull on-device) over transferring 45MB binaries over slow scp/Tailscale.
 
 ## Must Not
 - [2026-11-14 | AGENTS.md] Never use `sudo`, `systemctl`, `service`, or `docker` on Android/Termux.
