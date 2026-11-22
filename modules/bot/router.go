@@ -40,6 +40,14 @@ type Router struct {
 	locationFunc func(ctx context.Context) (string, *InlineKeyboardMarkup, error)
 	deployer     DeployStarter
 	insightFunc  func(ctx context.Context) (string, error)
+	quotaFunc    func(ctx context.Context, refresh bool) (string, error)
+}
+
+// WithQuotaFunc sets the callback for on-demand AI quota tracking.
+func WithQuotaFunc(f func(ctx context.Context, refresh bool) (string, error)) RouterOption {
+	return func(r *Router) {
+		r.quotaFunc = f
+	}
 }
 
 // WithInsightFunc enables the /insight command.
@@ -197,6 +205,23 @@ func NewRouter(
 	}
 	if r.scrubber == nil {
 		r.scrubber = NewOutputScrubber()
+	}
+	if r.quotaFunc != nil {
+		if _, exists := r.callbackRoutes["quota_refresh"]; !exists {
+			r.callbackRoutes["quota_refresh"] = func(ctx context.Context, q *CallbackQuery) error {
+				if q.Message == nil || q.Message.Chat == nil {
+					return nil
+				}
+				if r.client != nil {
+					_ = r.client.AnswerCallbackQuery(ctx, q.ID, "🔄 กำลังอัปเดตโควตา AI...", false)
+				}
+				res, err := r.quotaFunc(ctx, true)
+				if err != nil {
+					res = fmt.Sprintf("⚠️ รีเฟรชโควตาไม่สำเร็จ: %s", html.EscapeString(err.Error()))
+				}
+				return r.editMessage(ctx, q.Message.Chat.ID, q.Message.MessageID, res, MakeQuotaKeyboard())
+			}
+		}
 	}
 	if r.ramProvider == nil {
 		r.ramProvider = func() float64 {
@@ -382,6 +407,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
 			"<code>/task_status</code> ดูงาน Agent\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
+			"<code>/quota</code> เช็คโควตา AI (Gemini, Claude &amp; GPT) พร้อมเวลารีเซ็ต\n" +
 			"<code>/insight</code> สรุปสุขภาพเครื่อง การเดินทาง และตารางวันนี้\n" +
 			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
 			"<code>/reboot</code> รีสตาร์ต Go server\n" +
@@ -829,6 +855,19 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		cmdInput := strings.TrimSpace(strings.Join(args, " "))
 		res := r.executor.Execute(ctx, cmdInput)
 		_, err := r.sendMessage(ctx, chatID, res, keyboard)
+		return err
+
+	case "/quota", "/limits":
+		if r.quotaFunc == nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ ฟีเจอร์ตรวจสอบโควตา AI ยังไม่ได้ตั้งค่า", keyboard)
+			return err
+		}
+		res, err := r.quotaFunc(ctx, false)
+		if err != nil {
+			_, err2 := r.sendMessage(ctx, chatID, fmt.Sprintf("⚠️ ดึงโควตาไม่สำเร็จ: %s", html.EscapeString(err.Error())), keyboard)
+			return err2
+		}
+		_, err = r.sendMessage(ctx, chatID, res, MakeQuotaKeyboard())
 		return err
 
 	case "/insight":

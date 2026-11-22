@@ -192,6 +192,33 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	INSERT OR IGNORE INTO location_settings (id) VALUES (1);
 	UPDATE location_settings SET secret_token = '' WHERE secret_token = 'sentinel-loc-secret';
 	UPDATE location_settings SET viewer_token = '' WHERE viewer_token = 'live-shared-token';
+
+	CREATE TABLE IF NOT EXISTS ai_quota_states (
+		provider TEXT NOT NULL,
+		group_name TEXT NOT NULL,
+		bucket_id TEXT NOT NULL,
+		display_name TEXT NOT NULL,
+		window TEXT NOT NULL,
+		used_percent REAL NOT NULL,
+		remaining_fraction REAL NOT NULL,
+		reset_time DATETIME NOT NULL,
+		last_checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (provider, bucket_id)
+	);
+
+	CREATE TABLE IF NOT EXISTS ai_quota_snapshots (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		provider TEXT NOT NULL,
+		group_name TEXT NOT NULL,
+		bucket_id TEXT NOT NULL,
+		remaining_fraction REAL NOT NULL,
+		reset_time DATETIME NOT NULL,
+		recorded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_ai_quota_snapshots_bucket_time 
+	ON ai_quota_snapshots(bucket_id, recorded_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_ai_quota_snapshots_recorded_at
+	ON ai_quota_snapshots(recorded_at DESC);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

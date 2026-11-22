@@ -1153,3 +1153,47 @@ func TestRouter_Ask_SecurityViolation(t *testing.T) {
 		t.Errorf("Subprocess should not be invoked on security violation")
 	}
 }
+
+func TestRouter_QuotaCommand(t *testing.T) {
+	quotaCalled := false
+	quotaFunc := func(ctx context.Context, refresh bool) (string, error) {
+		quotaCalled = true
+		return "⚡ <b>สถานะโควตา AI (Antigravity)</b>\nGemini Models 61%", nil
+	}
+
+	router, recorder := setupTestRouterWithRecorder(t, nil, WithQuotaFunc(quotaFunc))
+	ctx := context.Background()
+
+	err := router.HandleUpdate(ctx, Update{
+		UpdateID: 1,
+		Message:  &Message{MessageID: 1, Chat: &Chat{ID: 123456}, Text: "/quota"},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpdate failed: %v", err)
+	}
+
+	if !quotaCalled {
+		t.Errorf("Expected quotaFunc to be called")
+	}
+
+	msg, err := recorder.nextMessage(2 * time.Second)
+	if err != nil {
+		t.Fatalf("Failed to receive quota message: %v", err)
+	}
+	if !strings.Contains(msg.Text, "สถานะโควตา AI") {
+		t.Errorf("Expected quota text in response, got: %s", msg.Text)
+	}
+
+	// Verify button exists in MakeHelpKeyboard
+	foundQuotaBtn := false
+	for _, row := range MakeHelpKeyboard().InlineKeyboard {
+		for _, b := range row {
+			if b.CopyText != nil && b.CopyText.Text == "/quota" {
+				foundQuotaBtn = true
+			}
+		}
+	}
+	if !foundQuotaBtn {
+		t.Errorf("Expected /quota button in MakeHelpKeyboard")
+	}
+}

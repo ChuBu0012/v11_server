@@ -18,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"v11-server/modules/ailimit"
 	"v11-server/modules/alerts"
 	"v11-server/modules/bot"
 	"v11-server/modules/dashboard"
@@ -101,6 +102,8 @@ type App struct {
 	locationRetention *worker.Worker
 	aiClient          *ai.Client
 	insight           *insight.Service
+	ailimit           *ailimit.Module
+	quotaCollector    *ailimit.Collector
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -163,6 +166,9 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		_, err := collector.CollectOnce(ctx)
 		return err
 	})
+
+	quotaRepo := ailimit.NewRepository(dbConn)
+	var quotaSvc *ailimit.Service
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
@@ -271,9 +277,36 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		agentRunner := bot.NewAgentRunner(runnerOpts...)
 		routerOpts = append(routerOpts, bot.WithAgentRunner(agentRunner))
 
+		if targetChatID, err := strconv.ParseInt(cfg.TelegramChatID, 10, 64); err == nil && targetChatID != 0 {
+			quotaSvc = ailimit.NewService(quotaRepo, botClient, targetChatID)
+		} else {
+			quotaSvc = ailimit.NewService(quotaRepo, botClient, 0)
+		}
+		routerOpts = append(routerOpts, bot.WithQuotaFunc(func(ctx context.Context, refresh bool) (string, error) {
+			var resp *ailimit.QuotaResponse
+			var err error
+			if refresh {
+				resp, err = quotaSvc.Collect(ctx)
+			} else {
+				resp, err = quotaSvc.GetStatus(ctx, false, 0)
+				if err != nil || resp == nil || len(resp.Buckets) == 0 {
+					resp, err = quotaSvc.Collect(ctx)
+				}
+			}
+			if err != nil {
+				return "", err
+			}
+			return quotaSvc.FormatTelegramMessage(resp), nil
+		}))
+
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
 	}
+	if quotaSvc == nil {
+		quotaSvc = ailimit.NewService(quotaRepo, nil, 0)
+	}
+	quotaCollector := ailimit.NewCollector(quotaSvc, 15*time.Minute)
+	ailimitMod := ailimit.NewModule(quotaSvc, quotaCollector)
 	if reminderStore != nil && reminderService == nil {
 		reminderService = reminders.NewService(reminderStore, nil, 0)
 	}
@@ -389,6 +422,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationRetention: locationRetention,
 		aiClient:          aiClient,
 		insight:           insightSvc,
+		ailimit:           ailimitMod,
+		quotaCollector:    quotaCollector,
 	}
 }
 
@@ -411,6 +446,9 @@ func setupRouter(app *App) *gin.Engine {
 	app.telemetry.RegisterRoutes(r.Group("/api/telemetry"))
 	app.logs.RegisterRoutes(r.Group("/api/logs"))
 	app.digest.RegisterRoutes(r.Group("/api/digest"))
+	if app.ailimit != nil {
+		app.ailimit.RegisterRoutes(r.Group("/api/limits"))
+	}
 	app.relay.RegisterRoutes(r)
 	if app.endpoints != nil {
 		app.endpoints.RegisterRoutes(r.Group("/api"))
@@ -547,6 +585,18 @@ func main() {
 	// Start background worker with cancellable context
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
 	app.worker.Start(workerCtx)
+	if app.quotaCollector != nil {
+		app.quotaCollector.Start(workerCtx)
+	}
+	if app.ailimit != nil {
+		go func() {
+			initCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+			defer cancel()
+			if _, err := app.ailimit.Service().Collect(initCtx); err != nil {
+				log.Printf("Warning: initial AI quota collection error: %v", err)
+			}
+		}()
+	}
 	if app.insight != nil {
 		go app.insight.RunScheduler(workerCtx)
 	}

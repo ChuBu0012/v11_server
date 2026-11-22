@@ -208,12 +208,27 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 				copyCommand("📋 Task status", "/task_status"),
 			},
 			{
+				copyCommand("⚡ โควตา AI", "/quota"),
+				copyCommand("☀️ Insight", "/insight"),
+			},
+			{
 				copyCommand("📰 Digest", "/digest"),
 				copyCommand("💾 Disk", "/exec df -h"),
 			},
 			{
-				copyCommand("☀️ Insight", "/insight"),
 				copyCommand("🚀 Deploy", "/deploy"),
+			},
+		},
+	}
+}
+
+// MakeQuotaKeyboard returns inline buttons for quota refresh and dashboard viewing.
+func MakeQuotaKeyboard() *InlineKeyboardMarkup {
+	return &InlineKeyboardMarkup{
+		InlineKeyboard: [][]InlineKeyboardButton{
+			{
+				{Text: "🔄 รีเฟรชโควตา", CallbackData: "quota_refresh"},
+				{Text: "📊 ดู Dashboard", URL: "http://100.92.194.87:8080"},
 			},
 		},
 	}
