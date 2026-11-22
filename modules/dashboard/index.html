@@ -213,30 +213,28 @@
           <strong x-text="insightTitle"></strong>: <span x-text="insightText"></span>
         </div>
 
-        <!-- Unified Single Gauge Card ("หลอดเดียวเข้าใจเลย") -->
-        <div class="metric-grid">
-          <article class="metric metric-wide" style="padding: 16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="metric-label" style="font-weight: 600; font-size: 0.95rem;">โควตา Gemini พร้อมใช้งาน</span>
-              <span class="chip" :class="unifiedQuota.badgeClass" x-text="unifiedQuota.badgeText"></span>
-            </div>
-            <div style="display:flex; align-items:baseline; gap: 8px; margin: 8px 0 4px 0;">
-              <strong class="metric-value" style="font-size: 2.2rem; line-height: 1;" x-text="unifiedQuota.percent + '%'">—</strong>
-              <small class="metric-sub" style="margin:0;">(ประเมินจากคอขวดที่จำกัดการใช้งานจริง)</small>
-            </div>
-            
-            <!-- หลอดเดียวเห็นชัดเต็มตา -->
-            <div class="meter" aria-hidden="true" style="height: 10px; margin: 10px 0 10px 0; border-radius: 5px;">
-              <div class="meter-fill" :style="'width: ' + unifiedQuota.percent + '%'" :class="unifiedQuota.meterClass"></div>
-            </div>
+        <!-- Unified Single Gauge Card ("หลอดเดียวเข้าใจเลย - แสดงเต็มพื้นที่") -->
+        <article class="card quota-card" style="margin-bottom: 12px; padding: 18px 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap: 8px;">
+            <span style="font-weight: 600; font-size: 1rem; color: var(--text);">โควตาโมเดล Gemini พร้อมใช้งาน</span>
+            <span class="chip" :class="unifiedQuota.badgeClass" x-text="unifiedQuota.badgeText"></span>
+          </div>
+          <div style="display:flex; align-items:baseline; gap: 10px; margin: 10px 0 6px 0; flex-wrap:wrap;">
+            <strong class="metric-value" style="font-size: 2.4rem; line-height: 1;" x-text="unifiedQuota.percent + '%'">—</strong>
+            <small style="font-size: 0.85rem; color: var(--muted);">(ประเมินจากคอขวดที่จำกัดการใช้งานจริง ณ ปัจจุบัน)</small>
+          </div>
+          
+          <!-- หลอดเดียวเห็นชัดเต็มตากว้าง 100% -->
+          <div class="meter" aria-hidden="true" style="height: 12px; margin: 12px 0 12px 0; border-radius: 6px; background: var(--pearl);">
+            <div class="meter-fill" :style="'width: ' + unifiedQuota.percent + '%'" :class="unifiedQuota.meterClass"></div>
+          </div>
 
-            <!-- รายละเอียดปลีกย่อยในบรรทัดเดียว ไม่รกตา -->
-            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap: 8px; font-size: 0.82rem; color: var(--muted); padding-top: 6px; border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));">
-              <span>⏱ <b>รอบ 5 ชั่วโมง:</b> <strong x-text="unifiedQuota.fiveHourPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.fiveHourCountdown"></span>)</span>
-              <span>📅 <b>รายสัปดาห์:</b> <strong x-text="unifiedQuota.weeklyPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.weeklyCountdown"></span>)</span>
-            </div>
-          </article>
-        </div>
+          <!-- รายละเอียดปลีกย่อยในบรรทัดเดียว ไม่รกตา สอดคล้องกับทั้งสองหน้าต่างเวลา -->
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap: 12px; font-size: 0.85rem; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));">
+            <span>⏱ <b>รอบ 5 ชั่วโมง:</b> <strong style="color:var(--text);" x-text="unifiedQuota.fiveHourPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.fiveHourCountdown"></span>)</span>
+            <span>📅 <b>รายสัปดาห์:</b> <strong style="color:var(--text);" x-text="unifiedQuota.weeklyPercent + '%'"></strong> (รีเซ็ตใน <span x-text="unifiedQuota.weeklyCountdown"></span>)</span>
+          </div>
+        </article>
 
         <!-- Historical Usage Trend Chart -->
         <div class="chart-grid" style="margin-top: 12px;">
