@@ -48,12 +48,16 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	// Status endpoint (no pin required to check if server has relay enabled)
 	r.GET("/api/relay/status", m.handleStatus)
 
+	// Dedicated Agent Notification Endpoint
+	r.POST("/api/agent/notify", m.handleAgentNotify)
+
 	// Protected Relay Endpoints
 	api := r.Group("/api/relay") // public: no PIN by owner's choice
 	{
 		api.POST("/send", m.handleSend)
 		api.POST("/message", m.handleTextMessage)
 		api.POST("/upload", m.handleFileUpload)
+		api.POST("/agent", m.handleAgentNotify)
 	}
 }
 

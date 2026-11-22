@@ -1,0 +1,415 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# v11-notify — Agent Post-Task Notification CLI for Pocket Sentinel (v11)
+# ==============================================================================
+# Sends structured task completion notifications from Mac/Linux to Telegram via
+# Pocket Sentinel on vivo 1804 (http://100.92.194.87:8080).
+#
+# Usage:
+#   v11-notify "Task completed successfully"
+#   v11-notify -s success -t "Auth Refactor" -m "• Added JWT\n• Passed 100% tests"
+#   v11-notify --project my-app --status failed --title "Build Error" --files "main.go"
+#   echo "Test logs" | v11-notify -t "Integration Test"
+#   v11-notify --hook (reads Antigravity Stop event JSON on stdin)
+# ==============================================================================
+
+set -euo pipefail
+
+DEFAULT_ENDPOINT="http://100.92.194.87:8080"
+ENDPOINT="${V11_ENDPOINT:-${DEFAULT_ENDPOINT}}"
+SPOOL_DIR="${HOME}/.v11_spool"
+
+# ------------------------------------------------------------------------------
+# Auto-detection Helpers
+# ------------------------------------------------------------------------------
+auto_project() {
+  local p
+  p=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "${p}" ]]; then
+    basename "${p}"
+  else
+    basename "${PWD}"
+  fi
+}
+
+auto_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ""
+}
+
+auto_commit() {
+  git rev-parse --short HEAD 2>/dev/null || echo ""
+}
+
+auto_device() {
+  local d
+  d=$(scutil --get ComputerName 2>/dev/null || hostname -s 2>/dev/null || uname -n)
+  echo "${d}"
+}
+
+# ------------------------------------------------------------------------------
+# JSON escaping helper
+# ------------------------------------------------------------------------------
+json_escape() {
+  local str="$1"
+  str="${str%$'\n'}"
+  str="${str%$'\r'}"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json, sys; print(json.dumps(sys.stdin.read().rstrip("\r\n")), end="")' <<< "${str}"
+  else
+    local escaped="${str//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+    escaped="${escaped//$'\n'/\\n}"
+    escaped="${escaped//$'\r'/\\r}"
+    escaped="${escaped//$'\t'/\\t}"
+    printf '"%s"' "${escaped}"
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Usage / Help
+# ------------------------------------------------------------------------------
+show_help() {
+  cat << 'EOF'
+Usage: v11-notify [OPTIONS] [MESSAGE]
+
+Send agent completion notifications to Telegram via Pocket Sentinel (v11).
+
+Arguments:
+  MESSAGE                 Quick summary message or title
+
+Options:
+  -p, --project <name>    Project name (default: git repo or current directory)
+  -s, --status <status>   Status: success (default), failed, warning, info
+  -t, --title <title>     Task or feature title
+  -m, -b, --summary <str> Detailed summary bullets / description
+  -f, --files <list>      Comma-separated list of modified files
+  -a, --attach <path>     Path to image or document file to attach
+      --duration <str>    Time elapsed (e.g. "2m 15s")
+      --device <name>     Device name (default: auto-detected computer name)
+      --endpoint <url>    Pocket Sentinel URL (default: http://100.92.194.87:8080)
+      --hook              Antigravity Stop hook mode (reads JSON from stdin)
+      --silent            Send silently on Telegram without sound
+  -h, --help              Show this help message
+
+Examples:
+  v11-notify "บิลด์และรันเทสต์ผ่าน 100%"
+  v11-notify -s success -t "Auth System" -m "• Added JWT middleware\n• Added tests" -f "auth.go,auth_test.go"
+  git diff --stat | v11-notify -t "Code Changes"
+EOF
+}
+
+# ------------------------------------------------------------------------------
+# Parse Arguments
+# ------------------------------------------------------------------------------
+PROJECT=""
+STATUS="success"
+TITLE=""
+SUMMARY=""
+FILES=""
+ATTACH=""
+DURATION=""
+DEVICE=""
+SILENT="false"
+IS_HOOK="false"
+POSITIONAL=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    -p|--project)
+      PROJECT="${2:-}"
+      shift 2
+      ;;
+    -s|--status)
+      STATUS="${2:-}"
+      shift 2
+      ;;
+    -t|--title)
+      TITLE="${2:-}"
+      shift 2
+      ;;
+    -m|-b|--summary|--message|--body)
+      SUMMARY="${2:-}"
+      shift 2
+      ;;
+    -f|--files)
+      FILES="${2:-}"
+      shift 2
+      ;;
+    -a|--attach)
+      ATTACH="${2:-}"
+      shift 2
+      ;;
+    --duration)
+      DURATION="${2:-}"
+      shift 2
+      ;;
+    --device)
+      DEVICE="${2:-}"
+      shift 2
+      ;;
+    --endpoint)
+      ENDPOINT="${2:-}"
+      shift 2
+      ;;
+    --silent)
+      SILENT="true"
+      shift
+      ;;
+    --hook)
+      IS_HOOK="true"
+      shift
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# ------------------------------------------------------------------------------
+# Handle --hook Mode (Antigravity Stop Event Contract)
+# ------------------------------------------------------------------------------
+if [[ "${IS_HOOK}" == "true" ]]; then
+  # Read stdin JSON from Antigravity
+  HOOK_INPUT=""
+  if [ ! -t 0 ]; then
+    HOOK_INPUT=$(cat || true)
+  fi
+
+  # Antigravity hook protocol: MUST output valid JSON to stdout
+  # Empty object {} signals agent can stop normally
+  printf "{}\n"
+
+  # Parse hook payload if python3 is available
+  if [[ -n "${HOOK_INPUT}" ]] && command -v python3 >/dev/null 2>&1; then
+    eval "$(python3 -c '
+import json, sys
+try:
+    d = json.loads(sys.stdin.read())
+    reason = d.get("terminationReason", "NO_TOOL_CALL")
+    err = d.get("error", "")
+    exec_num = d.get("executionNum", 1)
+    workspaces = d.get("workspacePaths", [])
+    proj = ""
+    if workspaces:
+        import os
+        proj = os.path.basename(os.path.normpath(workspaces[0]))
+    status = "success"
+    if reason in ["ERROR", "USER_CANCELED", "MAX_TOKEN_BUDGET_EXCEEDED"]:
+        status = "failed"
+    print(f"HOOK_STATUS=\"{status}\"")
+    print(f"HOOK_REASON=\"{reason}\"")
+    print(f"HOOK_ERROR=\"{err}\"")
+    print(f"HOOK_PROJ=\"{proj}\"")
+except Exception:
+    pass
+' <<< "${HOOK_INPUT}")"
+    STATUS="${HOOK_STATUS:-success}"
+    if [[ -z "${PROJECT}" && -n "${HOOK_PROJ:-}" ]]; then
+      PROJECT="${HOOK_PROJ}"
+    fi
+    if [[ -z "${TITLE}" ]]; then
+      TITLE="Agent turn finished (${HOOK_REASON:-NO_TOOL_CALL})"
+    fi
+    if [[ -n "${HOOK_ERROR:-}" ]]; then
+      SUMMARY="Error: ${HOOK_ERROR}"
+    fi
+  else
+    TITLE="Agent turn completed"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Handle Stdin (Piped content)
+# ------------------------------------------------------------------------------
+if [[ "${IS_HOOK}" != "true" ]] && [ ! -t 0 ]; then
+  STDIN_DATA=$(cat || true)
+  if [[ -n "${STDIN_DATA}" ]]; then
+    if [[ -z "${SUMMARY}" ]]; then
+      SUMMARY="${STDIN_DATA}"
+    else
+      SUMMARY="${SUMMARY}"$'\n\n'"${STDIN_DATA}"
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Handle Positional Arguments
+# ------------------------------------------------------------------------------
+if [[ ${#POSITIONAL[@]} -gt 0 ]]; then
+  POS_TEXT="${POSITIONAL[*]}"
+  if [[ -z "${TITLE}" ]]; then
+    TITLE="${POS_TEXT}"
+  elif [[ -z "${SUMMARY}" ]]; then
+    SUMMARY="${POS_TEXT}"
+  fi
+fi
+
+# Apply Defaults and trim trailing newlines
+PROJECT="${PROJECT%$'\n'}"
+TITLE="${TITLE%$'\n'}"
+STATUS="${STATUS%$'\n'}"
+DEVICE="${DEVICE%$'\n'}"
+BRANCH="${BRANCH%$'\n'}"
+COMMIT="${COMMIT%$'\n'}"
+
+if [[ -z "${PROJECT}" ]]; then
+  PROJECT=$(auto_project)
+  PROJECT="${PROJECT%$'\n'}"
+fi
+if [[ -z "${TITLE}" ]]; then
+  TITLE="Task completed"
+fi
+if [[ -z "${DEVICE}" ]]; then
+  DEVICE=$(auto_device)
+  DEVICE="${DEVICE%$'\n'}"
+fi
+if [[ -z "${BRANCH}" ]]; then
+  BRANCH=$(auto_branch)
+  BRANCH="${BRANCH%$'\n'}"
+fi
+if [[ -z "${COMMIT}" ]]; then
+  COMMIT=$(auto_commit)
+  COMMIT="${COMMIT%$'\n'}"
+fi
+
+# ------------------------------------------------------------------------------
+# Spooling Helpers
+# ------------------------------------------------------------------------------
+mkdir -p "${SPOOL_DIR}"
+
+spool_request() {
+  local payload="$1"
+  local attach_path="$2"
+  local ts
+  ts=$(date +%s)
+  local rand
+  rand=$(head -c 4 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo "$$")
+  local spool_file="${SPOOL_DIR}/${ts}_${rand}.json"
+
+  cat > "${spool_file}" << SPOOL_EOF
+{
+  "endpoint": "${ENDPOINT}",
+  "payload": ${payload},
+  "attach": "${attach_path}",
+  "timestamp": ${ts}
+}
+SPOOL_EOF
+  echo "⚠️ [v11-notify] Server unreachable. Notification spooled to ${spool_file}" >&2
+}
+
+drain_spool() {
+  # Asynchronously drain pending spool items in background
+  (
+    for f in "${SPOOL_DIR}"/*.json; do
+      [[ -f "${f}" ]] || continue
+      # Try sending with short timeout
+      if command -v python3 >/dev/null 2>&1; then
+        local sp_endpoint sp_attach sp_payload
+        sp_endpoint=$(python3 -c "import json; print(json.load(open('${f}')).get('endpoint', ''))")
+        sp_attach=$(python3 -c "import json; print(json.load(open('${f}')).get('attach', ''))")
+        sp_payload=$(python3 -c "import json; print(json.dumps(json.load(open('${f}')).get('payload', {})))")
+        
+        if [[ -n "${sp_endpoint}" && -n "${sp_payload}" ]]; then
+          if curl -s -f --connect-timeout 2 --max-time 6 \
+            -X POST "${sp_endpoint}/api/agent/notify" \
+            -H "Content-Type: application/json" \
+            -d "${sp_payload}" >/dev/null 2>&1; then
+            rm -f "${f}"
+          fi
+        fi
+      fi
+    done
+  ) >/dev/null 2>&1 &
+}
+
+# Drain old spool items in background
+drain_spool
+
+# ------------------------------------------------------------------------------
+# Dispatch Notification
+# ------------------------------------------------------------------------------
+TARGET_URL="${ENDPOINT%/}/api/agent/notify"
+
+if [[ -n "${ATTACH}" && -f "${ATTACH}" ]]; then
+  # Multipart form upload
+  RESPONSE=""
+  HTTP_CODE=""
+  HTTP_CODE=$(curl -s -w "%{http_code}" -o /dev/null --connect-timeout 4 --max-time 30 \
+    -X POST "${TARGET_URL}" \
+    -F "project=${PROJECT}" \
+    -F "status=${STATUS}" \
+    -F "title=${TITLE}" \
+    -F "summary=${SUMMARY}" \
+    -F "files=${FILES}" \
+    -F "branch=${BRANCH}" \
+    -F "commit=${COMMIT}" \
+    -F "device=${DEVICE}" \
+    -F "duration=${DURATION}" \
+    -F "file=@${ATTACH}" || echo "000")
+
+  if [[ "${HTTP_CODE}" == "200" ]]; then
+    echo "✅ [v11-notify] Notification sent to Telegram (with attachment: $(basename "${ATTACH}"))"
+    exit 0
+  else
+    echo "❌ [v11-notify] Failed to send attachment (HTTP ${HTTP_CODE})" >&2
+    # Spool for later retry
+    JSON_BODY=$(python3 -c "import json; print(json.dumps({
+      'project': '''${PROJECT}''',
+      'status': '''${STATUS}''',
+      'title': '''${TITLE}''',
+      'summary': '''${SUMMARY}''',
+      'files': '''${FILES}''',
+      'branch': '''${BRANCH}''',
+      'commit': '''${COMMIT}''',
+      'device': '''${DEVICE}''',
+      'duration': '''${DURATION}'''
+    }))")
+    spool_request "${JSON_BODY}" "${ATTACH}"
+    exit 0
+  fi
+else
+  # JSON request
+  ESC_PROJ=$(json_escape "${PROJECT}")
+  ESC_STATUS=$(json_escape "${STATUS}")
+  ESC_TITLE=$(json_escape "${TITLE}")
+  ESC_SUMMARY=$(json_escape "${SUMMARY}")
+  ESC_FILES=$(json_escape "${FILES}")
+  ESC_BRANCH=$(json_escape "${BRANCH}")
+  ESC_COMMIT=$(json_escape "${COMMIT}")
+  ESC_DEVICE=$(json_escape "${DEVICE}")
+  ESC_DURATION=$(json_escape "${DURATION}")
+
+  JSON_PAYLOAD=$(cat << JSON_EOF
+{
+  "project": ${ESC_PROJ},
+  "status": ${ESC_STATUS},
+  "title": ${ESC_TITLE},
+  "summary": ${ESC_SUMMARY},
+  "files": ${ESC_FILES},
+  "branch": ${ESC_BRANCH},
+  "commit": ${ESC_COMMIT},
+  "device": ${ESC_DEVICE},
+  "duration": ${ESC_DURATION},
+  "silent": ${SILENT}
+}
+JSON_EOF
+)
+
+  HTTP_CODE=$(curl -s -w "%{http_code}" -o /dev/null --connect-timeout 4 --max-time 15 \
+    -X POST "${TARGET_URL}" \
+    -H "Content-Type: application/json" \
+    -d "${JSON_PAYLOAD}" || echo "000")
+
+  if [[ "${HTTP_CODE}" == "200" ]]; then
+    echo "✅ [v11-notify] Notification sent to Telegram (Project: ${PROJECT}, Status: ${STATUS})"
+    exit 0
+  else
+    spool_request "${JSON_PAYLOAD}" ""
+    exit 0
+  fi
+fi
