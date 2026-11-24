@@ -8,91 +8,80 @@ export const ActionButtons: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
   const [cooldown, setCooldown] = useState(false);
   const [trackedAction, setTrackedAction] = useState<ActionRequest | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!trackedAction?.id) return;
-    if (trackedAction.status === 'completed' || trackedAction.status === 'failed') {
-      setLoadingAction(null);
-    }
-  }, [trackedAction]);
+    if (!actionId) return;
+    return subscribeAction(actionId, (next) => {
+      setTrackedAction(next);
+      if (next?.status === 'completed' || next?.status === 'failed') setLoadingAction(null);
+    });
+  }, [actionId]);
 
   const handleTrigger = async (action: string, label: string) => {
     if (cooldown || loadingAction) return;
-
     setLoadingAction(action);
     setStatusMessage(null);
+    setTrackedAction(null);
 
     try {
-      const res = await sendAction(action);
-      setTrackedAction(null);
-      setStatusMessage({ text: `ส่ง "${label}" แล้ว · กำลังรอ v11 ประมวลผล` });
-      subscribeAction(res, (next) => setTrackedAction(next));
+      const id = await sendAction(action);
+      setActionId(id);
+      setStatusMessage({ text: `Queued · ${label}` });
       setCooldown(true);
-      setTimeout(() => setCooldown(false), 8000);
+      window.setTimeout(() => setCooldown(false), 8000);
     } catch (err: any) {
-      setStatusMessage({ text: `เกิดข้อผิดพลาด: ${err?.message || 'ส่งคำสั่งไม่สำเร็จ'}`, isError: true });
-    } finally {
       setLoadingAction(null);
+      setStatusMessage({ text: err?.message || 'Command unavailable', isError: true });
     }
   };
 
+  const stateText = trackedAction?.status === 'failed'
+    ? trackedAction.result || 'v11 rejected the command'
+    : trackedAction?.status === 'completed'
+      ? `Completed · ${trackedAction.result || 'No additional details'}`
+      : trackedAction?.status === 'processing'
+        ? 'v11 is processing…'
+        : statusMessage?.text;
+
   return (
-    <div className="action-panel">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
-          การสั่งงานพื้นฐาน (Safe Actions)
-        </h2>
-        <span className="text-[11px] text-gray-400">ควบคุมเฉพาะงานที่ปลอดภัย</span>
+    <section className="action-panel" aria-labelledby="actions-title">
+      <div className="panel-heading command-heading">
+        <div>
+          <span className="section-kicker">02 / CONTROL</span>
+          <h2 id="actions-title">Quick actions</h2>
+        </div>
+        <span className="safe-label">SAFE</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="command-list">
         <button
-          onClick={() => handleTrigger('refresh_digest', 'ดึงสรุปข่าวใหม่')}
+          className="command-button primary"
+          onClick={() => handleTrigger('refresh_digest', 'Refresh digest')}
           disabled={loadingAction !== null || cooldown}
-          className="flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl font-medium text-xs text-white bg-[#0066cc] hover:bg-[#0052a3] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         >
-          <RefreshCw className={`w-4 h-4 ${loadingAction === 'refresh_digest' ? 'animate-spin' : ''}`} />
-          <span>{loadingAction === 'refresh_digest' ? 'กำลังส่งคำสั่ง...' : '🔄 สั่งดึงสรุปข่าวใหม่ทันที'}</span>
+          <span className="command-icon"><RefreshCw className={loadingAction === 'refresh_digest' ? 'spin' : ''} /></span>
+          <span><strong>Refresh digest</strong><small>Generate a fresh daily summary</small></span>
+          <span className="command-arrow">→</span>
         </button>
 
         <button
-          onClick={() => handleTrigger('ping', 'Ping ตรวจระบบ')}
+          className="command-button"
+          onClick={() => handleTrigger('ping', 'Ping v11')}
           disabled={loadingAction !== null || cooldown}
-          className="flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl font-medium text-xs text-gray-800 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Zap className={`w-4 h-4 text-amber-500 ${loadingAction === 'ping' ? 'animate-bounce' : ''}`} />
-          <span>{loadingAction === 'ping' ? 'กำลังส่ง Ping...' : '⚡ Ping ตรวจการตอบสนอง'}</span>
+          <span className="command-icon"><Zap /></span>
+          <span><strong>Ping v11</strong><small>Check device response</small></span>
+          <span className="command-arrow">→</span>
         </button>
       </div>
 
       {(statusMessage || trackedAction) && (
-        <div
-          className={`mt-3 p-3 rounded-xl text-xs flex items-center space-x-2 animate-fadeIn ${
-            statusMessage?.isError || trackedAction?.status === 'failed'
-              ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900'
-              : trackedAction?.status === 'completed'
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900'
-          }`}
-        >
-          {statusMessage?.isError || trackedAction?.status === 'failed' ? (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          ) : trackedAction?.status === 'completed' ? (
-            <Check className="w-4 h-4 shrink-0" />
-          ) : (
-            <LoaderCircle className="w-4 h-4 shrink-0 animate-spin" />
-          )}
-          <span>
-            {trackedAction?.status === 'failed'
-              ? trackedAction.result || 'v11 ประมวลคำสั่งไม่สำเร็จ'
-              : trackedAction?.status === 'completed'
-                ? `เสร็จสมบูรณ์ · ${trackedAction.result || 'ไม่มีรายละเอียดเพิ่มเติม'}`
-                : trackedAction?.status === 'processing'
-                  ? 'v11 กำลังประมวลคำสั่ง…'
-                  : statusMessage?.text}
-          </span>
+        <div className={`command-status ${statusMessage?.isError || trackedAction?.status === 'failed' ? 'error' : trackedAction?.status === 'completed' ? 'success' : 'waiting'}`}>
+          {statusMessage?.isError || trackedAction?.status === 'failed' ? <AlertCircle /> : trackedAction?.status === 'completed' ? <Check /> : <LoaderCircle className="spin" />}
+          <span>{stateText}</span>
         </div>
       )}
-    </div>
+    </section>
   );
 };

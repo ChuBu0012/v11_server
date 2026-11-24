@@ -46,13 +46,13 @@ export const App: React.FC = () => {
         status={status}
       />
 
-      <main className="dashboard-grid">
-        <section className="primary-column">
+      <main className="dashboard-layout">
+        <div className="operation-stream">
           <DeviceStatusCard status={status} />
           <DigestCard digest={digest} />
-        </section>
+        </div>
 
-        <aside className="secondary-column">
+        <aside className="command-rail">
           <ActionButtons />
         </aside>
       </main>

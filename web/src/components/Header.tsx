@@ -17,26 +17,25 @@ export const Header: React.FC<HeaderProps> = ({ darkMode, onToggleTheme, status 
 
   return (
     <header className="topbar">
-      <div className="brand-block">
+      <div className="brand-lockup">
         <div className="brand-mark" aria-hidden="true">
           <ShieldCheck />
-          <span className={stale ? 'brand-pulse stale' : 'brand-pulse'} />
         </div>
         <div>
           <div className="brand-title-row">
             <h1>Pocket Sentinel</h1>
-            <span className="edition">PUBLIC</span>
+            <span>PUBLIC</span>
           </div>
-          <p>vivo 1804 · Public operations surface</p>
+          <p>VIVO 1804 · LIVE OPERATIONS</p>
         </div>
       </div>
 
       <div className="topbar-actions">
-        <span className={isMockMode ? 'sync-badge preview' : stale ? 'sync-badge stale' : 'sync-badge live'}>
+        <span className={isMockMode ? 'sync-pill preview' : stale ? 'sync-pill stale' : 'sync-pill live'}>
           <Radio />
-          {isMockMode ? 'Preview' : stale ? 'Sync delayed' : 'Live sync'}
+          {isMockMode ? 'Preview data' : stale ? 'Sync delayed' : 'Live'}
         </span>
-        <button onClick={onToggleTheme} aria-label="สลับธีม" className="icon-button">
+        <button onClick={onToggleTheme} aria-label="สลับธีม" className="theme-button">
           {darkMode ? <Sun /> : <Moon />}
         </button>
       </div>
