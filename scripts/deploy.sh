@@ -20,7 +20,7 @@ fi
 
 REMOTE_HOST="v11"
 REMOTE_DIR="/data/data/com.termux/files/home/go-app"
-SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+SSH_OPTS=(-o ConnectTimeout=20 -o ServerAliveInterval=5 -o ServerAliveCountMax=4)
 
 escape_html() {
   local s="$1"
