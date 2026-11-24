@@ -30,6 +30,7 @@ import (
 	"v11-server/modules/logs"
 	"v11-server/modules/relay"
 	"v11-server/modules/reminders"
+	"v11-server/modules/sheets"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
 	"v11-server/shared/ai"
@@ -107,6 +108,7 @@ type App struct {
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
 	cloudsyncWorker   *cloudsync.Worker
+	sheetsHandler     *sheets.Handler
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -178,6 +180,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
 	askCacheStore := bot.NewAskCacheStore(dbConn)
 	askRouter := bot.NewAskTriageRouter(aiEngine, askCacheStore)
+	sheetsStore := sheets.NewStore(dbConn)
+	sheetsMod := sheets.NewHandler(sheetsStore, aiEngine)
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
@@ -466,6 +470,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
 		cloudsyncWorker:   cloudsyncWorker,
+		sheetsHandler:     sheetsMod,
 	}
 }
 
@@ -494,6 +499,9 @@ func setupRouter(app *App) *gin.Engine {
 	app.relay.RegisterRoutes(r)
 	if app.endpoints != nil {
 		app.endpoints.RegisterRoutes(r.Group("/api"))
+	}
+	if app.sheetsHandler != nil {
+		app.sheetsHandler.RegisterRoutes(r.Group("/api"))
 	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)

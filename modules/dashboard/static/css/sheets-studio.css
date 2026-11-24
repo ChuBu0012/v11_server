@@ -1,0 +1,212 @@
+/* Pocket Sheets Studio Styles */
+:root {
+  --studio-bg: #13141a;
+  --studio-bar: #1a1c24;
+  --studio-border: rgba(255, 255, 255, 0.1);
+  --studio-text: #f0f2f5;
+  --studio-muted: #8b92a5;
+  --studio-accent: #3b82f6;
+  --studio-green: #10b981;
+}
+
+[data-theme="light"] {
+  --studio-bg: #f8fafc;
+  --studio-bar: #ffffff;
+  --studio-border: rgba(0, 0, 0, 0.1);
+  --studio-text: #1e293b;
+  --studio-muted: #64748b;
+  --studio-accent: #2563eb;
+  --studio-green: #059669;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--studio-bg);
+  color: var(--studio-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", Helvetica, Arial, sans-serif;
+}
+
+.sheets-page {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Studio Header */
+.studio-header {
+  height: 52px;
+  min-height: 52px;
+  background: var(--studio-bar);
+  border-bottom: 1px solid var(--studio-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 12px;
+  z-index: 100;
+}
+
+.studio-left, .studio-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--studio-text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--studio-border);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .studio-btn {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.studio-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--studio-accent);
+}
+
+.studio-btn-primary {
+  background: var(--studio-accent);
+  color: #ffffff;
+  border: none;
+}
+
+.studio-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.sheet-title-input {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--studio-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+  max-width: 240px;
+  transition: all 0.15s ease;
+}
+
+.sheet-title-input:hover, .sheet-title-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--studio-border);
+}
+
+[data-theme="light"] .sheet-title-input:hover, 
+[data-theme="light"] .sheet-title-input:focus {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.save-badge {
+  font-size: 12px;
+  color: var(--studio-green);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.save-badge.saving {
+  color: var(--studio-muted);
+}
+
+/* Container for x-spreadsheet */
+#xspreadsheet-container {
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 52px);
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Modals */
+.studio-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.studio-modal {
+  background: var(--studio-bar);
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  width: min(500px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.studio-modal h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sheet-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--studio-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sheet-list-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--studio-accent);
+}
+
+.sheet-list-item.active {
+  border-color: var(--studio-accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 768px) {
+  .sheet-title-input {
+    max-width: 130px;
+    font-size: 13px;
+  }
+  .studio-btn span {
+    display: none;
+  }
+  .studio-btn {
+    padding: 6px 8px;
+  }
+}

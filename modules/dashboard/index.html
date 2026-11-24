@@ -51,6 +51,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
     <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
   </svg>
   <header class="topbar">
     <a class="brand" href="/">
@@ -233,6 +234,17 @@
           <img src="/static/img/avatar-furturia.png" alt="">
         </span>
         <span class="grow"><strong id="location-summary-title">ตำแหน่ง Chubu &amp; Furturia</strong><small>เปิดแผนที่สดเพื่อดูว่าอยู่ห่างกันเท่าไร</small></span>
+        <svg class="icon" style="color:var(--muted)"><use href="#i-right"/></svg>
+      </a>
+    </section>
+
+    <!-- 4.1 Sheets shortcut -->
+    <section class="section" aria-labelledby="sheets-summary-title">
+      <a class="list-item location-link" href="/sheets">
+        <span class="avatar-pair" aria-hidden="true" style="background:rgba(59,130,246,0.15);border-radius:10px;display:grid;place-items:center;color:var(--blue)">
+          <svg class="icon"><use href="#i-grid"/></svg>
+        </span>
+        <span class="grow"><strong id="sheets-summary-title">Pocket Sheets</strong><small>สเปรดชีตส่วนตัว ทำงานแบบออฟไลน์ พร้อมสูตรคำนวณ</small></span>
         <svg class="icon" style="color:var(--muted)"><use href="#i-right"/></svg>
       </a>
     </section>
@@ -436,6 +448,7 @@
   <nav class="task-nav" aria-label="หน้าหลัก">
     <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'overview' }" href="/?tab=overview" @click.prevent="$store.sentinel.setTab('overview')" :aria-current="$store.sentinel.activeTab === 'overview' ? 'page' : null"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
     <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
+    <a class="task-link" href="/sheets"><svg class="icon"><use href="#i-grid"/></svg><span>ชีต</span></a>
     <a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
     <a class="task-link" href="/relay"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>
   </nav>

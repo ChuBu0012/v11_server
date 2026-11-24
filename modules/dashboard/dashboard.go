@@ -23,6 +23,9 @@ var liveMapHTML []byte
 //go:embed endpoints.html
 var endpointsHTML []byte
 
+//go:embed sheets.html
+var sheetsHTML []byte
+
 //go:embed manifest.json
 var manifestJSON []byte
 
@@ -70,6 +73,10 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/schedule", m.HandleSchedule)
 	r.GET("/endpoints", m.HandleEndpoints)
 	r.HEAD("/endpoints", m.HandleEndpoints)
+	r.GET("/sheets", m.HandleSheets)
+	r.HEAD("/sheets", m.HandleSheets)
+	r.GET("/sheet", m.HandleSheets)
+	r.HEAD("/sheet", m.HandleSheets)
 	r.GET("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
 	r.HEAD("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
 
@@ -105,6 +112,11 @@ func (m *Module) HandleLiveMap(c *gin.Context) {
 func (m *Module) HandleEndpoints(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Data(http.StatusOK, "text/html; charset=utf-8", endpointsHTML)
+}
+
+// HandleSheets serves the dedicated Pocket Sheets studio interface.
+func (m *Module) HandleSheets(c *gin.Context) {
+	c.Data(http.StatusOK, "text/html; charset=utf-8", sheetsHTML)
 }
 
 // HandleManifest serves the web app manifest for PWA installation.

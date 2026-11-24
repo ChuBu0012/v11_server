@@ -155,8 +155,12 @@ func TestStaticRoutes(t *testing.T) {
 
 	staticFiles := []string{
 		"/static/css/styles.css",
+		"/static/css/xspreadsheet.css",
+		"/static/css/sheets-studio.css",
 		"/static/js/app.js",
 		"/static/js/marked.min.js",
+		"/static/js/xspreadsheet.js",
+		"/static/js/components/sheets-studio.js",
 		"/static/js/components/telemetry.js",
 		"/static/js/components/charts.js",
 		"/static/js/components/ask.js",
@@ -207,6 +211,28 @@ func TestTeleBridgeEndpoint(t *testing.T) {
 		}
 		if !strings.Contains(body, "proofread-diff-card") {
 			t.Errorf("Expected body of %s to contain 'proofread-diff-card'", p)
+		}
+	}
+}
+
+func TestSheetsEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mod := New()
+	r := gin.New()
+	mod.RegisterRoutes(r)
+
+	paths := []string{"/sheets", "/sheet"}
+	for _, p := range paths {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Fatalf("Expected 200 for %s, got %d", p, rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "Pocket Sheets") {
+			t.Errorf("Expected sheets body for %s to contain 'Pocket Sheets'", p)
 		}
 	}
 }

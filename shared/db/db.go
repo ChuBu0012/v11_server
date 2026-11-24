@@ -231,6 +231,15 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_hash ON ask_cache(prompt_hash);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_expires ON ask_cache(expires_at);
+
+	CREATE TABLE IF NOT EXISTS sheets (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		data_json TEXT NOT NULL DEFAULT '[]',
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_sheets_updated_at ON sheets(updated_at DESC);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

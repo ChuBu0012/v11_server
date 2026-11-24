@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pocket Sheets · สเปรดชีตส่วนตัว</title>
+  <meta name="theme-color" content="#1a1c24">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.json">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('sentinel-theme')==='light'?'light':'dark'}catch(_){}</script>
+  <link rel="stylesheet" href="/static/css/xspreadsheet.css">
+  <link rel="stylesheet" href="/static/css/sheets-studio.css">
+  <script src="/static/js/xspreadsheet.js" defer></script>
+  <script src="/static/js/components/sheets-studio.js" defer></script>
+</head>
+<body class="sheets-page">
+  <!-- Topbar -->
+  <header class="studio-header">
+    <div class="studio-left">
+      <a href="/" class="studio-btn" title="กลับหน้าแดชบอร์ด">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>แดชบอร์ด</span>
+      </a>
+      <input type="text" id="sheet-title" class="sheet-title-input" value="กำลังโหลด..." placeholder="ชื่อสเปรดชีต...">
+      <span id="save-badge" class="save-badge">✓ บันทึกแล้ว</span>
+    </div>
+
+    <div class="studio-right">
+      <button type="button" id="btn-sheets" class="studio-btn" title="ดูรายการสเปรดชีตทั้งหมด">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <span>แผ่นงาน</span>
+      </button>
+
+      <button type="button" id="btn-new" class="studio-btn" title="สร้างสเปรดชีตใหม่">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <span>สร้างใหม่</span>
+      </button>
+
+      <button type="button" id="btn-import" class="studio-btn" title="นำเข้าไฟล์ CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>นำเข้า CSV</span>
+      </button>
+
+      <button type="button" id="btn-export" class="studio-btn" title="ส่งออกเป็นไฟล์ CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <span>ส่งออก CSV</span>
+      </button>
+
+      <button type="button" id="btn-ai" class="studio-btn studio-btn-primary" title="ถามผู้ช่วย AI เกี่ยวกับสูตรหรือข้อมูลในตาราง">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <span>ผู้ช่วย AI</span>
+      </button>
+    </div>
+  </header>
+
+  <input type="file" id="csv-file-input" accept=".csv" style="display:none">
+
+  <!-- Spreadsheet Canvas Area -->
+  <main id="xspreadsheet-container"></main>
+
+  <!-- Sheet Switcher Modal -->
+  <div id="sheet-switcher-modal" class="studio-modal-backdrop" style="display:none">
+    <div class="studio-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>สเปรดชีตของคุณ</h2>
+        <button type="button" id="close-switcher" class="studio-btn" style="border:none;background:transparent;font-size:16px">✕</button>
+      </div>
+      <div id="switcher-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+
+  <!-- AI Modal -->
+  <div id="ai-modal" class="studio-modal-backdrop" style="display:none">
+    <div class="studio-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>ผู้ช่วย AI สเปรดชีต</h2>
+        <button type="button" id="close-ai" class="studio-btn" style="border:none;background:transparent;font-size:16px">✕</button>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--studio-muted)">สอบถามสูตรคำนวณ Excel/Google Sheets หรือให้ AI วิเคราะห์ข้อมูลในตารางปัจจุบัน</p>
+      <input type="text" id="ai-prompt" style="padding:10px 12px;border-radius:6px;border:1px solid var(--studio-border);background:rgba(255,255,255,0.05);color:var(--studio-text);outline:none;font-size:14px" placeholder="เช่น ขอสูตรคำนวณผลรวม A1 ถึง A10 หรือ สูตรภาษี 7%">
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button type="button" id="btn-run-ai" class="studio-btn studio-btn-primary">ส่งคำขอ</button>
+      </div>
+      <div id="ai-result" style="display:none;padding:12px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid var(--studio-border);font-size:13.5px;line-height:1.6;white-space:pre-wrap"></div>
+    </div>
+  </div>
+</body>
+</html>
