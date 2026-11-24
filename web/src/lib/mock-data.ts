@@ -51,3 +51,35 @@ export const mockDigest: PublicDigest = {
 - **ตลาดทองคำ:** ราคาทองสปอตโลกเคลื่อนไหวใกล้ระดับ $2,685/oz ตลาดรอความชัดเจนจากนโยบายดอกเบี้ย
 - **ภาพรวมระบบ:** Pocket Sentinel ทำงานต่อเนื่อง แบตเตอรี่และระบบระบายความร้อนอยู่ในเกณฑ์สมบูรณ์`,
 };
+
+export const mockWorkspace = {
+  updated_at: new Date().toISOString(),
+  notes: [
+    {
+      id: 'nt_pub1',
+      title: 'Pocket Sentinel Architecture Overview',
+      content: `- [x] ARM64 pure-Go standalone binary\n- [x] Embedded SQLite with WAL mode\n- [ ] Multi-region sync to Vercel Hub\n#dev #v11 #architecture`,
+      tags: ['dev', 'v11', 'architecture'],
+      updated_at: new Date().toISOString(),
+    },
+  ],
+  sheets: [
+    {
+      id: 'sh_pub1',
+      title: 'Monthly Budget Summary',
+      row_count: 5,
+      col_count: 3,
+      data_json: JSON.stringify({
+        cells: {
+          A1: { raw: 'รายการ', v: 'รายการ', style: { b: true } },
+          B1: { raw: 'จำนวนเงิน', v: 'จำนวนเงิน', style: { b: true } },
+          A2: { raw: 'ค่าไฟ', v: 'ค่าไฟ' },
+          B2: { raw: '1450', v: 1450, fmt: 'currency' },
+          A3: { raw: 'รวม', v: 'รวม', style: { b: true } },
+          B3: { raw: '=SUM(B2:B2)', v: 1450, fmt: 'currency', style: { b: true } },
+        },
+      }),
+      updated_at: new Date().toISOString(),
+    },
+  ],
+};

@@ -68,3 +68,29 @@ type ActionRequest struct {
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Result      string     `json:"result,omitempty"`
 }
+
+// PublicNote holds public note item.
+type PublicNote struct {
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	Content   string   `json:"content"`
+	Tags      []string `json:"tags"`
+	UpdatedAt string   `json:"updated_at"`
+}
+
+// PublicSheet holds public spreadsheet item.
+type PublicSheet struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	RowCount  int    `json:"row_count"`
+	ColCount  int    `json:"col_count"`
+	DataJSON  string `json:"data_json"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// PublicWorkspacePayload holds public workspace documents for Firestore: sentinel_workspace/shared.
+type PublicWorkspacePayload struct {
+	UpdatedAt string        `json:"updated_at"`
+	Notes     []PublicNote  `json:"notes"`
+	Sheets    []PublicSheet `json:"sheets"`
+}

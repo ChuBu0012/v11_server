@@ -210,6 +210,10 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 				copyCommand("📋 เช็ค PM2", "/task [medium] ตรวจสอบสถานะ PM2 ของ go-server และ gatus"),
 			},
 			{
+				copyCommand("📝 จดโน้ต", "/note รายการซื้อของ #todo"),
+				copyCommand("📚 ดูโน้ต", "/notes"),
+			},
+			{
 				copyCommand("⚡ โควตา AI", "/quota"),
 				copyCommand("📰 Digest", "/digest"),
 			},

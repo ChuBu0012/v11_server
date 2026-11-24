@@ -20,6 +20,11 @@ type DigestProvider interface {
 	GetLatestRun(ctx context.Context) (*digest.RunRecord, error)
 }
 
+// WorkspaceProvider supplies public workspace documents.
+type WorkspaceProvider interface {
+	GetPublicWorkspace(ctx context.Context) (PublicWorkspacePayload, error)
+}
+
 // ServicesProvider supplies current health of background services.
 type ServicesProvider func() ServicesStatus
 
@@ -28,6 +33,7 @@ type Worker struct {
 	client       Client
 	telemetry    TelemetryProvider
 	digest       DigestProvider
+	workspace    WorkspaceProvider
 	dispatcher   *ActionDispatcher
 	servicesProv ServicesProvider
 	interval     time.Duration
@@ -42,6 +48,11 @@ type WorkerOption func(*Worker)
 // WithServicesProvider sets the provider for service status reports.
 func WithServicesProvider(p ServicesProvider) WorkerOption {
 	return func(w *Worker) { w.servicesProv = p }
+}
+
+// WithWorkspaceProvider configures the public workspace provider.
+func WithWorkspaceProvider(p WorkspaceProvider) WorkerOption {
+	return func(w *Worker) { w.workspace = p }
 }
 
 // WithActionDispatcher configures the action dispatcher.
@@ -157,6 +168,18 @@ func (w *Worker) SyncOnce(ctx context.Context) error {
 				if updErr := w.client.UpdateAction(ctx, action); updErr != nil {
 					log.Printf("[cloudsync] Failed to update action %s: %v", action.ID, updErr)
 				}
+			}
+		}
+	}
+
+	// 4. Sync Public Workspace
+	if w.workspace != nil {
+		wsPayload, err := w.workspace.GetPublicWorkspace(ctx)
+		if err != nil {
+			log.Printf("[cloudsync] Failed to read public workspace: %v", err)
+		} else {
+			if err := w.client.SyncWorkspace(ctx, wsPayload); err != nil {
+				log.Printf("[cloudsync] Sync workspace error: %v", err)
 			}
 		}
 	}

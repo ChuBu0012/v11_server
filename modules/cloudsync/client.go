@@ -28,6 +28,7 @@ import (
 type Client interface {
 	SyncStatus(ctx context.Context, payload PublicStatusPayload) error
 	SyncDigest(ctx context.Context, payload PublicDigestPayload) error
+	SyncWorkspace(ctx context.Context, payload PublicWorkspacePayload) error
 	GetPendingActions(ctx context.Context) ([]ActionRequest, error)
 	UpdateAction(ctx context.Context, action ActionRequest) error
 	IsDryRun() bool
@@ -68,6 +69,10 @@ func (d *DryRunClient) SyncStatus(ctx context.Context, payload PublicStatusPaylo
 }
 
 func (d *DryRunClient) SyncDigest(ctx context.Context, payload PublicDigestPayload) error {
+	return nil
+}
+
+func (d *DryRunClient) SyncWorkspace(ctx context.Context, payload PublicWorkspacePayload) error {
 	return nil
 }
 
@@ -339,6 +344,51 @@ func (c *RESTClient) SyncDigest(ctx context.Context, payload PublicDigestPayload
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("sync digest failed (HTTP %d): %s", resp.StatusCode, string(b))
+	}
+
+	return nil
+}
+
+// SyncWorkspace uploads public notes and sheets to sentinel_workspace/shared.
+func (c *RESTClient) SyncWorkspace(ctx context.Context, payload PublicWorkspacePayload) error {
+	token, err := c.getAccessToken(ctx)
+	if err != nil {
+		return fmt.Errorf("cloudsync: auth failed: %w", err)
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	fields := map[string]interface{}{
+		"updated_at": map[string]interface{}{"stringValue": payload.UpdatedAt},
+		"data_json":  map[string]interface{}{"stringValue": string(payloadBytes)},
+	}
+
+	docPayload := map[string]interface{}{"fields": fields}
+	docBytes, err := json.Marshal(docPayload)
+	if err != nil {
+		return err
+	}
+
+	docURL := fmt.Sprintf("%s/sentinel_workspace/shared", c.baseURL)
+	req, err := http.NewRequestWithContext(ctx, "PATCH", docURL, bytes.NewReader(docBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("sync workspace network error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sync workspace failed (HTTP %d): %s", resp.StatusCode, string(b))
 	}
 
 	return nil

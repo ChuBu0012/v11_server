@@ -231,6 +231,34 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_hash ON ask_cache(prompt_hash);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_expires ON ask_cache(expires_at);
+
+	CREATE TABLE IF NOT EXISTS workspace_notes (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		content TEXT NOT NULL DEFAULT '',
+		tags TEXT NOT NULL DEFAULT '',
+		is_pinned INTEGER NOT NULL DEFAULT 0,
+		sync_public INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_workspace_notes_updated 
+	ON workspace_notes(updated_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_workspace_notes_pinned 
+	ON workspace_notes(is_pinned DESC, updated_at DESC);
+
+	CREATE TABLE IF NOT EXISTS workspace_sheets (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		row_count INTEGER NOT NULL DEFAULT 30,
+		col_count INTEGER NOT NULL DEFAULT 10,
+		data_json TEXT NOT NULL DEFAULT '{}',
+		sync_public INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_workspace_sheets_updated 
+	ON workspace_sheets(updated_at DESC);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

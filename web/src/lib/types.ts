@@ -56,3 +56,26 @@ export interface ActionRequest {
   completed_at?: string | null;
   result?: string | null;
 }
+
+export interface PublicNoteItem {
+  id: string;
+  title: string;
+  content: string;
+  tags?: string[];
+  updated_at: string;
+}
+
+export interface PublicSheetItem {
+  id: string;
+  title: string;
+  row_count: number;
+  col_count: number;
+  data_json: string;
+  updated_at: string;
+}
+
+export interface PublicWorkspaceData {
+  updated_at: string;
+  notes: PublicNoteItem[];
+  sheets: PublicSheetItem[];
+}

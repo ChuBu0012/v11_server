@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/css/workspace.css">
   <script src="/static/js/app.js"></script>
   <script src="/static/js/components/telemetry.js"></script>
   <script src="/static/js/components/charts.js"></script>
@@ -24,6 +25,9 @@
   <script src="/static/js/components/ai-limit.js"></script>
   <script src="/static/js/marked.min.js"></script>
   <script src="/static/js/components/ask.js"></script>
+  <script src="/static/js/components/workspace.js"></script>
+  <script src="/static/js/components/notes.js"></script>
+  <script src="/static/js/components/sheets.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body x-data>
@@ -51,6 +55,9 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
     <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
+    <symbol id="i-sheet" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></symbol>
+    <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></symbol>
   </svg>
   <header class="topbar">
     <a class="brand" href="/">
@@ -67,6 +74,29 @@
       </button>
     </div>
   </header>
+
+  <div class="workspace-topbar" style="max-width: var(--page-max); margin: 12px auto 0 auto; padding: 0 16px;">
+    <div class="workspace-tab-group" role="tablist">
+      <button class="workspace-tab-btn" :class="{ active: $store.sentinel.activeTab === 'overview' }" @click="$store.sentinel.setWorkspaceTab('overview')" role="tab">
+        <svg class="icon icon-sm"><use href="#i-overview"/></svg>
+        <span>ภาพรวม</span>
+      </button>
+      <button class="workspace-tab-btn" :class="{ active: $store.sentinel.activeTab === 'notes' }" @click="$store.sentinel.setWorkspaceTab('notes')" role="tab">
+        <svg class="icon icon-sm"><use href="#i-note"/></svg>
+        <span>โน้ต</span>
+      </button>
+      <button class="workspace-tab-btn" :class="{ active: $store.sentinel.activeTab === 'sheets' }" @click="$store.sentinel.setWorkspaceTab('sheets')" role="tab">
+        <svg class="icon icon-sm"><use href="#i-sheet"/></svg>
+        <span>ชีต</span>
+      </button>
+    </div>
+    <div class="workspace-actions">
+      <button class="btn btn-sm" @click="$store.sentinel.toggleFocus()" :title="$store.sentinel.focusMode ? 'ออกจากโหมดขยายจอ' : 'โหมดขยายจอเต็ม (Focus)'">
+        <svg class="icon icon-sm"><use href="#i-focus"/></svg>
+        <span x-text="$store.sentinel.focusMode ? 'ย่อจอ' : 'ขยายจอ'">ขยายจอ</span>
+      </button>
+    </div>
+  </div>
 
   <main class="page" id="overview-content" x-show="$store.sentinel.activeTab === 'overview'" x-cloak>
     <!-- 1. Status hero -->
@@ -433,8 +463,231 @@
     <footer class="page-footer">Pocket Sentinel · vivo 1804 · Termux arm64</footer>
   </main>
 
+  <!-- 2. Personal Notes Workspace -->
+  <main class="page" id="notes-content" x-show="$store.sentinel.activeTab === 'notes'" x-cloak x-data="notesComponent()">
+    <div class="notes-workspace">
+      <!-- Sidebar -->
+      <aside class="notes-sidebar">
+        <div class="notes-sidebar-header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 0.95rem;">โน้ตทั้งหมด (<span x-text="notes.length"></span>)</strong>
+            <button class="btn btn-sm btn-accent" @click="createNewNote()">
+              <svg class="icon icon-sm"><use href="#i-plus"/></svg>
+              <span>ใหม่</span>
+            </button>
+          </div>
+          <input type="text" class="notes-search-input" placeholder="🔍 ค้นหาโน้ตหรือแท็ก..." x-model="searchQuery" @input.debounce.300ms="loadNotes()">
+          <div class="notes-tags-bar" x-show="availableTags.length > 0">
+            <template x-for="t in availableTags" :key="t">
+              <span class="tag-pill" :class="{ active: selectedTag === t }" @click="selectTag(t)" x-text="'#' + t"></span>
+            </template>
+          </div>
+        </div>
+
+        <div class="notes-list">
+          <template x-if="notes.length === 0">
+            <div style="text-align: center; padding: 24px 12px; color: var(--muted); font-size: 0.85rem;">
+              ไม่พบบันทึกโน้ต<br>กดปุ่ม <b>+ ใหม่</b> หรือพิมพ์ผ่าน Telegram
+            </div>
+          </template>
+          <template x-for="n in notes" :key="n.id">
+            <div class="note-item" :class="{ active: activeNote && activeNote.id === n.id }" @click="selectNote(n)">
+              <div class="note-item-header">
+                <span class="note-item-title" x-text="(n.is_pinned ? '📌 ' : '') + (n.title || 'ไม่มีชื่อ')"></span>
+                <span x-show="n.sync_public" title="ซิงค์สาธารณะ" style="font-size: 0.75rem;">🌐</span>
+              </div>
+              <div class="note-item-preview" x-text="n.content || 'ไม่มีเนื้อหา'"></div>
+              <div class="note-item-footer">
+                <span x-text="n.tags && n.tags.length ? '#' + n.tags.join(' #') : ''"></span>
+                <span x-text="formatTime(n.updated_at)"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </aside>
+
+      <!-- Main Editor / Preview Panel -->
+      <section class="notes-editor-panel">
+        <template x-if="!activeNote">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 12px;">
+            <svg class="icon" style="width: 48px; height: 48px; opacity: 0.4;"><use href="#i-note"/></svg>
+            <p>เลือกโน้ตจากรายการทางซ้าย หรือสร้างโน้ตใหม่</p>
+            <button class="btn btn-sm btn-accent" @click="createNewNote()">+ สร้างโน้ตใหม่</button>
+          </div>
+        </template>
+
+        <template x-if="activeNote">
+          <div style="display: flex; flex-direction: column; height: 100%;">
+            <!-- Toolbar -->
+            <div class="notes-toolbar">
+              <input type="text" class="note-title-input" x-model="activeNote.title" @input="onContentChange()" placeholder="หัวข้อบันทึก...">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span x-show="isSaving" style="font-size: 0.78rem; color: var(--muted);" class="fade-in">กำลังบันทึก…</span>
+                <div class="notes-view-mode">
+                  <button :class="{ active: viewMode === 'edit' }" @click="viewMode = 'edit'">แก้ไข</button>
+                  <button :class="{ active: viewMode === 'split' }" @click="viewMode = 'split'">แยกจอ</button>
+                  <button :class="{ active: viewMode === 'preview' }" @click="viewMode = 'preview'">พรีวิว</button>
+                </div>
+                <button class="btn-icon" @click="togglePin()" :title="activeNote.is_pinned ? 'ปลดหมุด' : 'ปักหมุด'">
+                  <span x-text="activeNote.is_pinned ? '📍' : '📌'"></span>
+                </button>
+                <button class="btn-icon" @click="togglePublicSync()" :title="activeNote.sync_public ? 'กำลังซิงค์สาธารณะ (เปิด)' : 'เฉพาะในเครื่อง (ปิด)'">
+                  <span x-text="activeNote.sync_public ? '🌐' : '🔒'"></span>
+                </button>
+                <button class="btn-icon" @click="openAIModal()" title="AI ช่วยสรุปและวิเคราะห์">
+                  <svg class="icon icon-sm"><use href="#i-sparkle"/></svg>
+                </button>
+                <button class="btn-icon" @click="deleteActiveNote()" title="ลบโน้ตนี้" style="color: var(--red);">
+                  <svg class="icon icon-sm"><use href="#i-close"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="notes-content-wrap">
+              <textarea class="note-textarea" x-show="viewMode === 'edit' || viewMode === 'split'" x-model="activeNote.content" @input="onContentChange()" placeholder="เขียนบันทึกด้วย Markdown...&#10;- [ ] ทำเช็คลิสต์คลิกได้&#10;#แท็กหมวดหมู่"></textarea>
+              <div class="note-preview-pane" x-show="viewMode === 'preview' || viewMode === 'split'" x-html="renderMarkdown(activeNote.content)"></div>
+            </div>
+          </div>
+        </template>
+      </section>
+    </div>
+
+    <!-- AI Modal Dialog for Notes -->
+    <div class="workspace-modal-overlay" x-show="aiModalOpen" x-cloak>
+      <div class="workspace-modal-card" @click.outside="aiModalOpen = false">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon icon-sm" style="color: var(--blue);"><use href="#i-sparkle"/></svg>
+            <span>ผู้ช่วย AI สำหรับโน้ต</span>
+          </h3>
+          <button class="btn-icon" @click="aiModalOpen = false"><svg class="icon icon-sm"><use href="#i-close"/></svg></button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-sm" :class="{ 'btn-accent': aiAction === 'summarize' }" @click="aiAction = 'summarize'">สรุปสาระสำคัญ</button>
+          <button class="btn btn-sm" :class="{ 'btn-accent': aiAction === 'action_items' }" @click="aiAction = 'action_items'">ดึงรายการ Todos</button>
+          <button class="btn btn-sm" :class="{ 'btn-accent': aiAction === 'polish' }" @click="aiAction = 'polish'">ขัดเกลาข้อความ</button>
+        </div>
+        <input type="text" class="notes-search-input" placeholder="คำแนะนำเพิ่มเติม (ไม่บังคับ)..." x-model="aiInstruction">
+        
+        <div style="min-height: 100px; max-height: 240px; overflow-y: auto; background: var(--pearl); padding: 12px; border-radius: var(--r-sm); font-size: 0.88rem; line-height: 1.5;">
+          <template x-if="aiLoading">
+            <div style="text-align: center; color: var(--muted); padding: 20px;">กำลังประมวลผลด้วย Fast AI…</div>
+          </template>
+          <template x-if="!aiLoading && !aiResult">
+            <div style="color: var(--muted);">กดปุ่ม "เริ่มประมวลผล" ด้านล่าง</div>
+          </template>
+          <div x-show="!aiLoading && aiResult" x-text="aiResult" style="white-space: pre-wrap;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn btn-sm" @click="runAIAction()" :disabled="aiLoading">🚀 เริ่มประมวลผล</button>
+          <button class="btn btn-sm btn-accent" @click="applyAIResult()" :disabled="!aiResult">นำไปใช้ในโน้ต</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 3. Lightweight Sheets Workspace -->
+  <main class="page" id="sheets-content" x-show="$store.sentinel.activeTab === 'sheets'" x-cloak x-data="sheetsComponent()">
+    <div class="sheets-workspace">
+      <!-- Toolbar -->
+      <div class="sheets-toolbar">
+        <div class="sheets-toolbar-group">
+          <button class="sheet-tool-btn" @click="createNewSheet()">
+            <svg class="icon icon-sm"><use href="#i-plus"/></svg>
+            <span>ชีตใหม่</span>
+          </button>
+          <select class="notes-search-input" style="width: auto; padding: 4px 8px;" x-model="currentSheetId" @change="openSheet($event.target.value)">
+            <template x-for="s in sheets" :key="s.id">
+              <option :value="s.id" x-text="s.title || 'ชีตไม่มีชื่อ'"></option>
+            </template>
+          </select>
+          <input type="text" class="notes-search-input" style="width: 140px; padding: 4px 8px;" x-model="currentSheetTitle" @input="triggerAutoSave()" placeholder="ชื่อชีต...">
+        </div>
+
+        <div class="sheets-toolbar-group">
+          <button class="sheet-tool-btn" @click="formatActiveCell('b', true)" title="ตัวหนา"><b>B</b></button>
+          <button class="sheet-tool-btn" @click="formatActiveCell('i', true)" title="ตัวเอียง"><i>I</i></button>
+          <button class="sheet-tool-btn" @click="formatActiveCell('align', 'left')" title="ชิดซ้าย">⬅</button>
+          <button class="sheet-tool-btn" @click="formatActiveCell('align', 'center')" title="กึ่งกลาง">⬛</button>
+          <button class="sheet-tool-btn" @click="formatActiveCell('align', 'right')" title="ชิดขวา">➡</button>
+          <button class="sheet-tool-btn" @click="mergeCells()" title="ผสานเซลล์">⬍ ผสาน</button>
+          <button class="sheet-tool-btn" @click="unmergeCells()" title="ยกเลิกผสาน">⬌ แยก</button>
+        </div>
+
+        <div class="sheets-toolbar-group">
+          <label class="sheet-tool-btn" style="cursor: pointer;" title="นำเข้า CSV">
+            <span>📥 นำเข้า</span>
+            <input type="file" accept=".csv" @change="importCSV($event)" style="display: none;">
+          </label>
+          <button class="sheet-tool-btn" @click="exportCSV()" title="ส่งออก CSV">📤 ส่งออก</button>
+          <button class="sheet-tool-btn" @click="openAIModal()" title="AI ช่วยเขียนสูตรและอธิบาย">
+            <svg class="icon icon-sm"><use href="#i-sparkle"/></svg>
+            <span>ผู้ช่วย AI</span>
+          </button>
+          <span x-show="isSaving" style="font-size: 0.78rem; color: var(--muted);">กำลังบันทึก…</span>
+        </div>
+      </div>
+
+      <!-- Formula Bar -->
+      <div class="sheet-formula-bar">
+        <span class="sheet-cell-address" x-text="activeCoord">A1</span>
+        <span style="font-family: var(--mono); color: var(--muted); font-size: 0.85rem;">fx:</span>
+        <input type="text" class="sheet-formula-input" x-model="formulaBarInput" @input="onFormulaInput($event.target.value)" placeholder="พิมพ์ค่า หรือสูตรคำนวณ เช่น =SUM(A1:A5), =A1+B1">
+      </div>
+
+      <!-- Native DOM Grid Container (Sticky Panes) -->
+      <div class="sheet-scroll-container" id="sheet-grid-container"></div>
+
+      <!-- Summary Bar -->
+      <div class="sheet-summary-bar">
+        <span>ชีตพร้อมใช้งาน · คำนวณเร็วโดยตรงบนอุปกรณ์</span>
+        <strong x-text="summaryBarText" style="color: var(--blue); font-family: var(--mono);"></strong>
+      </div>
+    </div>
+
+    <!-- AI Modal Dialog for Sheets -->
+    <div class="workspace-modal-overlay" x-show="aiModalOpen" x-cloak>
+      <div class="workspace-modal-card" @click.outside="aiModalOpen = false">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon icon-sm" style="color: var(--blue);"><use href="#i-sparkle"/></svg>
+            <span>ผู้ช่วย AI สำหรับสเปรดชีต</span>
+          </h3>
+          <button class="btn-icon" @click="aiModalOpen = false"><svg class="icon icon-sm"><use href="#i-close"/></svg></button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-sm" :class="{ 'btn-accent': aiAction === 'formula_suggest' }" @click="aiAction = 'formula_suggest'">แนะนำสูตรคำนวณ</button>
+          <button class="btn btn-sm" :class="{ 'btn-accent': aiAction === 'explain' }" @click="aiAction = 'explain'">วิเคราะห์ข้อมูล</button>
+        </div>
+        <input type="text" class="notes-search-input" placeholder="พิมพ์คำขอ เช่น ขอสูตรคำนวณภาษี 7% จากคอลัมน์ B..." x-model="aiPrompt">
+        
+        <div style="min-height: 100px; max-height: 240px; overflow-y: auto; background: var(--pearl); padding: 12px; border-radius: var(--r-sm); font-size: 0.88rem; line-height: 1.5;">
+          <template x-if="aiLoading">
+            <div style="text-align: center; color: var(--muted); padding: 20px;">กำลังวิเคราะห์ข้อมูลตาราง…</div>
+          </template>
+          <template x-if="!aiLoading && !aiResult">
+            <div style="color: var(--muted);">พิมพ์คำขอแล้วกด "เริ่มประมวลผล"</div>
+          </template>
+          <div x-show="!aiLoading && aiResult">
+            <div style="font-family: var(--mono); font-size: 1.1rem; color: var(--blue); font-weight: 600; margin-bottom: 8px;" x-text="aiResult"></div>
+            <div style="color: var(--muted);" x-text="aiExplanation"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn btn-sm" @click="runAIAction()" :disabled="aiLoading">🚀 เริ่มประมวลผล</button>
+          <button class="btn btn-sm btn-accent" @click="applyAIFormula()" :disabled="!aiResult || !aiResult.startsWith('=')">ใส่สูตรในเซลล์</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
   <nav class="task-nav" aria-label="หน้าหลัก">
-    <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'overview' }" href="/?tab=overview" @click.prevent="$store.sentinel.setTab('overview')" :aria-current="$store.sentinel.activeTab === 'overview' ? 'page' : null"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
+    <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'overview' }" href="/?tab=overview" @click.prevent="$store.sentinel.setWorkspaceTab('overview')" :aria-current="$store.sentinel.activeTab === 'overview' ? 'page' : null"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
+    <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'notes' }" href="/?tab=notes" @click.prevent="$store.sentinel.setWorkspaceTab('notes')" :aria-current="$store.sentinel.activeTab === 'notes' ? 'page' : null"><svg class="icon"><use href="#i-note"/></svg><span>โน้ต</span></a>
+    <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'sheets' }" href="/?tab=sheets" @click.prevent="$store.sentinel.setWorkspaceTab('sheets')" :aria-current="$store.sentinel.activeTab === 'sheets' ? 'page' : null"><svg class="icon"><use href="#i-sheet"/></svg><span>ชีต</span></a>
     <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
     <a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
     <a class="task-link" href="/relay"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>

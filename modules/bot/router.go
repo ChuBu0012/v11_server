@@ -43,6 +43,15 @@ type Router struct {
 	quotaPostTaskFunc func(ctx context.Context) (string, error)
 	ringCtrl          *RingController
 	askRouter         *AskTriageRouter
+	workspaceSvc      WorkspaceBotService
+}
+
+// WithWorkspaceService sets the workspace notes service for bot commands.
+func WithWorkspaceService(svc WorkspaceBotService) RouterOption {
+	return func(r *Router) {
+		r.workspaceSvc = svc
+		r.registerWorkspaceCallbacks()
+	}
 }
 
 // WithRingController configures the device ring/alarm controller.
@@ -415,6 +424,9 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			"<code>/keyboard</code> เปิดแป้นพิมพ์ลัด | <code>/keyboard_hide</code> ซ่อนแป้นพิมพ์\n\n" +
 			"<b>📍 แผนที่และพิกัดสด</b>\n" +
 			"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n\n" +
+			"<b>📝 บันทึกโน้ตและงาน</b>\n" +
+			"<code>/note &lt;ข้อความ&gt; [#แท็ก]</code> จดบันทึกด่วน พร้อมแยกแท็กอัตโนมัติ\n" +
+			"<code>/notes [แท็ก]</code> แสดงรายการโน้ตล่าสุด 5 รายการ\n\n" +
 			"<b>📊 ดูสถานะ</b>\n" +
 			"<code>/status</code> สุขภาพเครื่องและ Tunnel\n" +
 			"<code>/ping</code> ตรวจการตอบสนอง\n" +
@@ -465,6 +477,48 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			return err
 		}
 		_, err = r.sendMessage(ctx, chatID, msgHTML, mapKeyboard)
+		return err
+
+	case "/note":
+		if r.workspaceSvc == nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ บริการ Workspace ยังไม่พร้อมใช้งาน", nil)
+			return err
+		}
+		rawInput := strings.TrimSpace(strings.TrimPrefix(text, cmdPart))
+		if rawInput == "" {
+			helpMsg := "💡 <b>วิธีใช้คำสั่ง /note</b>\n" +
+				"<code>/note &lt;ข้อความ&gt; [#แท็ก]</code>\n\n" +
+				"<i>ตัวอย่าง:</i>\n" +
+				"<code>/note รายการซื้อของ: นมสด ไข่ไก่ #todo #groceries</code>\n" +
+				"<i>หรือพิมพ์หลายบรรทัด บรรทัดแรกจะเป็นชื่อหัวข้อ</i>"
+			_, err := r.sendMessage(ctx, chatID, helpMsg, nil)
+			return err
+		}
+		note, err := r.workspaceSvc.CreateNote(ctx, rawInput)
+		if err != nil {
+			_, sendErr := r.sendMessage(ctx, chatID, "❌ ไม่สามารถบันทึกโน้ตได้: "+html.EscapeString(err.Error()), nil)
+			return sendErr
+		}
+		noteHTML, kb := FormatNoteCreated(note)
+		_, err = r.sendMessage(ctx, chatID, noteHTML, kb)
+		return err
+
+	case "/notes":
+		if r.workspaceSvc == nil {
+			_, err := r.sendMessage(ctx, chatID, "⚠️ บริการ Workspace ยังไม่พร้อมใช้งาน", nil)
+			return err
+		}
+		tag := ""
+		if len(args) > 0 {
+			tag = strings.TrimPrefix(args[0], "#")
+		}
+		notes, err := r.workspaceSvc.ListNotes(ctx, tag, 5)
+		if err != nil {
+			_, sendErr := r.sendMessage(ctx, chatID, "❌ ไม่สามารถดึงโน้ตได้: "+html.EscapeString(err.Error()), nil)
+			return sendErr
+		}
+		listHTML, kb := FormatNoteList(notes, tag)
+		_, err = r.sendMessage(ctx, chatID, listHTML, kb)
 		return err
 
 	case "/task":
@@ -1067,4 +1121,110 @@ func formatCachedAgo(t time.Time) string {
 		return fmt.Sprintf("%d ชั่วโมงที่แล้ว", hours)
 	}
 	return fmt.Sprintf("%d ชม. %d นาทีที่แล้ว", hours, mins)
+}
+
+func (r *Router) registerWorkspaceCallbacks() {
+	if r.callbackRoutes == nil {
+		r.callbackRoutes = make(map[string]func(ctx context.Context, callback *CallbackQuery) error)
+	}
+	r.callbackRoutes["wn:"] = r.handleWorkspaceCallback
+}
+
+func (r *Router) handleWorkspaceCallback(ctx context.Context, q *CallbackQuery) error {
+	if r.workspaceSvc == nil || q == nil {
+		return nil
+	}
+	data := q.Data
+	switch {
+	case strings.HasPrefix(data, "wn:del:"):
+		id := strings.TrimPrefix(data, "wn:del:")
+		err := r.workspaceSvc.DeleteNote(ctx, id)
+		if err != nil {
+			if r.client != nil {
+				_ = r.client.AnswerCallbackQuery(ctx, q.ID, "ลบโน้ตไม่สำเร็จ", true)
+			}
+			return nil
+		}
+		if r.client != nil {
+			_ = r.client.AnswerCallbackQuery(ctx, q.ID, "🗑️ ลบโน้ตเรียบร้อย", false)
+			if q.Message != nil {
+				_ = r.client.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, "🗑️ <i>โน้ตนี้ถูกลบเรียบร้อยแล้ว</i>", nil)
+			}
+		}
+		return nil
+
+	case strings.HasPrefix(data, "wn:pin:"):
+		id := strings.TrimPrefix(data, "wn:pin:")
+		err := r.workspaceSvc.SetNotePinned(ctx, id, true)
+		if err != nil {
+			if r.client != nil {
+				_ = r.client.AnswerCallbackQuery(ctx, q.ID, "ปักหมุดไม่สำเร็จ", true)
+			}
+			return nil
+		}
+		if r.client != nil {
+			_ = r.client.AnswerCallbackQuery(ctx, q.ID, "📌 ปักหมุดโน้ตแล้ว", false)
+		}
+		note, err := r.workspaceSvc.GetNote(ctx, id)
+		if err == nil && q.Message != nil && r.client != nil {
+			text, kb := FormatNoteDetail(note)
+			_ = r.client.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, text, kb)
+		}
+		return nil
+
+	case strings.HasPrefix(data, "wn:unpin:"):
+		id := strings.TrimPrefix(data, "wn:unpin:")
+		err := r.workspaceSvc.SetNotePinned(ctx, id, false)
+		if err != nil {
+			if r.client != nil {
+				_ = r.client.AnswerCallbackQuery(ctx, q.ID, "ปลดหมุดไม่สำเร็จ", true)
+			}
+			return nil
+		}
+		if r.client != nil {
+			_ = r.client.AnswerCallbackQuery(ctx, q.ID, "📍 ปลดหมุดโน้ตแล้ว", false)
+		}
+		note, err := r.workspaceSvc.GetNote(ctx, id)
+		if err == nil && q.Message != nil && r.client != nil {
+			text, kb := FormatNoteDetail(note)
+			_ = r.client.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, text, kb)
+		}
+		return nil
+
+	case strings.HasPrefix(data, "wn:view:"):
+		id := strings.TrimPrefix(data, "wn:view:")
+		note, err := r.workspaceSvc.GetNote(ctx, id)
+		if err != nil {
+			if r.client != nil {
+				_ = r.client.AnswerCallbackQuery(ctx, q.ID, "ไม่พบโน้ตนี้แล้ว", true)
+			}
+			return nil
+		}
+		if r.client != nil {
+			_ = r.client.AnswerCallbackQuery(ctx, q.ID, "", false)
+			if q.Message != nil {
+				text, kb := FormatNoteDetail(note)
+				_ = r.client.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, text, kb)
+			}
+		}
+		return nil
+
+	case data == "wn:list":
+		notes, err := r.workspaceSvc.ListNotes(ctx, "", 5)
+		if err != nil {
+			if r.client != nil {
+				_ = r.client.AnswerCallbackQuery(ctx, q.ID, "โหลดโน้ตไม่สำเร็จ", true)
+			}
+			return nil
+		}
+		if r.client != nil {
+			_ = r.client.AnswerCallbackQuery(ctx, q.ID, "", false)
+			if q.Message != nil {
+				text, kb := FormatNoteList(notes, "")
+				_ = r.client.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, text, kb)
+			}
+		}
+		return nil
+	}
+	return nil
 }

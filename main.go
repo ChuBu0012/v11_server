@@ -32,6 +32,7 @@ import (
 	"v11-server/modules/reminders"
 	"v11-server/modules/system"
 	"v11-server/modules/telemetry"
+	"v11-server/modules/workspace"
 	"v11-server/shared/ai"
 	"v11-server/shared/config"
 	"v11-server/shared/db"
@@ -107,6 +108,121 @@ type App struct {
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
 	cloudsyncWorker   *cloudsync.Worker
+	workspace         *workspace.Module
+	workspaceService  *workspace.Service
+}
+
+type botWorkspaceAdapter struct {
+	svc *workspace.Service
+}
+
+func (a *botWorkspaceAdapter) CreateNote(ctx context.Context, text string) (*bot.BotNoteItem, error) {
+	note, err := a.svc.CreateNote(ctx, &workspace.CreateNoteRequest{
+		Content: text,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &bot.BotNoteItem{
+		ID:        note.ID,
+		Title:     note.Title,
+		Content:   note.Content,
+		Tags:      note.Tags,
+		IsPinned:  note.IsPinned,
+		UpdatedAt: note.UpdatedAt,
+	}, nil
+}
+
+func (a *botWorkspaceAdapter) ListNotes(ctx context.Context, tag string, limit int) ([]bot.BotNoteItem, error) {
+	notes, err := a.svc.ListNotes(ctx, workspace.NoteFilter{
+		Tag:   tag,
+		Limit: limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]bot.BotNoteItem, len(notes))
+	for i, n := range notes {
+		items[i] = bot.BotNoteItem{
+			ID:        n.ID,
+			Title:     n.Title,
+			Content:   n.Content,
+			Tags:      n.Tags,
+			IsPinned:  n.IsPinned,
+			UpdatedAt: n.UpdatedAt,
+		}
+	}
+	return items, nil
+}
+
+func (a *botWorkspaceAdapter) GetNote(ctx context.Context, id string) (*bot.BotNoteItem, error) {
+	n, err := a.svc.GetNote(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &bot.BotNoteItem{
+		ID:        n.ID,
+		Title:     n.Title,
+		Content:   n.Content,
+		Tags:      n.Tags,
+		IsPinned:  n.IsPinned,
+		UpdatedAt: n.UpdatedAt,
+	}, nil
+}
+
+func (a *botWorkspaceAdapter) DeleteNote(ctx context.Context, id string) error {
+	return a.svc.DeleteNote(ctx, id)
+}
+
+func (a *botWorkspaceAdapter) SetNotePinned(ctx context.Context, id string, pinned bool) error {
+	_, err := a.svc.UpdateNote(ctx, id, &workspace.UpdateNoteRequest{
+		IsPinned: &pinned,
+	})
+	return err
+}
+
+type cloudsyncWorkspaceAdapter struct {
+	svc *workspace.Service
+}
+
+func (a *cloudsyncWorkspaceAdapter) GetPublicWorkspace(ctx context.Context) (cloudsync.PublicWorkspacePayload, error) {
+	notes, err := a.svc.ListPublicNotes(ctx)
+	if err != nil {
+		return cloudsync.PublicWorkspacePayload{}, err
+	}
+	sheets, err := a.svc.ListPublicSheets(ctx)
+	if err != nil {
+		return cloudsync.PublicWorkspacePayload{}, err
+	}
+
+	pubNotes := make([]cloudsync.PublicNote, len(notes))
+	for i, n := range notes {
+		pubNotes[i] = cloudsync.PublicNote{
+			ID:        n.ID,
+			Title:     n.Title,
+			Content:   n.Content,
+			Tags:      n.Tags,
+			UpdatedAt: n.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	pubSheets := make([]cloudsync.PublicSheet, len(sheets))
+	for i, s := range sheets {
+		pubSheets[i] = cloudsync.PublicSheet{
+			ID:        s.ID,
+			Title:     s.Title,
+			RowCount:  s.RowCount,
+			ColCount:  s.ColCount,
+			DataJSON:  s.DataJSON,
+			UpdatedAt: s.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	return cloudsync.PublicWorkspacePayload{
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		Notes:     pubNotes,
+		Sheets:    pubSheets,
+	}, nil
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -178,6 +294,11 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
 	askCacheStore := bot.NewAskCacheStore(dbConn)
 	askRouter := bot.NewAskTriageRouter(aiEngine, askCacheStore)
+
+	workspaceStore := workspace.NewStore(dbConn)
+	workspaceAI := workspace.NewAIAssistant(aiEngine)
+	workspaceService := workspace.NewService(workspaceStore, workspaceAI)
+	workspaceMod := workspace.NewModule(workspaceService)
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
@@ -318,6 +439,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 
 		routerOpts = append(routerOpts, bot.WithAskRouter(askRouter))
 		routerOpts = append(routerOpts, bot.WithRingController(ringCtrl))
+		routerOpts = append(routerOpts, bot.WithWorkspaceService(&botWorkspaceAdapter{svc: workspaceService}))
 
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
@@ -436,6 +558,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			digestStore,
 			cfg.CloudSyncInterval,
 			cloudsync.WithActionDispatcher(dispatcher),
+			cloudsync.WithWorkspaceProvider(&cloudsyncWorkspaceAdapter{svc: workspaceService}),
 		)
 	}
 
@@ -466,6 +589,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
 		cloudsyncWorker:   cloudsyncWorker,
+		workspace:         workspaceMod,
+		workspaceService:  workspaceService,
 	}
 }
 
@@ -497,6 +622,9 @@ func setupRouter(app *App) *gin.Engine {
 	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
+	}
+	if app.workspace != nil {
+		app.workspace.RegisterRoutes(r)
 	}
 	if app.locationModule != nil {
 		app.locationModule.RegisterRoutes(r)

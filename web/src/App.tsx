@@ -4,9 +4,10 @@ import { DeviceStatusCard } from './components/DeviceStatusCard';
 import { DigestCard } from './components/DigestCard';
 import { AskCard } from './components/AskCard';
 import { ActionButtons } from './components/ActionButtons';
-import { subscribeStatus, subscribeDigest } from './lib/firebase';
-import { PublicStatus, PublicDigest } from './lib/types';
-import { mockStatus, mockDigest } from './lib/mock-data';
+import { WorkspacePublicView } from './components/WorkspacePublicView';
+import { subscribeStatus, subscribeDigest, subscribeWorkspace } from './lib/firebase';
+import { PublicStatus, PublicDigest, PublicWorkspaceData } from './lib/types';
+import { mockStatus, mockDigest, mockWorkspace } from './lib/mock-data';
 import { Globe, Lock } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -16,6 +17,7 @@ export const App: React.FC = () => {
 
   const [status, setStatus] = useState<PublicStatus>(mockStatus);
   const [digest, setDigest] = useState<PublicDigest>(mockDigest);
+  const [workspace, setWorkspace] = useState<PublicWorkspaceData>(mockWorkspace);
 
   useEffect(() => {
     if (darkMode) {
@@ -32,10 +34,14 @@ export const App: React.FC = () => {
     const unsubDigest = subscribeDigest((newDigest) => {
       if (newDigest) setDigest(newDigest);
     });
+    const unsubWorkspace = subscribeWorkspace((newWs) => {
+      if (newWs) setWorkspace(newWs);
+    });
 
     return () => {
       unsubStatus();
       unsubDigest();
+      unsubWorkspace();
     };
   }, []);
 
@@ -51,6 +57,7 @@ export const App: React.FC = () => {
         <div className="operation-stream">
           <DeviceStatusCard status={status} />
           <AskCard />
+          <WorkspacePublicView workspace={workspace} />
           <DigestCard digest={digest} />
         </div>
 

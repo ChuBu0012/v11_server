@@ -8,8 +8,8 @@ import {
   serverTimestamp,
   Firestore 
 } from 'firebase/firestore';
-import { PublicStatus, PublicDigest, ActionRequest } from './types';
-import { mockStatus, mockDigest } from './mock-data';
+import { PublicStatus, PublicDigest, ActionRequest, PublicWorkspaceData } from './types';
+import { mockStatus, mockDigest, mockWorkspace } from './mock-data';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -77,6 +77,39 @@ export function subscribeDigest(callback: (digest: PublicDigest) => void): () =>
     (err) => {
       console.warn('[firestore] Failed to fetch digest, using fallback:', err);
       callback(mockDigest);
+    }
+  );
+}
+
+// Subscribe to shared public workspace (notes and sheets)
+export function subscribeWorkspace(callback: (ws: PublicWorkspaceData) => void): () => void {
+  if (isMockMode || !db) {
+    callback(mockWorkspace);
+    return () => {};
+  }
+
+  const docRef = doc(db, 'sentinel_workspace', 'shared');
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.data_json) {
+          try {
+            callback(JSON.parse(data.data_json) as PublicWorkspaceData);
+            return;
+          } catch (e) {
+            console.warn('[firestore] parse workspace json failed:', e);
+          }
+        }
+        callback(data as PublicWorkspaceData);
+      } else {
+        callback(mockWorkspace);
+      }
+    },
+    (err) => {
+      console.warn('[firestore] Failed to fetch workspace, using fallback:', err);
+      callback(mockWorkspace);
     }
   );
 }
