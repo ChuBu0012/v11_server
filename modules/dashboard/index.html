@@ -22,6 +22,7 @@
   <script src="/static/js/components/events.js"></script>
   <script src="/static/js/components/schedule-summary.js"></script>
   <script src="/static/js/components/ai-limit.js"></script>
+  <script src="/static/js/marked.min.js"></script>
   <script src="/static/js/components/ask.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
@@ -199,7 +200,7 @@
                 <button type="button" class="btn btn-sm" @click="clear()">ล้าง</button>
               </div>
             </div>
-            <div style="line-height: 1.6; font-size: 14.5px; color: var(--text); word-break: break-word;" x-html="formattedResponse"></div>
+            <div class="markdown-body" style="line-height: 1.6; font-size: 14.5px; color: var(--text); overflow-x: auto; word-break: break-word;" x-html="formattedResponse"></div>
           </div>
         </article>
       </section>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Send, Copy, Check, AlertCircle, LoaderCircle, RotateCcw } from 'lucide-react';
+import { marked } from 'marked';
 import { sendAction, subscribeAction } from '../lib/firebase';
 import { ActionRequest } from '../lib/types';
 
@@ -223,19 +224,20 @@ export const AskCard: React.FC = () => {
             </div>
           </div>
           <div
+            className="markdown-body"
+            dangerouslySetInnerHTML={{
+              __html: marked.parse(trackedAction.result, { gfm: true, breaks: true }) as string
+            }}
             style={{
               fontSize: '14px',
               lineHeight: 1.6,
               color: 'var(--text-primary, inherit)',
-              whiteSpace: 'pre-wrap',
               background: 'var(--surface-input, rgba(255,255,255,0.02))',
               padding: '12px 14px',
               borderRadius: '8px',
               border: '1px solid var(--border-subtle, rgba(255,255,255,0.05))'
             }}
-          >
-            {trackedAction.result}
-          </div>
+          />
         </div>
       )}
     </section>

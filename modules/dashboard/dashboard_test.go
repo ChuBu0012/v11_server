@@ -156,6 +156,7 @@ func TestStaticRoutes(t *testing.T) {
 	staticFiles := []string{
 		"/static/css/styles.css",
 		"/static/js/app.js",
+		"/static/js/marked.min.js",
 		"/static/js/components/telemetry.js",
 		"/static/js/components/charts.js",
 		"/static/js/components/ask.js",

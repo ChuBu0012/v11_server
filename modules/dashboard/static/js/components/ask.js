@@ -74,6 +74,16 @@ document.addEventListener('alpine:init', () => {
 
     get formattedResponse() {
       if (!this.response) return '';
+      if (window.marked && typeof window.marked.parse === 'function') {
+        try {
+          return window.marked.parse(this.response, {
+            gfm: true,
+            breaks: true,
+          });
+        } catch (e) {
+          console.warn('Marked parse error:', e);
+        }
+      }
       return escapeHtml(this.response).replace(/\n/g, '<br>');
     }
   }));

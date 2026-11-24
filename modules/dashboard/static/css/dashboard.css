@@ -98,3 +98,24 @@
   .metric-wide { grid-column: auto; }
   .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Markdown Content Rendering */
+.markdown-body { font-size: 14.5px; line-height: 1.6; }
+.markdown-body p { margin: 8px 0; }
+.markdown-body p:first-child { margin-top: 0; }
+.markdown-body p:last-child { margin-bottom: 0; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { margin: 14px 0 6px; font-weight: 700; color: var(--text); }
+.markdown-body h1 { font-size: 1.25rem; }
+.markdown-body h2 { font-size: 1.15rem; }
+.markdown-body h3 { font-size: 1.05rem; }
+.markdown-body table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--border-subtle, rgba(255,255,255,0.1)); padding: 8px 12px; text-align: left; }
+.markdown-body th { background: var(--pearl, rgba(255,255,255,0.04)); font-weight: 600; color: var(--text); }
+.markdown-body tr:nth-child(even) td { background: var(--surface-subtle, rgba(255,255,255,0.02)); }
+.markdown-body ul, .markdown-body ol { margin: 8px 0; padding-left: 22px; }
+.markdown-body li { margin-bottom: 4px; }
+.markdown-body code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9em; background: var(--pearl, rgba(255,255,255,0.08)); padding: 2px 5px; border-radius: 4px; }
+.markdown-body pre { background: var(--surface-input, rgba(0,0,0,0.3)); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 10px 0; }
+.markdown-body pre code { background: transparent; padding: 0; }
+.markdown-body blockquote { border-left: 3px solid var(--blue, #3b82f6); margin: 8px 0; padding-left: 12px; color: var(--muted); }
+.markdown-body hr { border: 0; height: 1px; background: var(--border-subtle, rgba(255,255,255,0.1)); margin: 14px 0; }
