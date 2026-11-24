@@ -25,7 +25,6 @@ import (
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
 	"v11-server/modules/endpoints"
-	"v11-server/modules/insight"
 	"v11-server/modules/location"
 	"v11-server/modules/logs"
 	"v11-server/modules/relay"
@@ -103,7 +102,6 @@ type App struct {
 	locationRetention *worker.Worker
 	aiClient          *ai.Client
 	aiEngine          *ai.Engine
-	insight           *insight.Service
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
 	cloudsyncWorker   *cloudsync.Worker
@@ -387,39 +385,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		})
 	}
 
-	// Morning insight: deterministic facts, narrated by OpenRouter → Gemini → template.
-	var insightSvc *insight.Service
-	if insightStore, err := insight.NewStore(dbConn); err != nil {
-		log.Printf("Warning: failed to initialize insight store: %v", err)
-	} else {
-		var providers []insight.Provider
-		if aiEngine.HasAPIKey() {
-			providers = append(providers, insight.Provider{Name: "ai-fallback-engine", Gen: aiEngine, Timeout: 35 * time.Second})
-		} else {
-			if aiClient.HasAPIKey() {
-				providers = append(providers, insight.Provider{Name: "openrouter", Gen: aiClient, Timeout: 15 * time.Second})
-			}
-			if strings.TrimSpace(cfg.GeminiAPIKey) != "" {
-				providers = append(providers, insight.Provider{Name: "gemini", Gen: digest.NewGeminiClient(cfg.GeminiAPIKey), Timeout: 30 * time.Second})
-			}
-		}
-		var locStore *location.Store
-		if locationErr == nil {
-			locStore = locationStore
-		}
-		var remStore *reminders.Store
-		if reminderErr == nil {
-			remStore = reminderStore
-		}
-		insightSvc = insight.NewService(insightStore, insight.NewSources(telemetryRepo, locStore, remStore), providers, notifier)
-		if botRouter != nil {
-			botRouter.SetInsightFunc(func(ctx context.Context) (string, error) {
-				rep, _, err := insightSvc.Generate(ctx, insight.KindManual)
-				return rep.TextHTML, err
-			})
-		}
-	}
-
 	// CloudSync (Firestore Public Hub)
 	cloudClient, err := cloudsync.NewClient(cfg.FirestoreCredentials, cfg.FirestoreProjectID)
 	if err != nil {
@@ -482,7 +447,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationRetention: locationRetention,
 		aiClient:          aiClient,
 		aiEngine:          aiEngine,
-		insight:           insightSvc,
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
 		cloudsyncWorker:   cloudsyncWorker,
@@ -658,9 +622,6 @@ func main() {
 				log.Printf("Warning: initial AI quota collection error: %v", err)
 			}
 		}()
-	}
-	if app.insight != nil {
-		go app.insight.RunScheduler(workerCtx)
 	}
 	if app.locationRetention != nil {
 		app.locationRetention.Start(workerCtx)

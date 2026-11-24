@@ -82,21 +82,17 @@ func (k *KeyboardsModule) SetRebootFunc(f func()) {
 	k.rebootFunc = f
 }
 
-// MakeDefaultReplyKeyboard creates a persistent, compact 3x2 reply keyboard for chat shortcuts.
+// MakeDefaultReplyKeyboard creates a persistent, compact 2x2 reply keyboard for chat shortcuts.
 func MakeDefaultReplyKeyboard() *ReplyKeyboardMarkup {
 	return &ReplyKeyboardMarkup{
 		Keyboard: [][]KeyboardButton{
 			{
-				{Text: "🎛️ แผงควบคุม"},
 				{Text: "📊 สถานะระบบ"},
-			},
-			{
-				{Text: "🗺️ พิกัดสด"},
 				{Text: "📰 สรุปประจำวัน"},
 			},
 			{
-				{Text: "☀️ มอร์นิ่งอินไซต์"},
-				{Text: "🤖 สั่งงาน AI"},
+				{Text: "🗺️ พิกัดสด"},
+				{Text: "🎛️ แผงควบคุม"},
 			},
 		},
 		ResizeKeyboard: true,
@@ -149,9 +145,6 @@ func MakePanelKeyboard(activeTab string) *InlineKeyboardMarkup {
 			{
 				{Text: "🔄 รีเฟรช", CallbackData: "panel:refresh:digest"},
 				{Text: "📰 สรุปเต็ม /digest", CopyText: &CopyTextButton{Text: "/digest"}},
-			},
-			{
-				{Text: "☀️ มอร์นิ่งอินไซต์", CopyText: &CopyTextButton{Text: "/insight"}},
 			},
 		}
 	case "location":
@@ -218,13 +211,10 @@ func MakeHelpKeyboard() *InlineKeyboardMarkup {
 			},
 			{
 				copyCommand("⚡ โควตา AI", "/quota"),
-				copyCommand("☀️ Insight", "/insight"),
-			},
-			{
 				copyCommand("📰 Digest", "/digest"),
-				copyCommand("💾 Disk", "/exec df -h"),
 			},
 			{
+				copyCommand("💾 Disk", "/exec df -h"),
 				copyCommand("🚀 Deploy", "/deploy"),
 			},
 		},

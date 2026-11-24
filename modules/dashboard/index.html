@@ -236,11 +236,14 @@
           </div>
         </article>
 
-        <!-- Historical Usage Trend Chart -->
-        <div class="chart-grid" style="margin-top: 12px;">
-          <article class="card chart-card" style="grid-column: 1 / -1;">
+        <!-- Historical Usage Trend Chart (Collapsible) -->
+        <details class="card disclosure" style="margin-top: 12px; padding: 12px 18px;">
+          <summary>
+            <span>แนวโน้มการใช้โควตา AI ย้อนหลัง</span>
+          </summary>
+          <div style="margin-top: 14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-              <h3 class="chart-title" style="margin:0;">แนวโน้มโควตา Gemini คงเหลือ (%)</h3>
+              <span style="font-size: 0.85rem; color: var(--muted);">Gemini คงเหลือ (%)</span>
               <div class="segmented range-controls" role="group" aria-label="Quota chart range">
                 <button class="range-btn" type="button" :aria-pressed="hours === 6" @click="setHours(6)">6h</button>
                 <button class="range-btn" type="button" :aria-pressed="hours === 24" @click="setHours(24)">24h</button>
@@ -251,94 +254,108 @@
               <canvas id="quota-chart" role="img" aria-label="AI Quota usage history" :hidden="!hasData || chartUnavailable"></canvas>
               <div class="chart-empty" :hidden="hasData && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'กำลังโหลดข้อมูลหรือยังไม่มีประวัติสถิติ'">กำลังโหลดข้อมูลโควตา…</div>
             </div>
-          </article>
-        </div>
-      </section>
-    </div>
-
-    <!-- 6. Trends -->
-    <div x-data="chartsComponent()">
-      <section class="section" aria-labelledby="history-title">
-        <div class="section-head">
-          <div><h2 id="history-title">แนวโน้มระบบ</h2></div>
-          <div class="segmented range-controls" role="group" aria-label="Chart time range">
-            <button class="range-btn" type="button" :aria-pressed="hours === 1" @click="setHours(1)">1h</button>
-            <button class="range-btn" type="button" :aria-pressed="hours === 6" @click="setHours(6)">6h</button>
-            <button class="range-btn" type="button" :aria-pressed="hours === 24" @click="setHours(24)">24h</button>
-          </div>
-        </div>
-        <div class="alert notice" id="data-notice" role="status" x-show="$store.sentinel.dataNotice.show" :class="{ err: $store.sentinel.dataNotice.error }" x-text="$store.sentinel.dataNotice.text" x-cloak></div>
-        <div class="chart-grid">
-          <article class="card chart-card">
-            <h3 class="chart-title">RAM อุปกรณ์ที่ใช้</h3>
-            <div class="chart-value" id="host-ram-current" x-text="currentValues.hostRam">No sample yet</div>
-            <p class="chart-insight" id="host-ram-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
-            <div class="chart-wrap">
-              <canvas id="host-ram-chart" role="img" aria-label="Host RAM used over time" :hidden="!hasEnoughSamples.hostRam || chartUnavailable"></canvas>
-              <div class="chart-empty" id="host-ram-empty" :hidden="hasEnoughSamples.hostRam && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
-            </div>
-          </article>
-          <article class="card chart-card">
-            <h3 class="chart-title">หน่วยความจำ Go</h3>
-            <div class="chart-value" id="memory-current" x-text="currentValues.memory">No sample yet</div>
-            <p class="chart-insight" id="memory-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
-            <div class="chart-wrap">
-              <canvas id="memory-chart" role="img" aria-label="Go memory allocated over time" :hidden="!hasEnoughSamples.memory || chartUnavailable"></canvas>
-              <div class="chart-empty" id="memory-empty" :hidden="hasEnoughSamples.memory && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
-            </div>
-          </article>
-          <article class="card chart-card">
-            <h3 class="chart-title">พื้นที่ดิสก์คงเหลือ</h3>
-            <div class="chart-value" id="disk-current" x-text="currentValues.disk">No sample yet</div>
-            <p class="chart-insight" id="disk-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
-            <div class="chart-wrap">
-              <canvas id="disk-chart" role="img" aria-label="Free disk space over time" :hidden="!hasEnoughSamples.disk || chartUnavailable"></canvas>
-              <div class="chart-empty" id="disk-empty" :hidden="hasEnoughSamples.disk && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
-            </div>
-          </article>
-          <article class="card chart-card">
-            <h3 class="chart-title">ระดับแบตเตอรี่</h3>
-            <div class="chart-value" id="battery-current" x-text="currentValues.battery">No sample yet</div>
-            <p class="chart-insight" id="battery-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
-            <div class="chart-wrap">
-              <canvas id="battery-chart" role="img" aria-label="Battery level over time" :hidden="!hasEnoughSamples.battery || chartUnavailable"></canvas>
-              <div class="chart-empty" id="battery-empty" :hidden="hasEnoughSamples.battery && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
-            </div>
-          </article>
-        </div>
-
-        <details class="card disclosure samples">
-          <summary>ตัวอย่างข้อมูลล่าสุด</summary>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>เวลา</th><th>Host RAM</th><th>Go Alloc</th><th>Disk Free</th><th>Battery</th><th>Uptime</th></tr></thead>
-              <tbody id="samples-body">
-                <template x-if="recentSamples.length === 0"><tr><td colspan="6" class="loading">No telemetry samples in this period.</td></tr></template>
-                <template x-for="(s, idx) in recentSamples" :key="idx">
-                  <tr><td x-text="s.time"></td><td x-text="s.hostRam"></td><td x-text="s.goRam"></td><td x-text="s.disk"></td><td x-text="s.battery"></td><td x-text="s.uptime"></td></tr>
-                </template>
-              </tbody>
-            </table>
           </div>
         </details>
       </section>
     </div>
 
-    <!-- 7. Events -->
+    <!-- 6. Trends & History (Collapsible) -->
+    <div x-data="chartsComponent()">
+      <section class="section" aria-labelledby="history-title">
+        <details class="card disclosure" style="padding: 12px 18px;" @toggle="onToggle($event)">
+          <summary>
+            <span id="history-title">แนวโน้มระบบย้อนหลัง (RAM, Disk, แบตเตอรี่)</span>
+          </summary>
+          <div style="margin-top: 14px;">
+            <div class="section-head" style="margin-bottom: 12px;">
+              <div><p style="margin:0; font-size: 0.85rem; color: var(--muted);">ช่วงเวลาย้อนหลัง</p></div>
+              <div class="segmented range-controls" role="group" aria-label="Chart time range">
+                <button class="range-btn" type="button" :aria-pressed="hours === 1" @click="setHours(1)">1h</button>
+                <button class="range-btn" type="button" :aria-pressed="hours === 6" @click="setHours(6)">6h</button>
+                <button class="range-btn" type="button" :aria-pressed="hours === 24" @click="setHours(24)">24h</button>
+              </div>
+            </div>
+            <div class="alert notice" id="data-notice" role="status" x-show="$store.sentinel.dataNotice.show" :class="{ err: $store.sentinel.dataNotice.error }" x-text="$store.sentinel.dataNotice.text" x-cloak></div>
+            <div class="chart-grid">
+              <article class="card chart-card">
+                <h3 class="chart-title">RAM อุปกรณ์ที่ใช้</h3>
+                <div class="chart-value" id="host-ram-current" x-text="currentValues.hostRam">No sample yet</div>
+                <p class="chart-insight" id="host-ram-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
+                <div class="chart-wrap">
+                  <canvas id="host-ram-chart" role="img" aria-label="Host RAM used over time" :hidden="!hasEnoughSamples.hostRam || chartUnavailable"></canvas>
+                  <div class="chart-empty" id="host-ram-empty" :hidden="hasEnoughSamples.hostRam && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
+                </div>
+              </article>
+              <article class="card chart-card">
+                <h3 class="chart-title">หน่วยความจำ Go</h3>
+                <div class="chart-value" id="memory-current" x-text="currentValues.memory">No sample yet</div>
+                <p class="chart-insight" id="memory-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
+                <div class="chart-wrap">
+                  <canvas id="memory-chart" role="img" aria-label="Go memory allocated over time" :hidden="!hasEnoughSamples.memory || chartUnavailable"></canvas>
+                  <div class="chart-empty" id="memory-empty" :hidden="hasEnoughSamples.memory && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
+                </div>
+              </article>
+              <article class="card chart-card">
+                <h3 class="chart-title">พื้นที่ดิสก์คงเหลือ</h3>
+                <div class="chart-value" id="disk-current" x-text="currentValues.disk">No sample yet</div>
+                <p class="chart-insight" id="disk-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
+                <div class="chart-wrap">
+                  <canvas id="disk-chart" role="img" aria-label="Free disk space over time" :hidden="!hasEnoughSamples.disk || chartUnavailable"></canvas>
+                  <div class="chart-empty" id="disk-empty" :hidden="hasEnoughSamples.disk && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
+                </div>
+              </article>
+              <article class="card chart-card">
+                <h3 class="chart-title">ระดับแบตเตอรี่</h3>
+                <div class="chart-value" id="battery-current" x-text="currentValues.battery">No sample yet</div>
+                <p class="chart-insight" id="battery-insight" aria-live="polite">กำลังคำนวณจากข้อมูลย้อนหลัง…</p>
+                <div class="chart-wrap">
+                  <canvas id="battery-chart" role="img" aria-label="Battery level over time" :hidden="!hasEnoughSamples.battery || chartUnavailable"></canvas>
+                  <div class="chart-empty" id="battery-empty" :hidden="hasEnoughSamples.battery && !chartUnavailable" x-text="chartUnavailable ? 'เชื่อมต่อไลบรารีกราฟไม่ได้' : 'ข้อมูลยังไม่พอสำหรับกราฟ'">ข้อมูลยังไม่พอสำหรับกราฟ</div>
+                </div>
+              </article>
+            </div>
+
+            <details class="disclosure samples" style="margin-top: 14px;">
+              <summary>ตารางตัวอย่างข้อมูลล่าสุด</summary>
+              <div class="table-scroll" style="margin-top: 10px;">
+                <table>
+                  <thead><tr><th>เวลา</th><th>Host RAM</th><th>Go Alloc</th><th>Disk Free</th><th>Battery</th><th>Uptime</th></tr></thead>
+                  <tbody id="samples-body">
+                    <template x-if="recentSamples.length === 0"><tr><td colspan="6" class="loading">No telemetry samples in this period.</td></tr></template>
+                    <template x-for="(s, idx) in recentSamples" :key="idx">
+                      <tr><td x-text="s.time"></td><td x-text="s.hostRam"></td><td x-text="s.goRam"></td><td x-text="s.disk"></td><td x-text="s.battery"></td><td x-text="s.uptime"></td></tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </details>
+      </section>
+    </div>
+
+    <!-- 7. Events (Collapsible) -->
     <div x-data="eventsComponent()">
       <section class="section" aria-labelledby="logs-title">
-        <div class="section-head"><div><h2 id="logs-title">เหตุการณ์ล่าสุด</h2><p>5 รายการล่าสุด · ล้างรายการเก่ากว่า 7 วันทุกวันจันทร์</p></div></div>
-        <div class="card logs" id="logs-list">
-          <template x-if="loading"><div class="loading">Loading recent events…</div></template>
-          <template x-if="!loading && logs.length === 0"><div class="loading">No events recorded yet.</div></template>
-          <template x-for="(entry, idx) in logs" :key="idx">
-            <div class="log-row">
-              <span :class="'log-level ' + formatRowLevel(entry.level)" x-text="entry.level || 'info'"></span>
-              <time class="log-time" :datetime="entry.created_at || ''" x-text="formatRowTime(entry.created_at)"></time>
-              <span class="log-message" x-text="formatRowMessage(entry)"></span>
+        <details class="card disclosure" style="padding: 12px 18px;">
+          <summary>
+            <span id="logs-title">บันทึกเหตุการณ์ระบบล่าสุด</span>
+          </summary>
+          <div style="margin-top: 14px;">
+            <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: var(--muted);">5 รายการล่าสุด · ล้างรายการเก่ากว่า 7 วันทุกวันจันทร์</p>
+            <div class="card logs" id="logs-list">
+              <template x-if="loading"><div class="loading">Loading recent events…</div></template>
+              <template x-if="!loading && logs.length === 0"><div class="loading">No events recorded yet.</div></template>
+              <template x-for="(entry, idx) in logs" :key="idx">
+                <div class="log-row">
+                  <span :class="'log-level ' + formatRowLevel(entry.level)" x-text="entry.level || 'info'"></span>
+                  <time class="log-time" :datetime="entry.created_at || ''" x-text="formatRowTime(entry.created_at)"></time>
+                  <span class="log-message" x-text="formatRowMessage(entry)"></span>
+                </div>
+              </template>
             </div>
-          </template>
-        </div>
+          </div>
+        </details>
       </section>
     </div>
 

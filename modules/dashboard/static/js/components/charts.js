@@ -212,6 +212,18 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    onToggle(e) {
+      if (e && e.target && e.target.open) {
+        this.$nextTick(() => {
+          Object.values(chartInstances).forEach((c) => {
+            if (c) {
+              try { c.resize(); } catch (_) {}
+            }
+          });
+        });
+      }
+    },
+
     async loadHistory() {
       try {
         const data = await getJSON(`/api/telemetry/history?hours=${this.hours}&limit=500`);

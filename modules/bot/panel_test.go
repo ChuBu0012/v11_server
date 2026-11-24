@@ -16,11 +16,11 @@ func TestMakeReplyKeyboard(t *testing.T) {
 	if !kb.ResizeKeyboard || !kb.IsPersistent {
 		t.Errorf("Expected ResizeKeyboard and IsPersistent to be true")
 	}
-	if len(kb.Keyboard) != 3 {
-		t.Fatalf("Expected 3 rows in reply keyboard, got %d", len(kb.Keyboard))
+	if len(kb.Keyboard) != 2 {
+		t.Fatalf("Expected 2 rows in reply keyboard, got %d", len(kb.Keyboard))
 	}
-	if len(kb.Keyboard[0]) != 2 || kb.Keyboard[0][0].Text != "🎛️ แผงควบคุม" {
-		t.Errorf("Expected first button to be '🎛️ แผงควบคุม', got %q", kb.Keyboard[0][0].Text)
+	if len(kb.Keyboard[0]) != 2 || kb.Keyboard[0][0].Text != "📊 สถานะระบบ" {
+		t.Errorf("Expected first button to be '📊 สถานะระบบ', got %q", kb.Keyboard[0][0].Text)
 	}
 
 	rm := MakeRemoveReplyKeyboard()

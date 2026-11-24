@@ -57,7 +57,7 @@ func (s *AskCacheStore) Get(ctx context.Context, prompt, model string) (*AskCach
 	query := `
 		SELECT id, prompt_hash, prompt_text, model_name, response_text, created_at, expires_at
 		FROM ask_cache
-		WHERE prompt_hash = ? AND expires_at > datetime('now')
+		WHERE prompt_hash = ? AND datetime(expires_at) > datetime('now')
 		LIMIT 1;
 	`
 	var entry AskCacheEntry
@@ -115,7 +115,7 @@ func (s *AskCacheStore) PruneExpired(ctx context.Context) (int64, error) {
 	if s.db == nil {
 		return 0, nil
 	}
-	query := `DELETE FROM ask_cache WHERE expires_at <= datetime('now');`
+	query := `DELETE FROM ask_cache WHERE datetime(expires_at) <= datetime('now');`
 	res, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		return 0, fmt.Errorf("ask cache prune failed: %w", err)
