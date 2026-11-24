@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -102,6 +103,7 @@ type App struct {
 	locationRetention *worker.Worker
 	aiClient          *ai.Client
 	aiEngine          *ai.Engine
+	askRouter         *bot.AskTriageRouter
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
 	cloudsyncWorker   *cloudsync.Worker
@@ -174,6 +176,8 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	// AI Multi-Provider Fallback Engine initialization (Groq -> Gemini -> OpenRouter)
 	aiEngine := ai.NewDefaultEngine(cfg.GroqAPIKey, cfg.GeminiAPIKey, cfg.OpenRouterAPIKey)
 	aiClient := ai.NewClient(cfg.OpenRouterAPIKey)
+	askCacheStore := bot.NewAskCacheStore(dbConn)
+	askRouter := bot.NewAskTriageRouter(aiEngine, askCacheStore)
 
 	var botPoller *bot.Poller
 	var botClient *bot.Client
@@ -312,8 +316,6 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			return quotaSvc.FormatPostTaskQuotaMessage(resp), nil
 		}))
 
-		askCacheStore := bot.NewAskCacheStore(dbConn)
-		askRouter := bot.NewAskTriageRouter(aiEngine, askCacheStore)
 		routerOpts = append(routerOpts, bot.WithAskRouter(askRouter))
 		routerOpts = append(routerOpts, bot.WithRingController(ringCtrl))
 
@@ -404,6 +406,19 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 				return "digest completed", nil
 			}
 			return "", fmt.Errorf("digest service not available")
+		}, func(ctx context.Context, prompt, model string) (string, error) {
+			if askRouter == nil {
+				return "", fmt.Errorf("AI ask service not configured")
+			}
+			opts := bot.ParseAskInput(prompt)
+			if model != "" && model != "auto" {
+				opts.Model = model
+			}
+			res, err := askRouter.ExecuteFast(ctx, opts)
+			if err != nil {
+				return "", err
+			}
+			return res.ResponseText, nil
 		}, func(ctx context.Context, htmlMsg string) error {
 			if botClient != nil && cfg.TelegramChatID != "" {
 				chatID, _ := strconv.ParseInt(cfg.TelegramChatID, 10, 64)
@@ -447,6 +462,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationRetention: locationRetention,
 		aiClient:          aiClient,
 		aiEngine:          aiEngine,
+		askRouter:         askRouter,
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
 		cloudsyncWorker:   cloudsyncWorker,
@@ -550,6 +566,56 @@ func setupRouter(app *App) *gin.Engine {
 			return
 		}
 		c.JSON(http.StatusOK, result)
+	})
+
+	// Mount Ask AI endpoint: POST /api/ask
+	r.POST("/api/ask", func(c *gin.Context) {
+		var req struct {
+			Prompt string `json:"prompt"`
+			Model  string `json:"model"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
+			return
+		}
+		prompt := strings.TrimSpace(req.Prompt)
+		if prompt == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
+			return
+		}
+
+		if app.askRouter == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service not configured"})
+			return
+		}
+
+		guard := bot.NewPromptGuard()
+		if _, err := guard.ValidateAndFrameQuestion(prompt); err != nil {
+			if errors.Is(err, bot.ErrPromptTooLong) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "prompt is too long (max 2000 characters)"})
+				return
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt failed security check"})
+			return
+		}
+
+		opts := bot.ParseAskInput(prompt)
+		if req.Model != "" && req.Model != "auto" {
+			opts.Model = req.Model
+		}
+
+		res, err := app.askRouter.ExecuteFast(c.Request.Context(), opts)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"response":    res.ResponseText,
+			"provider":    res.Provider,
+			"cached":      res.IsCached,
+			"duration_ms": res.Duration.Milliseconds(),
+		})
 	})
 
 	// Redirect legacy /status requests directly to Gatus health dashboard (port 8081)

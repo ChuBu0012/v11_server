@@ -82,19 +82,29 @@ export function subscribeDigest(callback: (digest: PublicDigest) => void): () =>
 }
 
 // Dispatch an action to Firestore
-export async function sendAction(action: string): Promise<string> {
+export async function sendAction(
+  action: string,
+  payload?: { prompt?: string; model?: string }
+): Promise<string> {
   if (isMockMode || !db) {
     await new Promise((r) => setTimeout(r, 800));
     return `preview-${action}-${Date.now()}`;
   }
 
   const colRef = collection(db, 'sentinel_actions');
-  const res = await addDoc(colRef, {
+  const docData: Record<string, any> = {
     action,
     status: 'pending',
     requested_at: new Date().toISOString(),
     created_at: serverTimestamp(),
-  });
+  };
+  if (payload?.prompt) {
+    docData.prompt = payload.prompt;
+  }
+  if (payload?.model) {
+    docData.model = payload.model;
+  }
+  const res = await addDoc(colRef, docData);
   return res.id;
 }
 
@@ -102,11 +112,13 @@ export function subscribeAction(id: string, callback: (action: ActionRequest | n
   if (!db || id.startsWith('preview-')) {
     callback({
       id,
-      action: id.includes('digest') ? 'refresh_digest' : 'ping',
+      action: id.includes('digest') ? 'refresh_digest' : id.includes('ask') ? 'ask' : 'ping',
       status: 'completed',
       requested_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
-      result: 'Preview completed',
+      result: id.includes('ask') 
+        ? 'คำตอบจำลอง: ท้องฟ้าเป็นสีฟ้าเนื่องจากการกระเจิงแบบเรย์ลี (Rayleigh scattering) เมื่อแสงอาทิตย์เดินทางผ่านชั้นบรรยากาศ'
+        : 'Preview completed',
     });
     return () => {};
   }

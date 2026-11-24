@@ -22,6 +22,7 @@
   <script src="/static/js/components/events.js"></script>
   <script src="/static/js/components/schedule-summary.js"></script>
   <script src="/static/js/components/ai-limit.js"></script>
+  <script src="/static/js/components/ask.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body x-data>
@@ -132,6 +133,75 @@
             </article>
           </template>
         </div>
+      </section>
+    </div>
+
+    <!-- 2.5 Ask AI Section -->
+    <div x-data="askComponent()">
+      <section class="section" aria-labelledby="ask-title">
+        <div class="section-head">
+          <div>
+            <h2 id="ask-title">ถาม-ตอบ AI</h2>
+            <p>สอบถาม สรุป หรือวิเคราะห์ข้อมูลด้วย Fast LLM (Groq / Gemini)</p>
+          </div>
+          <div class="segmented range-controls" role="group" aria-label="Model selector">
+            <button class="range-btn" type="button" :aria-pressed="model === 'auto'" @click="model = 'auto'">Auto</button>
+            <button class="range-btn" type="button" :aria-pressed="model === 'groq'" @click="model = 'groq'">Groq</button>
+            <button class="range-btn" type="button" :aria-pressed="model === 'gemini'" @click="model = 'gemini'">Gemini</button>
+          </div>
+        </div>
+
+        <article class="card" style="padding: 16px 18px;">
+          <form @submit.prevent="submit()" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 8px;">
+              <input
+                type="text"
+                x-model="prompt"
+                placeholder="พิมพ์คำถามที่ต้องการถาม AI... (กด Enter เพื่อส่ง)"
+                :disabled="loading"
+                style="flex: 1; min-height: 42px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-subtle, rgba(255,255,255,0.1)); background: var(--pearl, rgba(255,255,255,0.04)); color: var(--text); font-size: 15px;"
+              >
+              <button
+                type="submit"
+                class="btn btn-sm btn-primary"
+                :disabled="loading || !prompt.trim()"
+                style="min-width: 80px; height: 42px;"
+              >
+                <span x-show="!loading">ส่งคำถาม</span>
+                <span x-show="loading" x-cloak>กำลังคิด…</span>
+              </button>
+            </div>
+
+            <!-- Quick prompt suggestions -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px;">
+              <span style="color: var(--muted);">แนะนำ:</span>
+              <button type="button" class="chip" @click="setPrompt('สรุปสถานะสุขภาพเครื่องตอนนี้')" :disabled="loading">สุขภาพเครื่อง</button>
+              <button type="button" class="chip" @click="setPrompt('ทำไมทองคำราคาถึงขึ้นลง')" :disabled="loading">ราคาทองคำ</button>
+              <button type="button" class="chip" @click="setPrompt('แนะนำคำสั่ง Telegram bot ที่ใช้บ่อย')" :disabled="loading">คำสั่งบอท</button>
+            </div>
+          </form>
+
+          <!-- Error notice -->
+          <div class="alert notice err" style="margin-top: 12px;" x-show="error" x-cloak>
+            <span x-text="error"></span>
+          </div>
+
+          <!-- Response display -->
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));" x-show="response" x-cloak>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="chip ok" x-text="cached ? '⚡ CACHED' : (provider.toUpperCase() + ' (' + (durationMs/1000).toFixed(2) + 's)')"></span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm" @click="copyResponse()">
+                  <span x-text="copied ? 'คัดลอกแล้ว ✓' : 'คัดลอก'">คัดลอก</span>
+                </button>
+                <button type="button" class="btn btn-sm" @click="clear()">ล้าง</button>
+              </div>
+            </div>
+            <div style="line-height: 1.6; font-size: 14.5px; color: var(--text); word-break: break-word;" x-html="formattedResponse"></div>
+          </div>
+        </article>
       </section>
     </div>
 

@@ -158,6 +158,7 @@ func TestStaticRoutes(t *testing.T) {
 		"/static/js/app.js",
 		"/static/js/components/telemetry.js",
 		"/static/js/components/charts.js",
+		"/static/js/components/ask.js",
 		"/static/js/components/digest.js",
 		"/static/js/components/events.js",
 		"/static/js/components/watchtower.js",

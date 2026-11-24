@@ -49,6 +49,8 @@ export interface PublicDigest {
 export interface ActionRequest {
   id?: string;
   action: string;
+  prompt?: string;
+  model?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   requested_at: string;
   completed_at?: string | null;

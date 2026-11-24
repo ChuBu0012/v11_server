@@ -402,10 +402,15 @@ func (c *RESTClient) GetPendingActions(ctx context.Context) ([]ActionRequest, er
 			reqTime, _ = time.Parse(time.RFC3339, doc.CreateTime)
 		}
 
+		prompt := doc.Fields["prompt"].StringValue
+		model := doc.Fields["model"].StringValue
+
 		actions = append(actions, ActionRequest{
 			ID:          id,
 			Action:      actionType,
 			Status:      status,
+			Prompt:      prompt,
+			Model:       model,
 			RequestedAt: reqTime,
 		})
 	}

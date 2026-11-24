@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Header } from './components/Header';
 import { DeviceStatusCard } from './components/DeviceStatusCard';
 import { DigestCard } from './components/DigestCard';
+import { AskCard } from './components/AskCard';
 import { ActionButtons } from './components/ActionButtons';
 import { subscribeStatus, subscribeDigest } from './lib/firebase';
 import { PublicStatus, PublicDigest } from './lib/types';
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
       <main className="dashboard-layout">
         <div className="operation-stream">
           <DeviceStatusCard status={status} />
+          <AskCard />
           <DigestCard digest={digest} />
         </div>
 

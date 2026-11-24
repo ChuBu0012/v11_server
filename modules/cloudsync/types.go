@@ -62,6 +62,8 @@ type ActionRequest struct {
 	ID          string     `json:"id"`
 	Action      string     `json:"action"`
 	Status      string     `json:"status"` // pending, processing, completed, failed
+	Prompt      string     `json:"prompt,omitempty"`
+	Model       string     `json:"model,omitempty"`
 	RequestedAt time.Time  `json:"requested_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Result      string     `json:"result,omitempty"`

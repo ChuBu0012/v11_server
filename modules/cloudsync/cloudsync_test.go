@@ -84,6 +84,8 @@ func TestSanitizeDigest(t *testing.T) {
 func TestActionDispatcher_Whitelist(t *testing.T) {
 	dispatcher := NewActionDispatcher(func(ctx context.Context) (string, error) {
 		return "digest ran successfully", nil
+	}, func(ctx context.Context, prompt, model string) (string, error) {
+		return "answer: " + prompt, nil
 	}, nil)
 
 	ctx := context.Background()
@@ -100,7 +102,13 @@ func TestActionDispatcher_Whitelist(t *testing.T) {
 		t.Fatalf("expected digest success, got %v / %s", err, digRes)
 	}
 
-	// 3. Disallowed: dangerous command
+	// 3. Allowed: ask
+	askRes, err := dispatcher.Dispatch(ctx, ActionRequest{Action: "ask", Prompt: "test question"})
+	if err != nil || !strings.Contains(askRes, "answer: test question") {
+		t.Fatalf("expected ask success, got %v / %s", err, askRes)
+	}
+
+	// 4. Disallowed: dangerous command
 	_, err = dispatcher.Dispatch(ctx, ActionRequest{Action: "rm -rf /"})
 	if err == nil {
 		t.Fatalf("expected error for disallowed action, got nil")
