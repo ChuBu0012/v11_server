@@ -1,5 +1,12 @@
 /* Pocket Sentinel — Overview (dashboard) page */
 
+.page { max-width: 920px; }
+.hero { position: relative; overflow: hidden; background:
+  linear-gradient(135deg, rgba(88,101,242,.12), transparent 48%),
+  var(--card); }
+.hero::after { content: ""; position: absolute; width: 180px; height: 180px; right: -100px; top: -110px; border: 1px solid rgba(88,101,242,.22); border-radius: 50%; box-shadow: 0 0 0 28px rgba(88,101,242,.04), 0 0 0 56px rgba(88,101,242,.025); }
+.hero h1, .hero-copy, .hero-actions { position: relative; z-index: 1; }
+
 /* Top bar sync badge */
 .sync-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--pearl); font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }

@@ -25,7 +25,7 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({ status }) =>
   };
 
   return (
-    <div className="bg-white dark:bg-[#1a1b23] border border-gray-100 dark:border-gray-800/80 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="status-panel">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Server className="w-4 h-4 text-[#0066cc]" />
@@ -38,7 +38,7 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({ status }) =>
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="metric-grid">
         {/* Battery */}
         <div className="bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl p-3.5 border border-gray-100/80 dark:border-gray-800/60">
           <div className="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">

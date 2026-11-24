@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { RefreshCw, Zap, Check, AlertCircle } from 'lucide-react';
-import { sendAction } from '../lib/firebase';
+import React, { useEffect, useState } from 'react';
+import { RefreshCw, Zap, Check, AlertCircle, LoaderCircle } from 'lucide-react';
+import { sendAction, subscribeAction } from '../lib/firebase';
+import { ActionRequest } from '../lib/types';
 
 export const ActionButtons: React.FC = () => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
   const [cooldown, setCooldown] = useState(false);
+  const [trackedAction, setTrackedAction] = useState<ActionRequest | null>(null);
+
+  useEffect(() => {
+    if (!trackedAction?.id) return;
+    if (trackedAction.status === 'completed' || trackedAction.status === 'failed') {
+      setLoadingAction(null);
+    }
+  }, [trackedAction]);
 
   const handleTrigger = async (action: string, label: string) => {
     if (cooldown || loadingAction) return;
@@ -15,7 +24,9 @@ export const ActionButtons: React.FC = () => {
 
     try {
       const res = await sendAction(action);
-      setStatusMessage({ text: `ส่งคำสั่ง "${label}" สำเร็จ (ID: ${res}) ระบบกำลังทำงานเบื้องหลัง` });
+      setTrackedAction(null);
+      setStatusMessage({ text: `ส่ง "${label}" แล้ว · กำลังรอ v11 ประมวลผล` });
+      subscribeAction(res, (next) => setTrackedAction(next));
       setCooldown(true);
       setTimeout(() => setCooldown(false), 8000);
     } catch (err: any) {
@@ -26,7 +37,7 @@ export const ActionButtons: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#1a1b23] border border-gray-100 dark:border-gray-800/80 rounded-[20px] p-5 shadow-sm">
+    <div className="action-panel">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
           การสั่งงานพื้นฐาน (Safe Actions)
@@ -54,20 +65,32 @@ export const ActionButtons: React.FC = () => {
         </button>
       </div>
 
-      {statusMessage && (
+      {(statusMessage || trackedAction) && (
         <div
           className={`mt-3 p-3 rounded-xl text-xs flex items-center space-x-2 animate-fadeIn ${
-            statusMessage.isError
+            statusMessage?.isError || trackedAction?.status === 'failed'
               ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900'
-              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+              : trackedAction?.status === 'completed'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900'
           }`}
         >
-          {statusMessage.isError ? (
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {statusMessage?.isError || trackedAction?.status === 'failed' ? (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          ) : trackedAction?.status === 'completed' ? (
+            <Check className="w-4 h-4 shrink-0" />
           ) : (
-            <Check className="w-4 h-4 flex-shrink-0" />
+            <LoaderCircle className="w-4 h-4 shrink-0 animate-spin" />
           )}
-          <span>{statusMessage.text}</span>
+          <span>
+            {trackedAction?.status === 'failed'
+              ? trackedAction.result || 'v11 ประมวลคำสั่งไม่สำเร็จ'
+              : trackedAction?.status === 'completed'
+                ? `เสร็จสมบูรณ์ · ${trackedAction.result || 'ไม่มีรายละเอียดเพิ่มเติม'}`
+                : trackedAction?.status === 'processing'
+                  ? 'v11 กำลังประมวลคำสั่ง…'
+                  : statusMessage?.text}
+          </span>
         </div>
       )}
     </div>

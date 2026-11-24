@@ -1,5 +1,5 @@
 /* =============================================================================
-   Pocket Sentinel — Sentinel Soft shared foundation (mobile-first)
+   Pocket Sentinel — Operational Soft shared foundation (Elysia-inspired)
    Tokens, reset, top bar, bottom task nav, and reusable components.
    Page-specific rules live in dashboard.css, schedule.css, live-map.css, relay.css.
    ============================================================================= */
@@ -39,7 +39,7 @@
   --nav-h: 56px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
-  --page-max: 720px;
+  --page-max: 920px;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Noto Sans Thai", sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;

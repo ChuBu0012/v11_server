@@ -15,7 +15,7 @@ export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#1a1b23] border border-gray-100 dark:border-gray-800/80 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="digest-panel">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Newspaper className="w-4 h-4 text-[#0066cc]" />
@@ -30,7 +30,7 @@ export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
 
       {/* Gold Quote Highlight */}
       {gold && (
-        <div className="mb-4 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-2xl p-4">
+        <div className="mb-4 bg-linear-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="flex items-center space-x-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
               <Coins className="w-4 h-4" />

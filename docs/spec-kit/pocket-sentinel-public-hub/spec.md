@@ -34,6 +34,8 @@ Create the **Pocket Sentinel Public Hub** using a clean **Decoupled Cloud Buffer
   - **HARD BAN on Destructive Shell/Hardware:** Public UI cannot trigger `/exec`, torch, alarm ringing, or process restarts.
 - **Graceful Fallback & Dry-Run Mode:** If Firestore credentials are missing, both v11 and Vercel operate smoothly without errors, using mock data and skipping network sync.
 - **Sub-Second Real-Time Updates:** Vercel UI updates live metrics (battery, RAM, disk, services) via Firestore `onSnapshot`.
+- **Modern Operational Visual Language:** Public and local dashboards share shield/signal branding, restrained indigo status accents, compact cards, clear stale/error states, and responsive desktop/mobile layouts.
+- **Action Lifecycle Feedback:** Public actions subscribe to their Firestore action document and show `pending`, `processing`, `completed`, or `failed` instead of reporting success only from document creation.
 - **Safe Public Action Triggers:** Allows triggering safe maintenance actions (e.g., refresh daily digest, ping health check) from the web UI.
 - **Zero Impact on v11 Memory Budget:** Keep v11 RAM footprint well within budget (< 300MB, targeting < 25MB total).
 

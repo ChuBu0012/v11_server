@@ -1,0 +1,17 @@
+{
+  "name": "Pocket Sentinel Public Hub",
+  "short_name": "Sentinel",
+  "description": "Public telemetry and operations surface for Pocket Sentinel",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101116",
+  "theme_color": "#101116",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

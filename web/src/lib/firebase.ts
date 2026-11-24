@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   Firestore 
 } from 'firebase/firestore';
-import { PublicStatus, PublicDigest } from './types';
+import { PublicStatus, PublicDigest, ActionRequest } from './types';
 import { mockStatus, mockDigest } from './mock-data';
 
 const firebaseConfig = {
@@ -85,7 +85,7 @@ export function subscribeDigest(callback: (digest: PublicDigest) => void): () =>
 export async function sendAction(action: string): Promise<string> {
   if (isMockMode || !db) {
     await new Promise((r) => setTimeout(r, 800));
-    return `[Mock Mode] Action "${action}" recorded locally (simulated)`;
+    return `preview-${action}-${Date.now()}`;
   }
 
   const colRef = collection(db, 'sentinel_actions');
@@ -96,4 +96,25 @@ export async function sendAction(action: string): Promise<string> {
     created_at: serverTimestamp(),
   });
   return res.id;
+}
+
+export function subscribeAction(id: string, callback: (action: ActionRequest | null) => void): () => void {
+  if (!db || id.startsWith('preview-')) {
+    callback({
+      id,
+      action: id.includes('digest') ? 'refresh_digest' : 'ping',
+      status: 'completed',
+      requested_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      result: 'Preview completed',
+    });
+    return () => {};
+  }
+
+  return onSnapshot(doc(db, 'sentinel_actions', id), (snap) => {
+    callback(snap.exists() ? ({ id: snap.id, ...snap.data() } as ActionRequest) : null);
+  }, (err) => {
+    console.warn('[firestore] Failed to track action:', err);
+    callback(null);
+  });
 }

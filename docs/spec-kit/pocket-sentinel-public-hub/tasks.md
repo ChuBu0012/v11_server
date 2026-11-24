@@ -50,3 +50,28 @@
   - Run `go test ./...` and `go build ./...`.
   - Run `cd web && npm run build` to verify production bundle.
   - Cross-compile ARM64 binary (`CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -o server .`).
+
+- [x] **T011: Modernize Public Dashboard**
+  - Rebuild the public dashboard hierarchy for status, digest, and safe actions.
+  - Add stale/live/preview sync states and responsive desktop/mobile behavior.
+  - Add a shared Pocket Sentinel shield/signal icon and PWA manifest.
+
+- [x] **T012: Modernize v11 Embedded Dashboard Visual Tokens**
+  - Align page maximum width, hero surface, and service status styling with the public operations UI.
+  - Bump the PWA shell cache version for dashboard assets.
+
+- [x] **T013: Real Action Lifecycle Tracking**
+  - Subscribe to the created `sentinel_actions/{id}` document.
+  - Render pending, processing, completed, and failed states from the actual document status.
+
+- [ ] **T014: CloudSync Health Projection**
+  - Add last sync success, worker state, and dry-run/credential state to the public status payload.
+  - Render an incident/stale banner before telemetry age becomes ambiguous.
+
+- [ ] **T015: Action Security Hardening**
+  - Add idempotency keys and replay protection to public action creation.
+  - Validate action shape and add server-side rate limits before expanding the whitelist.
+
+- [ ] **T016: Privacy-Safe Public Features**
+  - Add digest history and public next-schedule summary.
+  - Keep GPS, AI quota, credentials, chat IDs, and private identifiers out of Firestore.

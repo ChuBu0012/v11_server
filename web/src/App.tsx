@@ -39,38 +39,30 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-      {/* Header */}
+    <div className="app-shell">
       <Header
         darkMode={darkMode}
         onToggleTheme={() => setDarkMode(!darkMode)}
+        status={status}
       />
 
-      {/* Main Status & Telemetry */}
-      <DeviceStatusCard status={status} />
+      <main className="dashboard-grid">
+        <section className="primary-column">
+          <DeviceStatusCard status={status} />
+          <DigestCard digest={digest} />
+        </section>
 
-      {/* Safe Actions */}
-      <ActionButtons />
+        <aside className="secondary-column">
+          <ActionButtons />
+        </aside>
+      </main>
 
-      {/* Daily Digest & Financials */}
-      <DigestCard digest={digest} />
-
-      {/* Privacy & Architecture Guarantee Footer */}
-      <footer className="pt-6 border-t border-gray-200 dark:border-gray-800 text-center space-y-2">
-        <div className="flex items-center justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-          <span className="flex items-center space-x-1">
-            <Globe className="w-3.5 h-3.5 text-blue-500" />
-            <span>Tailscale-Free Public URL</span>
-          </span>
-          <span>·</span>
-          <span className="flex items-center space-x-1">
-            <Lock className="w-3.5 h-3.5 text-emerald-500" />
-            <span>GPS & Quota Strictly Isolated</span>
-          </span>
+      <footer className="site-footer">
+        <div className="privacy-row">
+          <span><Globe /> Public edge</span>
+          <span><Lock /> No GPS or private quota exposure</span>
         </div>
-        <p className="text-[11px] text-gray-400 dark:text-gray-500">
-          Pocket Sentinel v2.1 Public Hub · Hosted on Vercel · Powered by Firestore Buffer & vivo v11
-        </p>
+        <p>Pocket Sentinel / Public operations surface</p>
       </footer>
     </div>
   );

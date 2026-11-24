@@ -26,10 +26,22 @@
   ├── Daily Digest Card (Gold, Stocks, AI News)
   └── Safe Interactive Action Button with Optimistic UI
 
-  Phase 5: Verification & Production Readiness
+  Phase 5: Visual & Action Completion
+  ├── Apply an Elysia-inspired operational visual language to public and v11 dashboards
+  ├── Replace optimistic-only action feedback with Firestore action lifecycle subscriptions
+  └── Add shared PWA/website icon and manifest identity
+
+  Phase 6: Verification & Production Readiness
   ├── Full Go test suite execution (go test ./...)
   ├── Production build verification (web build & ARM64 cross-compile)
   └── Vercel Deployment configuration verification
+
+  Phase 7: Next Sync Enhancements
+  ├── Publish cloudsync worker state and last successful sync metadata
+  ├── Add action idempotency/replay protection and signed request metadata
+  ├── Add public incident banner and stale/public-offline threshold
+  ├── Add sanitized digest history and public schedule summary
+  └── Add consent-based notifications after topic and privacy review
 ```
 
 ---
