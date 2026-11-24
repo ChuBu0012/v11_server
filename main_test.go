@@ -45,6 +45,7 @@ func setupTestApp(t *testing.T) (*App, *gin.Engine, func()) {
 		DiskThresholdGB:  5.0,
 		TelegramTimeout:  2 * time.Second,
 		WatchtowerPIN:    "1804",
+		EnableLiveMap:    true,
 	}
 
 	app := setupApp(dbConn, "8080", cfg)
@@ -111,6 +112,54 @@ func TestLiveAndMapRedirects(t *testing.T) {
 		if loc := rec.Header().Get("Location"); loc != "/live/"+viewerToken {
 			t.Errorf("%s redirect location = %q, want %q", path, loc, "/live/"+viewerToken)
 		}
+	}
+}
+
+func TestLiveMapDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tempDir, err := os.MkdirTemp("", "v11-test-loc-dis-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbConn, err := db.InitDB(filepath.Join(tempDir, "test.db"))
+	if err != nil {
+		t.Fatalf("Failed to init db: %v", err)
+	}
+	defer dbConn.Close()
+
+	cfg := &config.Config{
+		SampleInterval:   5 * time.Second,
+		RetentionMaxAge:  24 * time.Hour,
+		RetentionMaxRows: 100,
+		BatteryThreshold: 20,
+		DiskThresholdGB:  5.0,
+		TelegramTimeout:  2 * time.Second,
+		WatchtowerPIN:    "1804",
+		EnableLiveMap:    false,
+	}
+
+	app := setupApp(dbConn, "8080", cfg)
+	router := setupRouter(app)
+
+	// When disabled, /live, /live/:token should serve the disabled notice page
+	for _, path := range []string{"/live", "/map", "/live/any-token"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s status = %d, want 200", path, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), "แผนที่พิกัดสดปิดใช้งานอยู่") {
+			t.Errorf("%s body should contain disabled message", path)
+		}
+	}
+
+	// APIs should return disabled status
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/location/live", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "disabled") {
+		t.Errorf("API should return disabled response: %s", rec.Body.String())
 	}
 }
 

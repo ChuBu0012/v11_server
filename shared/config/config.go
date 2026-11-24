@@ -43,6 +43,7 @@ type Config struct {
 	OpenRouterAPIKey string // ENV: OPENROUTER_API_KEY
 
 	// Location & Rendezvous Tracker
+	EnableLiveMap               bool   // ENV: ENABLE_LIVE_MAP (default: false, set to true to enable Live Map)
 	LocationSecretToken         string // ENV: LOCATION_SECRET_TOKEN
 	LocationViewerToken         string // ENV: LOCATION_VIEWER_TOKEN
 	LocationSecretTokenExplicit bool   // true when LOCATION_SECRET_TOKEN is explicitly set
@@ -158,6 +159,12 @@ func Load() (*Config, error) {
 		}
 	}
 
+	if val := os.Getenv("ENABLE_LIVE_MAP"); val != "" {
+		cfg.EnableLiveMap = strings.ToLower(strings.TrimSpace(val)) == "true" || val == "1"
+	} else {
+		cfg.EnableLiveMap = false
+	}
+
 	var err error
 	if cfg.LocationSecretToken, cfg.LocationSecretTokenExplicit, err = configuredLocationToken("LOCATION_SECRET_TOKEN"); err != nil {
 		return nil, err
@@ -224,11 +231,11 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GroqAPIKey:%s, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, LocationSecretToken:%s, LocationViewerToken:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GroqAPIKey:%s, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, EnableLiveMap:%v, LocationSecretToken:%s, LocationViewerToken:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
 		token, chatID, c.TelegramTimeout, secretState(c.GroqAPIKey), geminiKey, secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
-		secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
+		c.EnableLiveMap, secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
 	)
 }
 

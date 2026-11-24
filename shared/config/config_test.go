@@ -35,7 +35,7 @@ func clearConfigEnv(t *testing.T) {
 		"BATTERY_THRESHOLD", "DISK_THRESHOLD_GB",
 		"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_TIMEOUT",
 		"GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "REMINDER_PIN", "WATCHTOWER_PIN", "OPENROUTER_API_KEY",
-		"LOCATION_SECRET_TOKEN", "LOCATION_VIEWER_TOKEN",
+		"ENABLE_LIVE_MAP", "LOCATION_SECRET_TOKEN", "LOCATION_VIEWER_TOKEN",
 	}
 	saved := make(map[string]string)
 	for _, k := range keys {
@@ -86,6 +86,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.LocationSecretTokenExplicit || cfg.LocationViewerTokenExplicit {
 		t.Error("defaulted location tokens must not be marked as explicit environment configuration")
+	}
+	if cfg.EnableLiveMap {
+		t.Error("EnableLiveMap should default to false (disabled)")
 	}
 	if cfg.TelegramEnabled() {
 		t.Error("TelegramEnabled should be false with no token/chatID")

@@ -349,42 +349,51 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		locationNotifier := location.NewDiscordNotifier(os.Getenv("DISCORD_WEBHOOK_URL"), 8*time.Second)
 		locationService = location.NewService(locationStore, locationNotifier)
 		locationModule = location.NewModule(locationStore, locationService)
-		if botRouter != nil {
-			_, viewerToken := locationStore.Tokens()
-			baseURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
-			if baseURL == "" {
-				baseURL = "http://100.92.194.87:8080"
+		if !cfg.EnableLiveMap {
+			log.Printf("[location] Live Map is disabled (set ENABLE_LIVE_MAP=true to enable)")
+			if botRouter != nil {
+				botRouter.SetLocationFunc(func(ctx context.Context) (string, *bot.InlineKeyboardMarkup, error) {
+					return "🗺️ <b>แผนที่พิกัดสด (Live Map)</b> ถูกปิดใช้งานอยู่ชั่วคราว\n\n(service และโครงสร้างข้อมูลทั้งหมดยังคงถูกเก็บไว้ สามารถเปิดใช้งานใหม่ได้ผ่าน <code>ENABLE_LIVE_MAP=true</code> ใน .env)", nil, nil
+				})
 			}
-			liveURL := baseURL + "/live/" + viewerToken
-			botRouter.SetLocationFunc(func(ctx context.Context) (string, *bot.InlineKeyboardMarkup, error) {
-				latest, err := locationStore.LatestPoints(ctx)
-				if err != nil {
-					return "", nil, err
+		} else {
+			if botRouter != nil {
+				_, viewerToken := locationStore.Tokens()
+				baseURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+				if baseURL == "" {
+					baseURL = "http://100.92.194.87:8080"
 				}
-				me := latest[location.DeviceMe]
-				friend := latest[location.DeviceFriend]
-				return formatTelegramLocationStatus(me, friend, liveURL)
-			})
-			if statusProv != nil {
-				statusProv.SetLocationSummaryFunc(func(ctx context.Context) (string, error) {
+				liveURL := baseURL + "/live/" + viewerToken
+				botRouter.SetLocationFunc(func(ctx context.Context) (string, *bot.InlineKeyboardMarkup, error) {
 					latest, err := locationStore.LatestPoints(ctx)
 					if err != nil {
-						return "", err
+						return "", nil, err
 					}
 					me := latest[location.DeviceMe]
 					friend := latest[location.DeviceFriend]
-					msg, _, err := formatTelegramLocationStatus(me, friend, liveURL)
-					return msg, err
+					return formatTelegramLocationStatus(me, friend, liveURL)
 				})
+				if statusProv != nil {
+					statusProv.SetLocationSummaryFunc(func(ctx context.Context) (string, error) {
+						latest, err := locationStore.LatestPoints(ctx)
+						if err != nil {
+							return "", err
+						}
+						me := latest[location.DeviceMe]
+						friend := latest[location.DeviceFriend]
+						msg, _, err := formatTelegramLocationStatus(me, friend, liveURL)
+						return msg, err
+					})
+				}
 			}
+			locationRetention = worker.New("location-retention", 24*time.Hour, func(ctx context.Context) error {
+				deleted, err := locationStore.PruneOld(ctx, time.Now().UTC().Add(-7*24*time.Hour))
+				if err == nil && deleted > 0 {
+					log.Printf("[retention:location] pruned %d points older than 7 days", deleted)
+				}
+				return err
+			})
 		}
-		locationRetention = worker.New("location-retention", 24*time.Hour, func(ctx context.Context) error {
-			deleted, err := locationStore.PruneOld(ctx, time.Now().UTC().Add(-7*24*time.Hour))
-			if err == nil && deleted > 0 {
-				log.Printf("[retention:location] pruned %d points older than 7 days", deleted)
-			}
-			return err
-		})
 	}
 
 	// CloudSync (Firestore Public Hub)
@@ -499,32 +508,74 @@ func setupRouter(app *App) *gin.Engine {
 		app.reminders.RegisterRoutes(r)
 	}
 	if app.locationModule != nil {
-		app.locationModule.RegisterRoutes(r)
-		r.Match([]string{"GET", "HEAD"}, "/api/location/viewer-token", func(c *gin.Context) {
-			token := app.locationModule.ViewerToken()
-			if token == "" {
-				c.AbortWithStatus(http.StatusNotFound)
-				return
+		if !app.cfg.EnableLiveMap {
+			disabledPage := func(c *gin.Context) {
+				c.Header("Cache-Control", "no-store")
+				c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(`<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pocket Sentinel · แผนที่พิกัดสด</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body style="display:grid;place-items:center;min-height:100vh;padding:24px;box-sizing:border-box;background:var(--bg);color:var(--text);font-family:sans-serif;text-align:center;">
+  <div style="max-width:440px;padding:32px 24px;border-radius:16px;background:var(--surface);border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,0.15);">
+    <div style="font-size:48px;margin-bottom:16px;">🗺️</div>
+    <h1 style="font-size:20px;margin:0 0 10px;">แผนที่พิกัดสดปิดใช้งานอยู่</h1>
+    <p style="font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 20px;">
+      ฟีเจอร์ Live Map และการติดตามพิกัดถูกปิดใช้งานชั่วคราวตามการตั้งค่า<br>
+      (โครงสร้าง service และฐานข้อมูลยังคงถูกเก็บรักษาไว้ครบถ้วน)
+    </p>
+    <div style="padding:12px 14px;background:var(--bg);border-radius:8px;font-size:12.5px;color:var(--muted);margin-bottom:20px;text-align:left;font-family:monospace;line-height:1.6;">
+      วิธีเปิดใช้งานใหม่:<br>
+      1. ตั้งค่า <code>ENABLE_LIVE_MAP=true</code> ใน .env<br>
+      2. สั่ง <code>pm2 restart go-server</code>
+    </div>
+    <a href="/" style="display:inline-block;padding:10px 20px;background:var(--blue);color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">กลับหน้าแดชบอร์ด</a>
+  </div>
+</body>
+</html>`))
 			}
-			c.JSON(http.StatusOK, gin.H{"token": token})
-		})
-		r.Match([]string{"GET", "HEAD"}, "/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
-		r.Match([]string{"GET", "HEAD"}, "/live", func(c *gin.Context) {
-			token := app.locationModule.ViewerToken()
-			if token == "" {
-				c.AbortWithStatus(http.StatusNotFound)
-				return
+			disabledAPI := func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{
+					"status":  "disabled",
+					"message": "Live Map service is currently disabled. Set ENABLE_LIVE_MAP=true in .env to enable.",
+				})
 			}
-			c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
-		})
-		r.Match([]string{"GET", "HEAD"}, "/map", func(c *gin.Context) {
-			token := app.locationModule.ViewerToken()
-			if token == "" {
-				c.AbortWithStatus(http.StatusNotFound)
-				return
-			}
-			c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
-		})
+			r.Match([]string{"GET", "HEAD"}, "/live/:token", disabledPage)
+			r.Match([]string{"GET", "HEAD"}, "/live", disabledPage)
+			r.Match([]string{"GET", "HEAD"}, "/map", disabledPage)
+			r.Any("/api/location/*any", disabledAPI)
+		} else {
+			app.locationModule.RegisterRoutes(r)
+			r.Match([]string{"GET", "HEAD"}, "/api/location/viewer-token", func(c *gin.Context) {
+				token := app.locationModule.ViewerToken()
+				if token == "" {
+					c.AbortWithStatus(http.StatusNotFound)
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"token": token})
+			})
+			r.Match([]string{"GET", "HEAD"}, "/live/:token", app.locationModule.ViewerPage(app.dashboard.HandleLiveMap))
+			r.Match([]string{"GET", "HEAD"}, "/live", func(c *gin.Context) {
+				token := app.locationModule.ViewerToken()
+				if token == "" {
+					c.AbortWithStatus(http.StatusNotFound)
+					return
+				}
+				c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
+			})
+			r.Match([]string{"GET", "HEAD"}, "/map", func(c *gin.Context) {
+				token := app.locationModule.ViewerToken()
+				if token == "" {
+					c.AbortWithStatus(http.StatusNotFound)
+					return
+				}
+				c.Redirect(http.StatusTemporaryRedirect, "/live/"+token)
+			})
+		}
 	}
 	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
 	r.POST("/api/schedule/parse", func(c *gin.Context) {

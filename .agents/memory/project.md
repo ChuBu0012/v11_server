@@ -93,6 +93,15 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
   - Cloud Buffer: Google Cloud Firestore in `asia-southeast1` (Singapore) on project `pocket-sentinel-hub` with custom Security Rules (public read on `sentinel_public/*`, pending action write on `sentinel_actions/*`).
   - Vercel Web Dashboard (`web/`): Monorepo subfolder with React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons (Sentinel Soft / Apple HIG theme), real-time Firestore listeners, and automatic Mock Preview fallback.
   - Deployed and live verified on vivo v11 (PM2 `go-server` PID 31648, RAM ~25MB). Confirmed live telemetry (`sentinel_public/status`) and real-time safe action execution (`sentinel_actions`). Pushed to `origin/main`.
+- [2026-11-24] Rolled back experimental Sheets feature back to main. Disabled Live Map per user instruction while keeping the complete service and database schema intact for future re-enablement:
+  - Added `EnableLiveMap` flag in `shared/config/config.go` (`ENABLE_LIVE_MAP` in `.env`, default `false`).
+  - When disabled (`ENABLE_LIVE_MAP=false`):
+    - Background retention worker `locationRetention` is not started (saves CPU/RAM).
+    - Web viewer routes (`/live`, `/live/:token`, `/map`) and `/api/location/*` serve a clean disabled notice explaining how to re-enable.
+    - Telegram `/live` and `/map` inform the user that Live Map is currently disabled.
+  - How to re-enable in the future:
+    1. Set `ENABLE_LIVE_MAP=true` in `.env`
+    2. Restart service: `pm2 restart go-server`
 
 
 

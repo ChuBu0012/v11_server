@@ -16,6 +16,7 @@
 - [2026-11-21 | Learning/Device] Termux exec.Command Node Shebang: Node CLI scripts with `#!/usr/bin/env node` fail when spawned via Go `exec.Command` because `/usr/bin/env` does not exist in Android root; invoke `node /data/data/com.termux/files/usr/bin/<cli>` directly.
 - [2026-11-22 | User alignment / Post-mortem] Agent Notification: Always execute `~/.local/bin/v11-notify -s success -p "v11_server" -t "..." -m "..."` immediately upon task completion to report status to Telegram without waiting for user prompt.
 - [2026-11-22 | Learning / Performance] Fast Remote Deploy: When deploying code already pushed to GitHub, prefer `ssh v11 "cd ~/go-app && ./scripts/deploy-v11.sh -m '...'"` (git pull on-device) over transferring 45MB binaries over slow scp/Tailscale.
+- [2026-11-24 | Feature Toggle / Location] Live Map is disabled by default via `ENABLE_LIVE_MAP=false`. All location services, tables, and logic remain intact in the codebase. To re-enable in the future, set `ENABLE_LIVE_MAP=true` in `.env` and restart PM2 `go-server`.
 
 ## Must Not
 - [2026-11-14 | AGENTS.md] Never use `sudo`, `systemctl`, `service`, or `docker` on Android/Termux.
