@@ -87,6 +87,12 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
   - SQLite TTL Cache: `ask_cache` table with SHA256 prompt hashing, 6-hour TTL, automatic pruning, auto-bypass on dynamic telemetry keywords, and manual `--no-cache` / `--fresh` flags.
   - Find My Phone (`/ring`): Sets volume to 15, plays `/system/media/audio/alarms/Clock_Alert.ogg` via `termux-media-player`, pulses vibration, displays Heads-Up notification with lockscreen dismiss action (`🔕 ปิดเสียง`), 30s auto-off safety timer, and Telegram inline button `[ 🔇 ปิดเสียงทันที ]` (`ring:off`). Integrated into `/panel` and `/help`.
   - Deployed natively to vivo V11 (PM2 PID 14721, ~10.3MB RAM, HTTP 200 OK). All tests pass 100%.
+- [2026-11-24] Implemented Pocket Sentinel Public Hub (CloudSync & Public Web Dashboard):
+  - Spec-kit in `docs/spec-kit/pocket-sentinel-public-hub/` (spec.md, plan.md, tasks.md).
+  - Go Backend (`modules/cloudsync`): Pure-Go REST client with Service Account OAuth2 JWT, Whitelist Sanitizer (strictly zero GPS / Live Map / AI Quota leaks), 60s background sync ticker, and safe ActionDispatcher (handling `refresh_digest`, `ping`).
+  - Cloud Buffer: Google Cloud Firestore in `asia-southeast1` (Singapore) on project `pocket-sentinel-hub` with custom Security Rules (public read on `sentinel_public/*`, pending action write on `sentinel_actions/*`).
+  - Vercel Web Dashboard (`web/`): Monorepo subfolder with React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons (Sentinel Soft / Apple HIG theme), real-time Firestore listeners, and automatic Mock Preview fallback.
+  - Deployed and live verified on vivo v11 (PM2 `go-server` PID 31648, RAM ~25MB). Confirmed live telemetry (`sentinel_public/status`) and real-time safe action execution (`sentinel_actions`). Pushed to `origin/main`.
 
 
 
