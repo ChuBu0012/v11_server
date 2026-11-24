@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-action: #0066cc;
+    --radius-card: 18px;
+  }
+}
+
+/* Apple HIG smooth scroll and font adjustments */
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", sans-serif;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
+}

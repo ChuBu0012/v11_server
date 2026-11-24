@@ -147,6 +147,11 @@ fi
 echo "📦 Uploading ${#TRANSFER_FILES[@]} file(s) in a single batch transfer..."
 scp "${SSH_OPTS[@]}" "${TRANSFER_FILES[@]}" "${REMOTE_HOST}:${REMOTE_DIR}/"
 
+if [[ -d credentials ]]; then
+  ssh "${SSH_OPTS[@]}" "${REMOTE_HOST}" "mkdir -p ${REMOTE_DIR}/credentials"
+  scp "${SSH_OPTS[@]}" credentials/* "${REMOTE_HOST}:${REMOTE_DIR}/credentials/" 2>/dev/null || true
+fi
+
 # Clean up local staging file
 rm -f server.new digest.new
 

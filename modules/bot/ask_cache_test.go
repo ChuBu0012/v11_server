@@ -105,6 +105,9 @@ func TestAskCacheStore(t *testing.T) {
 	}
 
 	// 6. Test PruneExpired
+	// Note: Set() spawns an opportunistic background goroutine that may have already pruned it.
+	// We insert directly to test PruneExpired deterministically.
+	_, _ = store.db.ExecContext(ctx, "INSERT OR REPLACE INTO ask_cache (prompt_hash, prompt_text, model_name, response_text, created_at, expires_at) VALUES ('exp_hash', 'p', 'm', 'r', datetime('now', '-2 hours'), datetime('now', '-1 hours'))")
 	pruned, err := store.PruneExpired(ctx)
 	if err != nil {
 		t.Fatalf("PruneExpired failed: %v", err)

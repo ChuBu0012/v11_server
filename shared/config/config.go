@@ -47,18 +47,24 @@ type Config struct {
 	LocationViewerToken         string // ENV: LOCATION_VIEWER_TOKEN
 	LocationSecretTokenExplicit bool   // true when LOCATION_SECRET_TOKEN is explicitly set
 	LocationViewerTokenExplicit bool   // true when LOCATION_VIEWER_TOKEN is explicitly set
+
+	// CloudSync (Firestore Public Hub)
+	FirestoreCredentials string        // ENV: FIRESTORE_CREDENTIALS
+	FirestoreProjectID   string        // ENV: FIRESTORE_PROJECT_ID
+	CloudSyncInterval    time.Duration // ENV: CLOUDSYNC_INTERVAL (default: 60s)
 }
 
 // Load reads configuration from environment variables, applying defaults
 // where values are not set. Returns an error for invalid values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		SampleInterval:   60 * time.Second,
-		RetentionMaxAge:  72 * time.Hour,
-		RetentionMaxRows: 4320,
-		BatteryThreshold: 20,
-		DiskThresholdGB:  5.0,
-		TelegramTimeout:  10 * time.Second,
+		SampleInterval:    60 * time.Second,
+		RetentionMaxAge:   72 * time.Hour,
+		RetentionMaxRows:  4320,
+		BatteryThreshold:  20,
+		DiskThresholdGB:   5.0,
+		TelegramTimeout:   10 * time.Second,
+		CloudSyncInterval: 60 * time.Second,
 	}
 
 	var errs []string
@@ -143,6 +149,14 @@ func Load() (*Config, error) {
 	}
 	cfg.WatchtowerPIN = os.Getenv("WATCHTOWER_PIN")
 	cfg.OpenRouterAPIKey = strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
+
+	cfg.FirestoreCredentials = strings.TrimSpace(os.Getenv("FIRESTORE_CREDENTIALS"))
+	cfg.FirestoreProjectID = strings.TrimSpace(os.Getenv("FIRESTORE_PROJECT_ID"))
+	if v := os.Getenv("CLOUDSYNC_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= 5*time.Second {
+			cfg.CloudSyncInterval = d
+		}
+	}
 
 	var err error
 	if cfg.LocationSecretToken, cfg.LocationSecretTokenExplicit, err = configuredLocationToken("LOCATION_SECRET_TOKEN"); err != nil {

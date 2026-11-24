@@ -18,6 +18,10 @@
 .env
 .env.*
 !.env.example
+*-adminsdk-*.json
+serviceAccountKey.json
+credentials/
+firestore-config.js
 
 
 # macOS & IDE artifacts
@@ -27,3 +31,9 @@
 .superpowers/
 .deploy.pid
 /server.bak
+
+# Web frontend build artifacts & dependencies
+web/node_modules/
+web/dist/
+web/.env.local
+web/.env.*.local

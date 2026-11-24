@@ -21,6 +21,7 @@ import (
 	"v11-server/modules/ailimit"
 	"v11-server/modules/alerts"
 	"v11-server/modules/bot"
+	"v11-server/modules/cloudsync"
 	"v11-server/modules/dashboard"
 	"v11-server/modules/digest"
 	"v11-server/modules/endpoints"
@@ -105,6 +106,7 @@ type App struct {
 	insight           *insight.Service
 	ailimit           *ailimit.Module
 	quotaCollector    *ailimit.Collector
+	cloudsyncWorker   *cloudsync.Worker
 }
 
 func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
@@ -418,6 +420,45 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		}
 	}
 
+	// CloudSync (Firestore Public Hub)
+	cloudClient, err := cloudsync.NewClient(cfg.FirestoreCredentials, cfg.FirestoreProjectID)
+	if err != nil {
+		log.Printf("Warning: failed to initialize cloudsync client: %v", err)
+	}
+	var cloudsyncWorker *cloudsync.Worker
+	if cloudClient != nil {
+		dispatcher := cloudsync.NewActionDispatcher(func(ctx context.Context) (string, error) {
+			if digestSvc != nil {
+				run, err := digestSvc.GenerateDigest(ctx, true)
+				if err != nil {
+					return "", err
+				}
+				if run != nil {
+					return run.SummaryMD, nil
+				}
+				return "digest completed", nil
+			}
+			return "", fmt.Errorf("digest service not available")
+		}, func(ctx context.Context, htmlMsg string) error {
+			if botClient != nil && cfg.TelegramChatID != "" {
+				chatID, _ := strconv.ParseInt(cfg.TelegramChatID, 10, 64)
+				if chatID != 0 {
+					_, err := botClient.SendMessage(ctx, chatID, htmlMsg, nil)
+					return err
+				}
+			}
+			return nil
+		})
+
+		cloudsyncWorker = cloudsync.NewWorker(
+			cloudClient,
+			telemetryRepo,
+			digestStore,
+			cfg.CloudSyncInterval,
+			cloudsync.WithActionDispatcher(dispatcher),
+		)
+	}
+
 	return &App{
 		cfg:               cfg,
 		db:                dbConn,
@@ -444,6 +485,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		insight:           insightSvc,
 		ailimit:           ailimitMod,
 		quotaCollector:    quotaCollector,
+		cloudsyncWorker:   cloudsyncWorker,
 	}
 }
 
@@ -625,6 +667,9 @@ func main() {
 	}
 	if app.reminderService != nil {
 		app.reminderService.Start(workerCtx)
+	}
+	if app.cloudsyncWorker != nil {
+		go app.cloudsyncWorker.Start(workerCtx)
 	}
 	startWeeklyEventLogPurge(workerCtx, app.logs)
 
