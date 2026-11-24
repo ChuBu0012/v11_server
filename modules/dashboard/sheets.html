@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pocket Sheets · สเปรดชีตส่วนตัว</title>
-  <meta name="theme-color" content="#1a1c24">
+  <meta name="theme-color" content="#1e1f22">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.json">
   <script>try{document.documentElement.dataset.theme=localStorage.getItem('sentinel-theme')==='light'?'light':'dark'}catch(_){}</script>
@@ -14,42 +14,154 @@
   <script src="/static/js/components/sheets-studio.js" defer></script>
 </head>
 <body class="sheets-page">
-  <!-- Topbar -->
-  <header class="studio-header">
-    <div class="studio-left">
-      <a href="/" class="studio-btn" title="กลับหน้าแดชบอร์ด">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        <span>แดชบอร์ด</span>
+
+  <!-- Google Sheets Style Header -->
+  <header class="gs-header">
+    <div class="gs-header-left">
+      <!-- Sheets Green Logo -->
+      <a href="/" class="gs-icon-wrapper" title="กลับหน้าแดชบอร์ด Pocket Sentinel">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="8" y1="13" x2="16" y2="13"></line>
+          <line x1="8" y1="17" x2="16" y2="17"></line>
+          <line x1="10" y1="9" x2="10" y2="9.01"></line>
+        </svg>
       </a>
-      <input type="text" id="sheet-title" class="sheet-title-input" value="กำลังโหลด..." placeholder="ชื่อสเปรดชีต...">
-      <span id="save-badge" class="save-badge">✓ บันทึกแล้ว</span>
+
+      <!-- Title & Menu Bar Column -->
+      <div class="gs-meta-col">
+        <!-- Row 1: Title, Star, Save Status -->
+        <div class="gs-title-row">
+          <input type="text" id="sheet-title" class="gs-doc-title" value="กำลังโหลด..." placeholder="สเปรดชีตไม่มีชื่อ">
+          <button type="button" id="star-btn" class="gs-icon-btn" title="ติดดาว">☆</button>
+          <span id="save-badge" class="gs-status-badge saved">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+            <span id="save-text">บันทึกใน v11 แล้ว ✓</span>
+          </span>
+        </div>
+
+        <!-- Row 2: Menu Bar (Google Sheets Menus) -->
+        <nav class="gs-menubar" id="gs-menubar" aria-label="แถบเมนูสเปรดชีต">
+          <!-- ไฟล์ -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">ไฟล์</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="new"><span>➕ สเปรดชีตใหม่</span><span class="gs-shortcut">Ctrl+N</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="open"><span>📂 เปิดสเปรดชีต...</span><span class="gs-shortcut">Ctrl+O</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="save"><span>💾 บันทึกเดี๋ยวนี้</span><span class="gs-shortcut">Ctrl+S</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="import-csv"><span>📥 นำเข้าไฟล์ CSV...</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="export-csv"><span>📤 ดาวน์โหลด (.csv)</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item danger" data-action="delete"><span>🗑 ลบสเปรดชีตนี้</span></button>
+            </div>
+          </div>
+
+          <!-- แก้ไข -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">แก้ไข</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="undo"><span>↶ เลิกทำ (Undo)</span><span class="gs-shortcut">Ctrl+Z</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="redo"><span>↷ ทำซ้ำ (Redo)</span><span class="gs-shortcut">Ctrl+Y</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="clear"><span>🧹 ล้างข้อมูลในเซลล์</span><span class="gs-shortcut">Del</span></button>
+            </div>
+          </div>
+
+          <!-- ดู -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">ดู</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="zoom-100"><span>🔍 ขนาดปกติ (100%)</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="zoom-125"><span>🔍 ขยายใหญ่ (125%)</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="zoom-75"><span>🔍 ย่อเล็ก (75%)</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="toggle-theme"><span>🌓 สลับธีม มืด / สว่าง</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="fullscreen"><span>⛶ ขยายเต็มหน้าจอ</span></button>
+            </div>
+          </div>
+
+          <!-- แทรก -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">แทรก</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="insert-row"><span>➕ แทรกแถวด้านบน</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="insert-col"><span>➕ แทรกคอลัมน์ด้านซ้าย</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="delete-row"><span>➖ ลบแถวปัจจุบัน</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="delete-col"><span>➖ ลบคอลัมน์ปัจจุบัน</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="formula-sum"><span>Σ สูตรผลรวม: =SUM()</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="formula-avg"><span>Σ สูตรค่าเฉลี่ย: =AVERAGE()</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="formula-count"><span>Σ สูตรนับ: =COUNT()</span></button>
+            </div>
+          </div>
+
+          <!-- รูปแบบ -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">รูปแบบ</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="format-bold"><span><b>B</b> ตัวหนา (Bold)</span><span class="gs-shortcut">Ctrl+B</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="format-italic"><span><i>I</i> ตัวเอียง (Italic)</span><span class="gs-shortcut">Ctrl+I</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="format-strike"><span><s>S</s> ขีดฆ่า</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="format-currency"><span>฿ จัดรูปแบบสกุลเงิน</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="format-percent"><span>% จัดรูปแบบเปอร์เซ็นต์</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="auto-width"><span>📐 ปรับขนาดคอลัมน์อัตโนมัติ (Auto Width)</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="format-merge"><span>⬍ ผสานเซลล์ / ยกเลิกผสาน</span></button>
+            </div>
+          </div>
+
+          <!-- ข้อมูล -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">ข้อมูล</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="data-filter"><span>🔽 สลับตัวกรอง (Filter)</span></button>
+              <div class="gs-dropdown-divider"></div>
+              <button type="button" class="gs-dropdown-item" data-action="data-sort-asc"><span>🔤 จัดเรียง A → Z</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="data-sort-desc"><span>🔤 จัดเรียง Z → A</span></button>
+            </div>
+          </div>
+
+          <!-- ผู้ช่วย AI -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger" style="color:var(--gs-accent)">ผู้ช่วย AI</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="ai-formula"><span>✨ ถามสูตรคำนวณ Excel...</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="ai-analyze"><span>📊 ให้ AI วิเคราะห์ข้อมูลในตาราง...</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="ai-template"><span>📝 สร้างตารางตัวอย่างอัตโนมัติ...</span></button>
+            </div>
+          </div>
+
+          <!-- ความช่วยเหลือ -->
+          <div class="gs-menu-item">
+            <button type="button" class="gs-menu-trigger">ความช่วยเหลือ</button>
+            <div class="gs-dropdown">
+              <button type="button" class="gs-dropdown-item" data-action="help-shortcuts"><span>⌨️ คีย์ลัดการใช้งาน</span></button>
+              <button type="button" class="gs-dropdown-item" data-action="help-about"><span>ℹ️ เกี่ยวกับ Pocket Sheets</span></button>
+            </div>
+          </div>
+        </nav>
+      </div>
     </div>
 
-    <div class="studio-right">
-      <button type="button" id="btn-sheets" class="studio-btn" title="ดูรายการสเปรดชีตทั้งหมด">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-        <span>แผ่นงาน</span>
-      </button>
-
-      <button type="button" id="btn-new" class="studio-btn" title="สร้างสเปรดชีตใหม่">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-        <span>สร้างใหม่</span>
-      </button>
-
-      <button type="button" id="btn-import" class="studio-btn" title="นำเข้าไฟล์ CSV">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        <span>นำเข้า CSV</span>
-      </button>
-
-      <button type="button" id="btn-export" class="studio-btn" title="ส่งออกเป็นไฟล์ CSV">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        <span>ส่งออก CSV</span>
-      </button>
-
-      <button type="button" id="btn-ai" class="studio-btn studio-btn-primary" title="ถามผู้ช่วย AI เกี่ยวกับสูตรหรือข้อมูลในตาราง">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    <!-- Right Header Action Pills -->
+    <div class="gs-header-right">
+      <button type="button" id="btn-ai-quick" class="gs-pill-btn gs-pill-primary" title="ถามผู้ช่วย AI">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
         <span>ผู้ช่วย AI</span>
       </button>
+
+      <button type="button" id="btn-export-quick" class="gs-pill-btn" title="ดาวน์โหลดเป็นไฟล์ CSV">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <span>ส่งออก</span>
+      </button>
+
+      <a href="/" class="gs-pill-btn" title="กลับหน้าแดชบอร์ด Pocket Sentinel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>แดชบอร์ด</span>
+      </a>
     </div>
   </header>
 
@@ -58,31 +170,68 @@
   <!-- Spreadsheet Canvas Area -->
   <main id="xspreadsheet-container"></main>
 
-  <!-- Sheet Switcher Modal -->
-  <div id="sheet-switcher-modal" class="studio-modal-backdrop" style="display:none">
-    <div class="studio-modal">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>สเปรดชีตของคุณ</h2>
-        <button type="button" id="close-switcher" class="studio-btn" style="border:none;background:transparent;font-size:16px">✕</button>
+  <!-- Open Sheet Dialog (Google Drive Style) -->
+  <div id="sheet-switcher-modal" class="gs-modal-backdrop" style="display:none">
+    <div class="gs-modal">
+      <div class="gs-modal-title">
+        <span>📂 เปิดสเปรดชีต (ในเครื่อง vivo v11)</span>
+        <button type="button" id="close-switcher" class="gs-icon-btn" style="font-size:18px">✕</button>
       </div>
-      <div id="switcher-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="sheet-search" style="flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--gs-border);background:var(--gs-hover);color:var(--gs-text);outline:none;font-size:13px" placeholder="ค้นหาชื่อสเปรดชีต...">
+        <button type="button" id="btn-create-modal" class="gs-pill-btn gs-pill-primary">➕ สร้างใหม่</button>
+      </div>
+      <div id="switcher-list" style="display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto"></div>
     </div>
   </div>
 
   <!-- AI Modal -->
-  <div id="ai-modal" class="studio-modal-backdrop" style="display:none">
-    <div class="studio-modal">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>ผู้ช่วย AI สเปรดชีต</h2>
-        <button type="button" id="close-ai" class="studio-btn" style="border:none;background:transparent;font-size:16px">✕</button>
+  <div id="ai-modal" class="gs-modal-backdrop" style="display:none">
+    <div class="gs-modal">
+      <div class="gs-modal-title">
+        <span>✨ ผู้ช่วย AI สเปรดชีต (Groq / Gemini)</span>
+        <button type="button" id="close-ai" class="gs-icon-btn" style="font-size:18px">✕</button>
       </div>
-      <p style="margin:0;font-size:13px;color:var(--studio-muted)">สอบถามสูตรคำนวณ Excel/Google Sheets หรือให้ AI วิเคราะห์ข้อมูลในตารางปัจจุบัน</p>
-      <input type="text" id="ai-prompt" style="padding:10px 12px;border-radius:6px;border:1px solid var(--studio-border);background:rgba(255,255,255,0.05);color:var(--studio-text);outline:none;font-size:14px" placeholder="เช่น ขอสูตรคำนวณผลรวม A1 ถึง A10 หรือ สูตรภาษี 7%">
+      <p style="margin:0;font-size:13px;color:var(--gs-text-muted)">ถามสูตรคำนวณ Excel/Sheets, ให้วิเคราะห์ข้อมูล หรือสร้างตารางตัวอย่างตามต้องการ</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="gs-pill-btn ai-quick-prompt" data-p="ขอสูตรคำนวณผลรวม A1 ถึง A10">ขอสูตร =SUM()</button>
+        <button type="button" class="gs-pill-btn ai-quick-prompt" data-p="ขอสูตรคำนวณภาษี VAT 7% ของคอลัมน์ B">สูตรภาษี 7%</button>
+        <button type="button" class="gs-pill-btn ai-quick-prompt" data-p="ช่วยวิเคราะห์แนวโน้มตัวเลขในตารางนี้">วิเคราะห์ตัวเลข</button>
+        <button type="button" class="gs-pill-btn ai-quick-prompt" data-p="สร้างโครงสร้างตารางบันทึกรายรับรายจ่ายประจำวัน">ตารางรายรับรายจ่าย</button>
+      </div>
+      <textarea id="ai-prompt" rows="3" style="width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--gs-border);background:var(--gs-hover);color:var(--gs-text);outline:none;font-size:13px;resize:vertical;font-family:inherit" placeholder="พิมพ์คำถามหรือคำขอสูตรที่นี่..."></textarea>
       <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button type="button" id="btn-run-ai" class="studio-btn studio-btn-primary">ส่งคำขอ</button>
+        <button type="button" id="btn-run-ai" class="gs-pill-btn gs-pill-primary">🚀 ส่งคำขอ</button>
       </div>
-      <div id="ai-result" style="display:none;padding:12px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid var(--studio-border);font-size:13.5px;line-height:1.6;white-space:pre-wrap"></div>
+      <div id="ai-result" style="display:none;padding:12px;background:var(--gs-hover);border-radius:6px;border:1px solid var(--gs-border);font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
     </div>
   </div>
+
+  <!-- Help Shortcuts Modal -->
+  <div id="shortcuts-modal" class="gs-modal-backdrop" style="display:none">
+    <div class="gs-modal">
+      <div class="gs-modal-title">
+        <span>⌨️ คีย์ลัดการใช้งาน Pocket Sheets</span>
+        <button type="button" id="close-shortcuts" class="gs-icon-btn" style="font-size:18px">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px">
+        <div><strong>Enter / F2:</strong> เริ่มแก้ไขเซลล์</div>
+        <div><strong>Tab:</strong> ย้ายไปเซลล์ขวา</div>
+        <div><strong>ลูกศร (Arrows):</strong> นำทางระหว่างเซลล์</div>
+        <div><strong>Shift + Tab:</strong> ย้ายไปเซลล์ซ้าย</div>
+        <div><strong>Ctrl + Z:</strong> เลิกทำ (Undo)</div>
+        <div><strong>Ctrl + Y:</strong> ทำซ้ำ (Redo)</div>
+        <div><strong>Ctrl + B:</strong> ตัวหนา (Bold)</div>
+        <div><strong>Ctrl + I:</strong> ตัวเอียง (Italic)</div>
+        <div><strong>Delete:</strong> ล้างเนื้อหาในเซลล์</div>
+        <div><strong>Esc:</strong> ยกเลิกการแก้ไข</div>
+        <div><strong>คลิกขอบขวาหัวคอลัมน์:</strong> ขยายขนาดคอลัมน์อัตโนมัติ (Auto Width)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Pill -->
+  <div id="gs-toast" class="gs-toast" style="display:none"></div>
+
 </body>
 </html>
