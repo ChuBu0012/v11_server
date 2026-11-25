@@ -1,0 +1,405 @@
+.notes-shell {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 92px;
+}
+
+.notes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.search-box {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.search-box svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.search-box input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.filter-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.pill-tab {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pill-tab.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* Quick Capture Composer */
+.composer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+
+.composer-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer-trigger {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  padding: 6px 2px;
+  outline: none;
+  cursor: text;
+}
+
+.composer-mode-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-form {
+  display: grid;
+  gap: 10px;
+}
+
+.composer-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-title {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 4px 0;
+  outline: none;
+}
+
+.composer-type-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.composer-type-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-type-switch button.active {
+  background: var(--surface);
+  color: var(--blue);
+}
+
+.composer-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+}
+
+.checklist-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.checklist-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checklist-edit-row input[type="text"] {
+  flex: 1;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 6px 4px;
+  font-size: 14px;
+  outline: none;
+}
+
+.mini-remove {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.add-item-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+
+.composer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.composer-tags {
+  flex: 1 1 160px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  outline: none;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ghost {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-ghost.active {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.btn-primary {
+  padding: 7px 16px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Notes Grid */
+.group-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.note-card.pinned {
+  border-color: var(--blue);
+}
+
+.note-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.note-card-head strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.note-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.note-card-body {
+  cursor: pointer;
+}
+
+.note-card-body p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-checklist {
+  display: grid;
+  gap: 6px;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.check-row input {
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+
+.check-row.done span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-chip {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.note-actions button {
+  border: 0;
+  background: transparent;
+  padding: 5px 7px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.note-actions button:hover {
+  background: var(--bg);
+}
+
+.notes-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--muted);
+}
+
+.notes-empty p {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.note-dialog {
+  width: min(520px, calc(100% - 24px));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 18px;
+}
+
+.note-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}

@@ -101,6 +101,9 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
   - Security & XSS: added `PromptGuard` on CloudSync `"ask"` action, added `sanitizeHtml` across `AskCard.tsx`, `ask.js`, `digest.js`, escaped `zone.name` in `live-map.js`, stripped additional secret keys in `bot/runner.go`, avoided CLI token exposure in `scripts/deploy.sh`.
   - CloudSync Spec & Live Map UX: fixed `GoldQuote` JSON tag mismatch (`spot_usd_oz`, `bar_buy`, `bar_sell`) in `cloudsync/sanitizer.go`, synced `Stocks`/`News`, added `updateMask` to `UpdateAction`, wired `WithServicesProvider(probeCloudSyncServices)`, hid `/live` UI & `/panel` location tab when `ENABLE_LIVE_MAP=false`.
   - Cleanup: removed retired `watchtower.html`, `watchtower.js`, `monitor.js`, `shared/ai/monitor_insight.go`, ngrok polling in `bot/status.go`, `WATCHTOWER_PIN`, moved inline handlers (`/api/schedule/parse`, `/api/relay/proofread`, `/api/ask`) into modules, bumped `sw.js` to `sentinel-shell-v50`, added `events.js` `/api/logs` fallback, updated `AGENTS.md` §10. (Note: `refactor/minimalize` also removed `modules/insight` earlier).
+- [2026-11-25] Implemented minimalist Pocket Notes (`/notes`, `modules/notes/`, Telegram `/note` & `/notes`):
+  - Private SQLite `notes` table in `shared/db/db.go` (zero notes data synced to Firestore Public Hub), supporting quick notes, auto-parsed `- [ ]`/`- [x]` checklists, pin, tags, archive, search, AI auto-tag (`SuggestTags` + deterministic fallback), and 1-tap `⏰ ตั้งเตือน` bridge to Quiet Schedule.
+  - Embedded dashboard page `modules/dashboard/notes.html` + `notes.css` + `notes.js`, wired into `.task-nav`, overview shortcut card, `sw.js` (`sentinel-shell-v51`), and Telegram `/note`, `/notes`, `/help`, `MakeHelpKeyboardWithOptions`, and inline `note:` callbacks (`pin`, `remind`, `del`).
 
 
 

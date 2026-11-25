@@ -44,6 +44,18 @@ type Router struct {
 	ringCtrl          *RingController
 	askRouter         *AskTriageRouter
 	liveMapEnabled    bool
+	noteCreateFunc    func(ctx context.Context, text string) (string, *InlineKeyboardMarkup, error)
+	noteListFunc      func(ctx context.Context, query string) (string, *InlineKeyboardMarkup, error)
+}
+
+// WithNoteCreateFunc sets the callback for /note command.
+func WithNoteCreateFunc(f func(ctx context.Context, text string) (string, *InlineKeyboardMarkup, error)) RouterOption {
+	return func(r *Router) { r.noteCreateFunc = f }
+}
+
+// WithNoteListFunc sets the callback for /notes command.
+func WithNoteListFunc(f func(ctx context.Context, query string) (string, *InlineKeyboardMarkup, error)) RouterOption {
+	return func(r *Router) { r.noteListFunc = f }
 }
 
 // WithLiveMapEnabled controls whether Live Map entries are shown in /help, /panel, and reply keyboard.
@@ -437,6 +449,7 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			locationHelp +
 			"\n<b>🤖 AI, ข่าวสาร &amp; ระบบ</b>\n" +
 			"• <code>/ask [model] [effort] &lt;คำถาม&gt;</code> — ถาม AI ด่วน (auto, groq, gemini, agy)\n" +
+			"• <code>/note &lt;ข้อความ&gt;</code> · <code>/notes</code> — จดและดูโน้ตส่วนตัว\n" +
 			"• <code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> — สั่ง Agent ทำงาน (<code>/task_status</code>)\n" +
 			"• <code>/digest</code> — สรุปข่าวและราคาทอง\n" +
 			"• <code>/quota</code> · <code>/limits</code> — เช็คโควตา AI พร้อมเวลารีเซ็ต\n" +
@@ -899,6 +912,50 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		}
 		pingHTML := fmt.Sprintf("🏓 <b>Pong!</b> (Uptime: %s, Server: OK)", html.EscapeString(uptimeStr))
 		_, err := r.sendMessage(ctx, chatID, pingHTML, keyboard)
+		return err
+
+	case "/note":
+		if r.noteCreateFunc == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ ระบบโน้ตยังไม่พร้อมใช้งาน", keyboard)
+			return err
+		}
+		rawInput := ""
+		if len(text) > len(parts[0]) {
+			rawInput = strings.TrimSpace(text[len(parts[0]):])
+		}
+		if rawInput == "" {
+			_, err := r.sendMessage(ctx, chatID, "📝 <b>จดโน้ตด่วน</b>\nส่งคำสั่ง: <code>/note ข้อความที่ต้องการจด</code>\n<i>รองรับเช็กลิสต์ด้วย - [ ] รายการ</i>", helpKeyboard)
+			return err
+		}
+		msgHTML, markup, err := r.noteCreateFunc(ctx, rawInput)
+		if err != nil {
+			_, _ = r.sendMessage(ctx, chatID, "⚠️ <b>บันทึกโน้ตไม่สำเร็จ:</b> "+html.EscapeString(err.Error()), keyboard)
+			return err
+		}
+		if markup == nil {
+			markup = keyboard
+		}
+		_, err = r.sendMessage(ctx, chatID, msgHTML, markup)
+		return err
+
+	case "/notes":
+		if r.noteListFunc == nil {
+			_, err := r.sendMessage(ctx, chatID, "ℹ️ ระบบโน้ตยังไม่พร้อมใช้งาน", keyboard)
+			return err
+		}
+		rawQuery := ""
+		if len(text) > len(parts[0]) {
+			rawQuery = strings.TrimSpace(text[len(parts[0]):])
+		}
+		msgHTML, markup, err := r.noteListFunc(ctx, rawQuery)
+		if err != nil {
+			_, _ = r.sendMessage(ctx, chatID, "⚠️ <b>โหลดโน้ตไม่สำเร็จ:</b> "+html.EscapeString(err.Error()), keyboard)
+			return err
+		}
+		if markup == nil {
+			markup = keyboard
+		}
+		_, err = r.sendMessage(ctx, chatID, msgHTML, markup)
 		return err
 
 	case "/status":

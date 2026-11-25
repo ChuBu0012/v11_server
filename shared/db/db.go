@@ -231,6 +231,20 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_hash ON ask_cache(prompt_hash);
 	CREATE INDEX IF NOT EXISTS idx_ask_cache_expires ON ask_cache(expires_at);
+
+	CREATE TABLE IF NOT EXISTS notes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		title TEXT NOT NULL DEFAULT '',
+		content TEXT NOT NULL DEFAULT '',
+		kind TEXT NOT NULL DEFAULT 'note',
+		items_json TEXT NOT NULL DEFAULT '[]',
+		tags TEXT NOT NULL DEFAULT '',
+		pinned INTEGER NOT NULL DEFAULT 0,
+		archived INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_notes_pinned_updated ON notes(archived, pinned DESC, updated_at DESC);
 	`
 	if _, err := db.Exec(createTableQuery); err != nil {
 		db.Close()

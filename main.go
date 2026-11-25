@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html"
 	"log"
 	"net"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 	"v11-server/modules/endpoints"
 	"v11-server/modules/location"
 	"v11-server/modules/logs"
+	"v11-server/modules/notes"
 	"v11-server/modules/relay"
 	"v11-server/modules/reminders"
 	"v11-server/modules/system"
@@ -96,6 +98,7 @@ type App struct {
 	endpoints         *endpoints.Module
 	reminders         *reminders.Module
 	reminderService   *reminders.Service
+	notes             *notes.Module
 	locationModule    *location.Module
 	locationService   *location.Service
 	locationStore     *location.Store
@@ -185,6 +188,52 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	var statusProv *bot.DefaultStatusProvider
 	var reminderService *reminders.Service
 	var reminderTelegramReady bool
+	notesStore := notes.NewStore(dbConn)
+	var notesScheduleBridge notes.ScheduleBridge
+	if reminderStore != nil {
+		notesScheduleBridge = func(ctx context.Context, rawText string) (string, string, error) {
+			parsed, err := ai.ParseSchedulePrompt(ctx, aiEngine, rawText, "Asia/Bangkok")
+			if err != nil {
+				return "", "", err
+			}
+			loc := time.FixedZone("ICT", 7*3600)
+			title := strings.TrimSpace(rawText)
+			details := ""
+			recurrence := "once"
+			offsets := []int{0}
+			startsAt := time.Now().In(loc).Add(1 * time.Hour)
+			if parsed != nil && parsed.Preview != nil {
+				if strings.TrimSpace(parsed.Preview.Title) != "" {
+					title = parsed.Preview.Title
+				}
+				details = parsed.Preview.Details
+				if parsed.Preview.Recurrence != "" {
+					recurrence = parsed.Preview.Recurrence
+				}
+				if len(parsed.Preview.Offsets) > 0 {
+					offsets = parsed.Preview.Offsets
+				}
+				if t, parseErr := time.Parse(time.RFC3339, parsed.Preview.StartsAt); parseErr == nil {
+					startsAt = t
+				} else if t2, parseErr2 := time.ParseInLocation("2006-01-02T15:04", parsed.Preview.StartsAt, loc); parseErr2 == nil {
+					startsAt = t2
+				}
+			}
+			rem, err := reminderStore.Create(ctx, reminders.Input{
+				Title:      title,
+				Details:    details,
+				StartsAt:   startsAt.Format(time.RFC3339),
+				Recurrence: recurrence,
+				Offsets:    offsets,
+			})
+			if err != nil {
+				return "", "", err
+			}
+			return rem.Title, rem.StartsAt.In(loc).Format("2006-01-02 15:04"), nil
+		}
+	}
+	notesMod := notes.NewModule(notesStore, aiEngine, notesScheduleBridge)
+
 	if cfg.TelegramEnabled() {
 		var clientOpts []bot.ClientOption
 		if apiURL := os.Getenv("TELEGRAM_API_URL"); apiURL != "" {
@@ -319,6 +368,140 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		routerOpts = append(routerOpts, bot.WithAskRouter(askRouter))
 		routerOpts = append(routerOpts, bot.WithRingController(ringCtrl))
 		routerOpts = append(routerOpts, bot.WithLiveMapEnabled(cfg.EnableLiveMap))
+
+		baseNotesURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
+		if baseNotesURL == "" {
+			baseNotesURL = "http://100.92.194.87:8080"
+		}
+		notesPageURL := baseNotesURL + "/notes"
+		makeNoteKeyboard := func(id int64, pinned bool) *bot.InlineKeyboardMarkup {
+			pinLabel := "📌 ปักหมุด"
+			if pinned {
+				pinLabel = "📌 เลิกปัก"
+			}
+			return &bot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]bot.InlineKeyboardButton{
+					{
+						{Text: pinLabel, CallbackData: fmt.Sprintf("note:pin:%d", id)},
+						{Text: "⏰ ตั้งเตือน", CallbackData: fmt.Sprintf("note:remind:%d", id)},
+						{Text: "🗑 ลบ", CallbackData: fmt.Sprintf("note:del:%d", id)},
+					},
+					{
+						{Text: "📒 เปิดหน้าโน้ต", URL: notesPageURL},
+					},
+				},
+			}
+		}
+		routerOpts = append(routerOpts, bot.WithNoteCreateFunc(func(ctx context.Context, text string) (string, *bot.InlineKeyboardMarkup, error) {
+			tags := notes.SuggestTags(ctx, aiEngine, text)
+			created, err := notesStore.Create(ctx, notes.CreateInput{Content: text, Tags: tags})
+			if err != nil {
+				return "", nil, err
+			}
+			preview := created.Content
+			if created.Kind == "checklist" && len(created.Items) > 0 {
+				var lines []string
+				for _, it := range created.Items {
+					mark := "⬜"
+					if it.Done {
+						mark = "✅"
+					}
+					lines = append(lines, mark+" "+it.Text)
+				}
+				preview = strings.Join(lines, "\n")
+			}
+			msgHTML := fmt.Sprintf("📝 <b>บันทึกโน้ตแล้ว</b>\n\n<blockquote>%s</blockquote>\n\n🏷️ <i>#%s</i>",
+				html.EscapeString(preview), html.EscapeString(strings.ReplaceAll(created.Tags, ",", " #")))
+			return msgHTML, makeNoteKeyboard(created.ID, created.Pinned), nil
+		}))
+		routerOpts = append(routerOpts, bot.WithNoteListFunc(func(ctx context.Context, query string) (string, *bot.InlineKeyboardMarkup, error) {
+			items, err := notesStore.List(ctx, query, false, 8)
+			if err != nil {
+				return "", nil, err
+			}
+			if len(items) == 0 {
+				return "📒 <b>โน้ตส่วนตัว</b>\n\n<i>ยังไม่มีโน้ตในระบบ</i> — พิมพ์ <code>/note ข้อความ</code> เพื่อจดได้เลย", &bot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]bot.InlineKeyboardButton{{{Text: "📒 เปิดหน้าโน้ต", URL: notesPageURL}}},
+				}, nil
+			}
+			var sb strings.Builder
+			sb.WriteString("📒 <b>โน้ตส่วนตัวล่าสุด</b>\n\n")
+			for _, n := range items {
+				prefix := "•"
+				if n.Pinned {
+					prefix = "📌"
+				}
+				summary := n.Title
+				if summary == "" {
+					summary = n.Content
+				}
+				if summary == "" && len(n.Items) > 0 {
+					summary = fmt.Sprintf("%s (+%d รายการ)", n.Items[0].Text, len(n.Items)-1)
+				}
+				runes := []rune(strings.ReplaceAll(summary, "\n", " "))
+				if len(runes) > 55 {
+					summary = string(runes[:52]) + "..."
+				}
+				sb.WriteString(fmt.Sprintf("%s <b>%s</b>\n", prefix, html.EscapeString(summary)))
+			}
+			return sb.String(), &bot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]bot.InlineKeyboardButton{{{Text: "📒 จัดการทั้งหมดในเว็บ", URL: notesPageURL}}},
+			}, nil
+		}))
+		routerOpts = append(routerOpts, bot.WithCallbackRoute("note:", func(ctx context.Context, q *bot.CallbackQuery) error {
+			parts := strings.Split(q.Data, ":")
+			if len(parts) != 3 {
+				return nil
+			}
+			action := parts[1]
+			id, err := strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				return nil
+			}
+			switch action {
+			case "pin":
+				updated, err := notesStore.TogglePin(ctx, id)
+				if err != nil {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ไม่พบโน้ต", false)
+					return nil
+				}
+				toast := "📌 ปักหมุดแล้ว"
+				if !updated.Pinned {
+					toast = "เลิกปักหมุดแล้ว"
+				}
+				_ = botClient.AnswerCallbackQuery(ctx, q.ID, toast, false)
+				if q.Message != nil {
+					_ = botClient.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, q.Message.Text, makeNoteKeyboard(updated.ID, updated.Pinned))
+				}
+			case "remind":
+				if notesScheduleBridge == nil {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ระบบตารางยังไม่พร้อม", false)
+					return nil
+				}
+				n, err := notesStore.Get(ctx, id)
+				if err != nil {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ไม่พบโน้ต", false)
+					return nil
+				}
+				raw := strings.TrimSpace(n.Title + "\n" + n.Content)
+				title, at, err := notesScheduleBridge(ctx, raw)
+				if err != nil {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ตั้งเตือนไม่สำเร็จ", false)
+					return nil
+				}
+				_ = botClient.AnswerCallbackQuery(ctx, q.ID, fmt.Sprintf("⏰ ตั้งเตือน \"%s\" (%s) แล้ว", title, at), true)
+			case "del":
+				if err := notesStore.Delete(ctx, id); err != nil {
+					_ = botClient.AnswerCallbackQuery(ctx, q.ID, "ไม่พบโน้ต", false)
+					return nil
+				}
+				_ = botClient.AnswerCallbackQuery(ctx, q.ID, "🗑 ลบโน้ตแล้ว", false)
+				if q.Message != nil {
+					_ = botClient.EditMessageText(ctx, q.Message.Chat.ID, q.Message.MessageID, "🗑 <i>ลบโน้ตเรียบร้อยแล้ว</i>", nil)
+				}
+			}
+			return nil
+		}))
 
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
@@ -475,6 +658,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		endpoints:         endpointsMod,
 		reminders:         reminderMod,
 		reminderService:   reminderService,
+		notes:             notesMod,
 		locationModule:    locationModule,
 		locationService:   locationService,
 		locationStore:     locationStore,
@@ -516,6 +700,9 @@ func setupRouter(app *App) *gin.Engine {
 	}
 	if app.reminders != nil {
 		app.reminders.RegisterRoutes(r)
+	}
+	if app.notes != nil {
+		app.notes.RegisterRoutes(r)
 	}
 	if app.locationModule != nil {
 		if !app.cfg.EnableLiveMap {

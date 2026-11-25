@@ -176,6 +176,8 @@ func TestStaticRoutes(t *testing.T) {
 		"/static/js/components/ask.js",
 		"/static/js/components/digest.js",
 		"/static/js/components/events.js",
+		"/static/js/components/notes.js",
+		"/static/css/notes.css",
 	}
 
 	for _, path := range staticFiles {

@@ -1357,3 +1357,54 @@ func TestRouter_Ring_Command(t *testing.T) {
 		t.Errorf("Expected ringCtrl.IsRinging() to be false after callback ring:off")
 	}
 }
+
+func TestRouter_NoteAndNotes(t *testing.T) {
+	createdText := ""
+	router, recorder := setupTestRouterWithRecorder(
+		t,
+		nil,
+		WithNoteCreateFunc(func(ctx context.Context, text string) (string, *InlineKeyboardMarkup, error) {
+			createdText = text
+			return "📝 <b>บันทึกโน้ตแล้ว</b>\n" + text, nil, nil
+		}),
+		WithNoteListFunc(func(ctx context.Context, query string) (string, *InlineKeyboardMarkup, error) {
+			return "📒 <b>โน้ตส่วนตัวล่าสุด</b>\n• " + query, nil, nil
+		}),
+	)
+
+	ctx := context.Background()
+	if err := router.HandleUpdate(ctx, Update{
+		UpdateID: 1,
+		Message: &Message{
+			MessageID: 301,
+			From:      &User{ID: 123456, Username: "owner"},
+			Chat:      &Chat{ID: 123456},
+			Text:      "/note ซื้อนมสดตอนเย็น",
+		},
+	}); err != nil {
+		t.Fatalf("/note failed: %v", err)
+	}
+	if createdText != "ซื้อนมสดตอนเย็น" {
+		t.Errorf("expected note text 'ซื้อนมสดตอนเย็น', got %q", createdText)
+	}
+	msg1, err := recorder.nextMessage(2 * time.Second)
+	if err != nil || !strings.Contains(msg1.Text, "บันทึกโน้ตแล้ว") {
+		t.Fatalf("unexpected /note reply: %v %+v", err, msg1)
+	}
+
+	if err := router.HandleUpdate(ctx, Update{
+		UpdateID: 2,
+		Message: &Message{
+			MessageID: 302,
+			From:      &User{ID: 123456, Username: "owner"},
+			Chat:      &Chat{ID: 123456},
+			Text:      "/notes นมสด",
+		},
+	}); err != nil {
+		t.Fatalf("/notes failed: %v", err)
+	}
+	msg2, err := recorder.nextMessage(2 * time.Second)
+	if err != nil || !strings.Contains(msg2.Text, "โน้ตส่วนตัวล่าสุด") {
+		t.Fatalf("unexpected /notes reply: %v %+v", err, msg2)
+	}
+}

@@ -235,6 +235,10 @@ func MakeHelpKeyboardWithOptions(liveMapEnabled bool) *InlineKeyboardMarkup {
 			torchRow,
 			{
 				copyCommand("💬 ถาม AI", "/ask ทำไมท้องฟ้าเป็นสีฟ้า"),
+				copyCommand("📝 จดโน้ต", "/note "),
+			},
+			{
+				{Text: "📒 เปิดโน้ต", URL: "http://100.92.194.87:8080/notes"},
 				copyCommand("🔔 เรียกเครื่อง", "/ring"),
 			},
 			{

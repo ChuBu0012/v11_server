@@ -18,6 +18,9 @@ var teleBridgeHTML []byte
 //go:embed schedule.html
 var scheduleHTML []byte
 
+//go:embed notes.html
+var notesHTML []byte
+
 //go:embed live_map.html
 var liveMapHTML []byte
 
@@ -100,6 +103,8 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.HEAD("/relay", m.HandleTeleBridge)
 	r.GET("/schedule", m.HandleSchedule)
 	r.HEAD("/schedule", m.HandleSchedule)
+	r.GET("/notes", m.HandleNotes)
+	r.HEAD("/notes", m.HandleNotes)
 	r.GET("/endpoints", m.HandleEndpoints)
 	r.HEAD("/endpoints", m.HandleEndpoints)
 	r.GET("/watchtower", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/") })
@@ -124,6 +129,11 @@ func (m *Module) HandleTeleBridge(c *gin.Context) {
 // HandleSchedule serves the focused personal reminder calendar.
 func (m *Module) HandleSchedule(c *gin.Context) {
 	m.renderPage(c, scheduleHTML)
+}
+
+// HandleNotes serves the minimalist personal notes and checklists page.
+func (m *Module) HandleNotes(c *gin.Context) {
+	m.renderPage(c, notesHTML)
 }
 
 // HandleLiveMap serves the responsive tracker viewer after token authorization.
