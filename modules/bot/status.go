@@ -129,21 +129,21 @@ func (p *DefaultStatusProvider) GetStatusCard(ctx context.Context) (string, erro
 			hInfo.UsedMB/1024, hInfo.TotalMB/1024, hInfo.UsedPercent, allocMB, sysMB)
 	}
 
-	// Format HTML status card
+	// Format clean HTML status card
 	cardHTML := fmt.Sprintf(
 		"📊 <b>Pocket Sentinel — System Status</b>\n\n"+
-			"🔋 <b>Battery:</b> %s\n"+
+			"• 🔋 <b>Battery:</b> %s\n"+
 			"%s\n"+
-			"💾 <b>Disk (%s):</b> %.1f GB free / %.1f GB\n"+
-			"⏱️ <b>Uptime:</b> %s\n"+
-			"🌐 <b>Endpoint:</b> %s\n\n"+
-			"<i>Updated: %s UTC</i>",
+			"• 💾 <b>Disk (%s):</b> %.1f GB free / %.1f GB\n"+
+			"• ⏱️ <b>Uptime:</b> %s\n"+
+			"• 🌐 <b>Endpoint:</b> <code>%s</code>\n\n"+
+			"<i>อัปเดต %s UTC</i>",
 		batteryStr,
 		memLine,
 		targetPath, diskFreeGB, diskTotalGB,
 		uptimeStr,
 		endpointURL,
-		time.Now().UTC().Format("2006-01-02 15:04:05"),
+		time.Now().UTC().Format("15:04"),
 	)
 
 	return cardHTML, nil
@@ -236,18 +236,16 @@ func (p *DefaultStatusProvider) GetSystemPanel(ctx context.Context) string {
 			hInfo.UsedMB/1024, hInfo.TotalMB/1024, hInfo.UsedPercent, allocMB)
 	}
 
-	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04:05")
+	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04")
 
 	return fmt.Sprintf(
-		"🎛️ <b>Pocket Sentinel · ควบคุมระบบ</b>\n"+
-			"─────────────────────\n"+
-			"🔋 <b>แบตเตอรี่:</b> %s\n"+
+		"🎛️ <b>Pocket Sentinel · ควบคุมระบบ</b>\n\n"+
+			"• 🔋 <b>แบตเตอรี่:</b> %s\n"+
 			"%s\n"+
-			"💾 <b>พื้นที่จัดเก็บ:</b> %.1f GB ว่าง / %.1f GB\n"+
-			"⏱️ <b>เปิดต่อเนื่อง:</b> %s\n"+
-			"🌐 <b>IP เครือข่าย:</b> <code>%s</code>\n"+
-			"─────────────────────\n"+
-			"<i>อัปเดต: %s ICT · [📊 ระบบ]</i>",
+			"• 💾 <b>พื้นที่จัดเก็บ:</b> %.1f GB ว่าง / %.1f GB\n"+
+			"• ⏱️ <b>เปิดต่อเนื่อง:</b> %s\n"+
+			"• 🌐 <b>ที่อยู่เครือข่าย:</b> <code>%s</code>\n\n"+
+			"<i>อัปเดต %s · แท็บ 📊 ระบบ</i>",
 		batteryStr,
 		memLine,
 		diskFreeGB, diskTotalGB,
@@ -259,7 +257,7 @@ func (p *DefaultStatusProvider) GetSystemPanel(ctx context.Context) string {
 
 // GetServicesPanel formats the services and health check tab.
 func (p *DefaultStatusProvider) GetServicesPanel(ctx context.Context) string {
-	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04:05")
+	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04")
 
 	// Check local go-server health
 	sentinelStatus := "🟢 ปกติ (พอร์ต 8080)"
@@ -289,15 +287,11 @@ func (p *DefaultStatusProvider) GetServicesPanel(ctx context.Context) string {
 	}
 
 	return fmt.Sprintf(
-		"🎛️ <b>Pocket Sentinel · สถานะบริการ</b>\n"+
-			"─────────────────────\n"+
-			"🚀 <b>Pocket Sentinel API:</b> %s\n"+
-			"📊 <b>Gatus Health Monitor:</b> %s\n"+
-			"🔒 <b>Tailscale Ingress:</b> 🟢 พร้อมใช้งาน (100.92.194.87)\n"+
-			"─────────────────────\n"+
-			"💡 <i>แตะ '➕ จัดการ Endpoints' เพื่อเพิ่มการตรวจสอบ</i>\n"+
-			"─────────────────────\n"+
-			"<i>อัปเดต: %s ICT · [🌐 บริการ]</i>",
+		"🌐 <b>Pocket Sentinel · สถานะบริการ</b>\n\n"+
+			"• 🚀 <b>Sentinel API:</b> %s\n"+
+			"• 📊 <b>Gatus Monitor:</b> %s\n"+
+			"• 🔒 <b>Tailscale:</b> 🟢 ออนไลน์ (<code>100.92.194.87</code>)\n\n"+
+			"<i>อัปเดต %s · แตะ '➕ จัดการ Endpoints' เพื่อเพิ่มบริการ</i>",
 		sentinelStatus,
 		gatusStatus,
 		nowStr,
@@ -306,9 +300,9 @@ func (p *DefaultStatusProvider) GetServicesPanel(ctx context.Context) string {
 
 // GetDigestPanel formats the digest and markets tab.
 func (p *DefaultStatusProvider) GetDigestPanel(ctx context.Context) string {
-	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04:05")
+	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04")
 
-	content := "ยังไม่มีรอบสรุปประจำวันล่าสุดในฐานข้อมูล\nแตะปุ่มด้านล่างเพื่อรันสรุปหรือดูข้อมูลเต็ม"
+	content := "ยังไม่มีรอบสรุปประจำวันล่าสุด\nแตะปุ่มด้านล่างเพื่อรันสรุปข่าวทันที"
 	if p.digestSummaryFunc != nil {
 		if summary, err := p.digestSummaryFunc(ctx); err == nil && summary != "" {
 			content = summary
@@ -316,11 +310,9 @@ func (p *DefaultStatusProvider) GetDigestPanel(ctx context.Context) string {
 	}
 
 	return fmt.Sprintf(
-		"🎛️ <b>Pocket Sentinel · ข้อมูลสรุปและตลาด</b>\n"+
-			"─────────────────────\n"+
-			"%s\n"+
-			"─────────────────────\n"+
-			"<i>อัปเดต: %s ICT · [📰 ข่าว/ทอง]</i>",
+		"📰 <b>Pocket Sentinel · ข้อมูลสรุปและตลาด</b>\n\n"+
+			"<blockquote>%s</blockquote>\n\n"+
+			"<i>อัปเดต %s · แท็บ 📰 ข่าว/ทอง</i>",
 		content,
 		nowStr,
 	)
@@ -328,9 +320,9 @@ func (p *DefaultStatusProvider) GetDigestPanel(ctx context.Context) string {
 
 // GetLocationPanel formats the location tab.
 func (p *DefaultStatusProvider) GetLocationPanel(ctx context.Context) string {
-	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04:05")
+	nowStr := time.Now().In(time.FixedZone("ICT", 7*3600)).Format("15:04")
 
-	content := "ยังไม่มีข้อมูลพิกัดล่าสุด\nระบบ Location Tracker จะบันทึกเมื่ออุปกรณ์ส่งสัญญาณ"
+	content := "ยังไม่มีข้อมูลพิกัดล่าสุด\nระบบจะบันทึกเมื่ออุปกรณ์ส่งสัญญาณ"
 	if p.locationSummaryFunc != nil {
 		if locHTML, err := p.locationSummaryFunc(ctx); err == nil && locHTML != "" {
 			content = locHTML
@@ -338,11 +330,9 @@ func (p *DefaultStatusProvider) GetLocationPanel(ctx context.Context) string {
 	}
 
 	return fmt.Sprintf(
-		"🎛️ <b>Pocket Sentinel · ตำแหน่งและความปลอดภัย</b>\n"+
-			"─────────────────────\n"+
-			"%s\n"+
-			"─────────────────────\n"+
-			"<i>อัปเดต: %s ICT · [🗺️ พิกัด]</i>",
+		"🗺️ <b>Pocket Sentinel · ตำแหน่งและความปลอดภัย</b>\n\n"+
+			"%s\n\n"+
+			"<i>อัปเดต %s · แท็บ 🗺️ พิกัด</i>",
 		content,
 		nowStr,
 	)

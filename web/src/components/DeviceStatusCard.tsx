@@ -13,28 +13,28 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({ status }) =>
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h ${mins}m`;
+    if (days > 0) return `${days} วัน ${hours} ชม.`;
+    return `${hours} ชม. ${mins} นาที`;
   };
 
   const timeAgo = (dateStr: string) => {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (diff < 10) return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 10) return 'เมื่อสักครู่';
+    if (diff < 60) return `${diff} วินาทีที่แล้ว`;
+    return `${Math.floor(diff / 60)} นาทีที่แล้ว`;
   };
 
   const metricTone = (value: number) => value >= 85 ? 'danger' : value >= 70 ? 'warning' : 'normal';
 
   const metrics = [
-    { label: 'Battery', value: `${device.battery_level}%`, detail: device.is_charging ? 'Charging' : 'On battery', progress: device.battery_level, icon: device.is_charging ? BatteryCharging : Battery, tone: device.battery_level < 20 ? 'danger' : 'normal' },
-    { label: 'Memory', value: `${device.ram_used_percent}%`, detail: 'Host RAM', progress: device.ram_used_percent, icon: Cpu, tone: metricTone(device.ram_used_percent) },
-    { label: 'Storage', value: `${device.disk_used_percent}%`, detail: 'Internal', progress: device.disk_used_percent, icon: HardDrive, tone: metricTone(device.disk_used_percent) },
-    { label: 'Uptime', value: formatUptime(device.uptime_seconds), detail: `${device.uptime_hours} hours`, progress: 100, icon: Clock, tone: 'normal' },
+    { label: 'แบตเตอรี่', value: `${device.battery_level}%`, detail: device.is_charging ? 'กำลังชาร์จ' : 'ใช้งานแบต', progress: device.battery_level, icon: device.is_charging ? BatteryCharging : Battery, tone: device.battery_level < 20 ? 'danger' : 'normal' },
+    { label: 'หน่วยความจำ RAM', value: `${device.ram_used_percent}%`, detail: 'การใช้งานเครื่อง', progress: device.ram_used_percent, icon: Cpu, tone: metricTone(device.ram_used_percent) },
+    { label: 'พื้นที่เก็บข้อมูล', value: `${device.disk_used_percent}%`, detail: 'หน่วยความจำภายใน', progress: device.disk_used_percent, icon: HardDrive, tone: metricTone(device.disk_used_percent) },
+    { label: 'เปิดต่อเนื่อง', value: formatUptime(device.uptime_seconds), detail: `${device.uptime_hours} ชั่วโมง`, progress: 100, icon: Clock, tone: 'normal' },
   ];
 
   const serviceList = [
-    { name: 'Go server', state: services.server },
+    { name: 'Go Server', state: services.server },
     { name: 'Gatus', state: services.gatus },
     { name: 'Tailscale', state: services.tailscale },
   ];
@@ -43,10 +43,10 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({ status }) =>
     <section className="status-panel" aria-labelledby="status-title">
       <div className="panel-heading">
         <div>
-          <span className="section-kicker">01 / DEVICE</span>
-          <h2 id="status-title">Current health</h2>
+          <span className="section-kicker">01 · สถานะเครื่อง</span>
+          <h2 id="status-title">สุขภาพระบบ vivo v11</h2>
         </div>
-        <span className="updated-label">Updated {timeAgo(updated_at)}</span>
+        <span className="updated-label">อัปเดต {timeAgo(updated_at)}</span>
       </div>
 
       <div className="metric-grid">
@@ -69,21 +69,22 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({ status }) =>
       </div>
 
       <div className="service-strip">
-        {serviceList.map((service) => (
-          <div className="service-item" key={service.name}>
-            {service.state === 'healthy' || service.state === 'connected'
-              ? <CheckCircle2 />
-              : <CircleAlert />}
-            <span>{service.name}</span>
-            <strong>{service.state}</strong>
-          </div>
-        ))}
+        {serviceList.map((service) => {
+          const ok = service.state === 'healthy' || service.state === 'connected';
+          return (
+            <div className={`service-item ${ok ? 'ok' : 'down'}`} key={service.name}>
+              {ok ? <CheckCircle2 /> : <CircleAlert />}
+              <span>{service.name}</span>
+              <strong>{ok ? 'ปกติ' : service.state}</strong>
+            </div>
+          );
+        })}
       </div>
 
       <div className="server-identity">
         <Server />
-        <span>Vivo 1804</span>
-        <strong>ARM64 / Termux</strong>
+        <span>vivo 1804 · Android Termux</span>
+        <strong>ARM64</strong>
       </div>
     </section>
   );

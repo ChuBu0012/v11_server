@@ -27,29 +27,29 @@ export const ActionButtons: React.FC = () => {
     try {
       const id = await sendAction(action);
       setActionId(id);
-      setStatusMessage({ text: `Queued · ${label}` });
+      setStatusMessage({ text: `ส่งคำสั่งแล้ว · ${label}` });
       setCooldown(true);
       window.setTimeout(() => setCooldown(false), 8000);
     } catch (err: any) {
       setLoadingAction(null);
-      setStatusMessage({ text: err?.message || 'Command unavailable', isError: true });
+      setStatusMessage({ text: err?.message || 'ไม่สามารถส่งคำสั่งได้', isError: true });
     }
   };
 
   const stateText = trackedAction?.status === 'failed'
-    ? trackedAction.result || 'v11 rejected the command'
+    ? trackedAction.result || 'เครื่องปฏิเสธคำสั่ง'
     : trackedAction?.status === 'completed'
-      ? `Completed · ${trackedAction.result || 'No additional details'}`
+      ? `สำเร็จ · ${trackedAction.result || 'เสร็จสิ้น'}`
       : trackedAction?.status === 'processing'
-        ? 'v11 is processing…'
+        ? 'v11 กำลังประมวลผล…'
         : statusMessage?.text;
 
   return (
     <section className="action-panel" aria-labelledby="actions-title">
-      <div className="panel-heading command-heading">
+      <div className="panel-heading">
         <div>
-          <span className="section-kicker">02 / CONTROL</span>
-          <h2 id="actions-title">Quick actions</h2>
+          <span className="section-kicker">คำสั่งด่วน</span>
+          <h2 id="actions-title">ควบคุมจากระยะไกล</h2>
         </div>
         <span className="safe-label">SAFE</span>
       </div>
@@ -57,11 +57,11 @@ export const ActionButtons: React.FC = () => {
       <div className="command-list">
         <button
           className="command-button primary"
-          onClick={() => handleTrigger('refresh_digest', 'Refresh digest')}
+          onClick={() => handleTrigger('refresh_digest', 'อัปเดตสรุปข่าว')}
           disabled={loadingAction !== null || cooldown}
         >
           <span className="command-icon"><RefreshCw className={loadingAction === 'refresh_digest' ? 'spin' : ''} /></span>
-          <span><strong>Refresh digest</strong><small>Generate a fresh daily summary</small></span>
+          <span><strong>อัปเดตสรุปข่าว</strong><small>ดึงข่าวและราคาทองล่าสุด</small></span>
           <span className="command-arrow">→</span>
         </button>
 
@@ -71,7 +71,7 @@ export const ActionButtons: React.FC = () => {
           disabled={loadingAction !== null || cooldown}
         >
           <span className="command-icon"><Zap /></span>
-          <span><strong>Ping v11</strong><small>Check device response</small></span>
+          <span><strong>เช็กการตอบสนอง (Ping)</strong><small>ทดสอบการเชื่อมต่อ v11</small></span>
           <span className="command-arrow">→</span>
         </button>
       </div>

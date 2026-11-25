@@ -24,18 +24,18 @@ export const Header: React.FC<HeaderProps> = ({ darkMode, onToggleTheme, status 
         <div>
           <div className="brand-title-row">
             <h1>Pocket Sentinel</h1>
-            <span>PUBLIC</span>
+            <span className="brand-badge">PUBLIC HUB</span>
           </div>
-          <p>VIVO 1804 · LIVE OPERATIONS</p>
+          <p>vivo 1804 · ศูนย์ติดตามสถานะและข่าวสาร</p>
         </div>
       </div>
 
       <div className="topbar-actions">
         <span className={isMockMode ? 'sync-pill preview' : stale ? 'sync-pill stale' : 'sync-pill live'}>
           <Radio />
-          {isMockMode ? 'Preview data' : stale ? 'Sync delayed' : 'Live'}
+          <span>{isMockMode ? 'โหมดตัวอย่าง' : stale ? 'ซิงก์ล่าช้า' : 'ออนไลน์'}</span>
         </span>
-        <button onClick={onToggleTheme} aria-label="สลับธีม" className="theme-button">
+        <button onClick={onToggleTheme} aria-label="สลับธีม" className="theme-button" title="สลับโหมดมืด/สว่าง">
           {darkMode ? <Sun /> : <Moon />}
         </button>
       </div>

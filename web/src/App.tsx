@@ -61,10 +61,10 @@ export const App: React.FC = () => {
 
       <footer className="site-footer">
         <div className="privacy-row">
-          <span><Globe /> Public edge</span>
-          <span><Lock /> No GPS or private quota exposure</span>
+          <span><Globe /> Public Hub</span>
+          <span><Lock /> ไม่เปิดเผยพิกัด GPS และโควตาส่วนตัว</span>
         </div>
-        <p>Pocket Sentinel / Public operations surface</p>
+        <p>Pocket Sentinel · vivo 1804</p>
       </footer>
     </div>
   );

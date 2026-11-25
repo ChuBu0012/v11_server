@@ -427,27 +427,21 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			locationHelp = "\n<b>📍 แผนที่และพิกัดสด</b>\n" +
 				"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n"
 		}
-		helpHTML := "🛡️ <b>Pocket Sentinel</b>\n" +
-			"<i>เลือกปุ่มเพื่อดูสถานะ ควบคุมไฟฉาย หรือคัดลอกคำสั่งตัวอย่าง</i>\n\n" +
-			"<b>🎛️ แผงควบคุมระบบ</b>\n" +
-			"<code>/panel</code> เปิดแผงควบคุมระบบแบบโต้ตอบ (" + panelTabs + ")\n" +
-			"<code>/keyboard</code> เปิดแป้นพิมพ์ลัด | <code>/keyboard_hide</code> ซ่อนแป้นพิมพ์\n" +
+		helpHTML := "🛡️ <b>Pocket Sentinel</b> · ศูนย์ควบคุม v11\n" +
+			"<i>เลือกปุ่มลัดด้านล่าง หรือคัดลอกคำสั่งเพื่อแก้ไขก่อนส่ง</i>\n\n" +
+			"<b>🎛️ แผงควบคุม &amp; สถานะ</b>\n" +
+			"• <code>/panel</code> — เปิดแผงควบคุมแบบแท็บ (" + panelTabs + ")\n" +
+			"• <code>/status</code> · <code>/ping</code> — สถานะเครื่องและการตอบสนอง\n" +
+			"• <code>/keyboard</code> · <code>/keyboard_hide</code> — เปิด/ซ่อนแป้นพิมพ์ลัด\n" +
+			"• <code>/torch [on|off|status]</code> · <code>/ring [on|off]</code> — ไฟฉาย / เสียงเรียกเครื่อง\n" +
 			locationHelp +
-			"\n<b>📊 ดูสถานะ</b>\n" +
-			"<code>/status</code> สุขภาพเครื่องและบริการ\n" +
-			"<code>/ping</code> ตรวจการตอบสนอง\n" +
-			"<code>/torch [on|off|status]</code> ควบคุม/ตรวจไฟฉาย\n\n" +
-			"<b>🤖 ถาม-ตอบ และงาน Agent</b>\n" +
-			"<code>/ask [model] [effort] &lt;คำถาม&gt;</code> ถาม AI ตอบเร็วทันใจ (รองรับ auto, groq, gemini, agy)\n" +
-			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
-			"<code>/task_status</code> ดูงาน Agent\n" +
-			"<code>/ring [on|off]</code> ส่งเสียงเรียกหาโทรศัพท์ (ดังสุด + สั่น + แจ้งเตือนปิดเสียงบนจอ)\n" +
-			"<code>/digest</code> สรุปข่าว AI\n" +
-			"<code>/quota</code> หรือ <code>/limits</code> เช็คโควตา AI (Gemini) พร้อมเวลารีเซ็ต\n" +
-			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
-			"<code>/reboot</code> รีสตาร์ต Go server\n" +
-			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
-			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
+			"\n<b>🤖 AI, ข่าวสาร &amp; ระบบ</b>\n" +
+			"• <code>/ask [model] [effort] &lt;คำถาม&gt;</code> — ถาม AI ด่วน (auto, groq, gemini, agy)\n" +
+			"• <code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> — สั่ง Agent ทำงาน (<code>/task_status</code>)\n" +
+			"• <code>/digest</code> — สรุปข่าวและราคาทอง\n" +
+			"• <code>/quota</code> · <code>/limits</code> — เช็คโควตา AI พร้อมเวลารีเซ็ต\n" +
+			"• <code>/exec ps|df|free|uptime|pm2</code> — ตรวจระบบปลอดภัย\n" +
+			"• <code>/deploy [ข้อความ]</code> · <code>/reboot</code> — อัปเดต/รีสตาร์ตเซิร์ฟเวอร์"
 		if cmd == "/start" {
 			_, _ = r.sendReplyMarkup(ctx, chatID, "👋 <b>ยินดีต้อนรับสู่ Pocket Sentinel</b>\nเปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว", MakeDefaultReplyKeyboardWithOptions(r.liveMapEnabled))
 		}
@@ -717,13 +711,11 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 			if triageVerdict == VerdictFastLLM {
 				fastRes, err := r.askRouter.ExecuteFast(ctx, askOpts)
 				if err == nil && fastRes != nil {
-					sourceFooter := ""
+					sourceBadge := fmt.Sprintf("%s · %.2fs", strings.ToUpper(fastRes.Provider), fastRes.Duration.Seconds())
 					if fastRes.IsCached {
-						sourceFooter = fmt.Sprintf("\n\n<i>⚡ ตอบทันทีจาก Cache (%s)</i>", formatCachedAgo(fastRes.CachedAt))
-					} else {
-						sourceFooter = fmt.Sprintf("\n\n<i>⏱ %s (%.2fs)</i>", strings.ToUpper(fastRes.Provider), fastRes.Duration.Seconds())
+						sourceBadge = fmt.Sprintf("Cache · %s", formatCachedAgo(fastRes.CachedAt))
 					}
-					formatted := fmt.Sprintf("💬 <b>คำตอบจาก AI:</b>\n\n%s%s", r.scrubber.EscapeHTML(fastRes.ResponseText), sourceFooter)
+					formatted := fmt.Sprintf("💬 <b>คำตอบจาก AI</b> · <i>%s</i>\n\n%s", sourceBadge, r.scrubber.EscapeHTML(fastRes.ResponseText))
 					_, sendErr := r.sendMessage(ctx, chatID, formatted, keyboard)
 					return sendErr
 				}

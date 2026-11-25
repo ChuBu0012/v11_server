@@ -24,6 +24,12 @@ function sanitizeHtml(html: string): string {
   return doc.body.innerHTML;
 }
 
+const quickPrompts = [
+  'สรุปข่าวทองวันนี้ให้หน่อย',
+  'ภาพรวมข่าวเด่นวันนี้มีอะไรบ้าง',
+  'เทรนด์ AI ล่าสุดที่น่าสนใจ',
+];
+
 export const AskCard: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState<'auto' | 'groq' | 'gemini'>('auto');
@@ -46,9 +52,8 @@ export const AskCard: React.FC = () => {
     });
   }, [actionId]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const q = prompt.trim();
+  const submitQuery = async (queryText: string) => {
+    const q = queryText.trim();
     if (!q || loading) return;
 
     setLoading(true);
@@ -61,8 +66,13 @@ export const AskCard: React.FC = () => {
       setActionId(id);
     } catch (err: any) {
       setLoading(false);
-      setError(err?.message || 'ส่งคำถามไม่สำเร็จ');
+      setError(err?.message || 'ไม่สามารถส่งคำถามได้');
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitQuery(prompt);
   };
 
   const handleCopy = async () => {
@@ -82,180 +92,94 @@ export const AskCard: React.FC = () => {
   };
 
   return (
-    <section className="operation-card" aria-labelledby="ask-title" style={{ marginTop: '16px' }}>
-      <div className="card-top-rail">
+    <section className="ask-panel" aria-labelledby="ask-title">
+      <div className="panel-heading">
         <div>
-          <span className="section-kicker">03 / AI QUERY</span>
-          <h2 id="ask-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles style={{ width: '18px', height: '18px', color: 'var(--accent, #3b82f6)' }} />
-            <span>Ask AI</span>
+          <span className="section-kicker">02 · ผู้ช่วย AI</span>
+          <h2 id="ask-title">
+            <Sparkles style={{ color: 'var(--accent)' }} />
+            <span>ถาม-ตอบ AI ด่วน</span>
           </h2>
         </div>
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-subtle, rgba(255,255,255,0.05))', padding: '2px', borderRadius: '6px' }}>
+        <div className="model-switch" role="group" aria-label="เลือกโมเดล AI">
           {(['auto', 'groq', 'gemini'] as const).map((m) => (
             <button
               key={m}
               type="button"
+              className={model === m ? 'active' : ''}
               onClick={() => setModel(m)}
-              style={{
-                border: 'none',
-                background: model === m ? 'var(--surface-active, rgba(255,255,255,0.15))' : 'transparent',
-                color: model === m ? 'var(--text-primary, #fff)' : 'var(--text-muted, #888)',
-                padding: '4px 10px',
-                borderRadius: '4px',
-                fontSize: '12px',
-                fontWeight: model === m ? 600 : 400,
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                transition: 'all 0.15s ease'
-              }}
             >
-              {m}
+              {m === 'auto' ? 'Auto' : m === 'groq' ? 'Groq' : 'Gemini'}
             </button>
           ))}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="ถามคำถาม AI... (เช่น สรุปข่าวทองวันนี้, สุขภาพเครื่อง)"
-            disabled={loading}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-              background: 'var(--surface-input, rgba(255,255,255,0.03))',
-              color: 'var(--text-primary, inherit)',
-              fontSize: '14px',
-              outline: 'none'
-            }}
-          />
+      <div className="prompt-chips">
+        {quickPrompts.map((chip) => (
           <button
-            type="submit"
-            disabled={loading || !prompt.trim()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '0 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'var(--btn-primary, #3b82f6)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '14px',
-              cursor: loading || !prompt.trim() ? 'not-allowed' : 'pointer',
-              opacity: loading || !prompt.trim() ? 0.6 : 1,
-              transition: 'all 0.15s ease'
+            key={chip}
+            type="button"
+            className="prompt-chip"
+            disabled={loading}
+            onClick={() => {
+              setPrompt(chip);
+              void submitQuery(chip);
             }}
           >
-            {loading ? <LoaderCircle className="spin" style={{ width: '16px', height: '16px' }} /> : <Send style={{ width: '16px', height: '16px' }} />}
-            <span>{loading ? 'กำลังคิด…' : 'ถาม'}</span>
+            {chip}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', fontSize: '12px' }}>
-          <span style={{ color: 'var(--text-muted, #888)' }}>แนะนำ:</span>
-          {[
-            'ทำไมทองคำราคาถึงขึ้นลง',
-            'สรุปสถานะสุขภาพเครื่องตอนนี้',
-            'อธิบายควอนตัมคอมพิวติ้งแบบเข้าใจง่าย'
-          ].map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => {
-                setPrompt(suggestion);
-              }}
-              disabled={loading}
-              style={{
-                border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-                background: 'transparent',
-                color: 'var(--text-secondary, #aaa)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontSize: '11.5px',
-                cursor: 'pointer'
-              }}
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+      <form className="ask-form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          className="ask-input"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="พิมพ์คำถามที่ต้องการถาม AI..."
+          disabled={loading}
+        />
+        <button
+          type="submit"
+          className="ask-submit"
+          disabled={loading || !prompt.trim()}
+        >
+          {loading ? <LoaderCircle className="spin" /> : <Send />}
+          <span>{loading ? 'กำลังคิด…' : 'ส่งคำถาม'}</span>
+        </button>
       </form>
 
       {error && (
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontSize: '13px' }}>
-          <AlertCircle style={{ width: '16px', height: '16px' }} />
+        <div className="ask-alert" role="alert">
+          <AlertCircle />
           <span>{error}</span>
         </div>
       )}
 
-      {trackedAction && trackedAction.status === 'completed' && trackedAction.result && (
-        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              ✓ คำตอบจาก AI ({model.toUpperCase()})
-            </span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={handleCopy}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-                  background: 'transparent',
-                  color: 'var(--text-secondary, #aaa)',
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                {copied ? <Check style={{ width: '14px', height: '14px', color: '#10b981' }} /> : <Copy style={{ width: '14px', height: '14px' }} />}
+      {trackedAction?.status === 'completed' && trackedAction.result && (
+        <div className="ask-result">
+          <div className="ask-result-bar">
+            <div className="ask-result-meta">
+              <Check />
+              <span>ตอบกลับจาก {model === 'auto' ? 'Fast AI' : model.toUpperCase()}</span>
+            </div>
+            <div className="ask-result-actions">
+              <button type="button" className="ask-mini-btn" onClick={handleCopy}>
+                {copied ? <Check style={{ color: 'var(--green)' }} /> : <Copy />}
                 <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
               </button>
-              <button
-                type="button"
-                onClick={handleClear}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-                  background: 'transparent',
-                  color: 'var(--text-secondary, #aaa)',
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                <RotateCcw style={{ width: '14px', height: '14px' }} />
+              <button type="button" className="ask-mini-btn" onClick={handleClear}>
+                <RotateCcw />
                 <span>ล้าง</span>
               </button>
             </div>
           </div>
           <div
-            className="markdown-body"
+            className="ask-result-body markdown-body"
             dangerouslySetInnerHTML={{
               __html: sanitizeHtml(marked.parse(trackedAction.result, { gfm: true, breaks: true }) as string)
-            }}
-            style={{
-              fontSize: '14px',
-              lineHeight: 1.6,
-              color: 'var(--text-primary, inherit)',
-              background: 'var(--surface-input, rgba(255,255,255,0.02))',
-              padding: '12px 14px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-subtle, rgba(255,255,255,0.05))'
             }}
           />
         </div>

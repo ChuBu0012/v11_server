@@ -9,12 +9,12 @@ interface DigestCardProps {
 type BriefSection = 'OVERVIEW' | 'AI' | 'POLITICS' | 'STOCKS' | 'GOLD' | 'TRIVIA';
 
 const sectionMeta: Record<BriefSection, { label: string; icon: React.ElementType }> = {
-  OVERVIEW: { label: 'Overview', icon: LayoutGrid },
+  OVERVIEW: { label: 'ภาพรวม', icon: LayoutGrid },
   AI: { label: 'AI', icon: Bot },
-  POLITICS: { label: 'Politics', icon: Landmark },
-  STOCKS: { label: 'Stocks', icon: TrendingUp },
-  GOLD: { label: 'Gold', icon: Coins },
-  TRIVIA: { label: 'Trivia', icon: Lightbulb },
+  POLITICS: { label: 'การเมือง', icon: Landmark },
+  STOCKS: { label: 'หุ้น', icon: TrendingUp },
+  GOLD: { label: 'ทองคำ', icon: Coins },
+  TRIVIA: { label: 'สาระ', icon: Lightbulb },
 };
 
 function parseBrief(markdown: string): Record<BriefSection, string[]> {
@@ -49,9 +49,16 @@ function renderInlineMarkdown(text: string) {
 
 export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
   const [activeSection, setActiveSection] = useState<BriefSection>('OVERVIEW');
-  const { gold, summary_md, updated_at } = digest;
+  const { gold, stocks, summary_md, updated_at } = digest;
 
-  const sections = useMemo(() => parseBrief(summary_md || ''), [summary_md]);
+  const sections = useMemo(() => {
+    const parsed = parseBrief(summary_md || '');
+    if (parsed.STOCKS.length === 0 && stocks && stocks.length > 0) {
+      parsed.STOCKS = stocks.map((s) => (s.source ? `**${s.source}:** ${s.title}` : s.title));
+    }
+    return parsed;
+  }, [summary_md, stocks]);
+
   const availableSections = (Object.keys(sectionMeta) as BriefSection[]).filter(
     (section) => sections[section].length > 0,
   );
@@ -68,30 +75,30 @@ export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
     <section className="digest-panel" aria-labelledby="digest-title">
       <div className="panel-heading">
         <div>
-          <span className="section-kicker">03 / INTELLIGENCE</span>
-          <h2 id="digest-title">Daily brief</h2>
+          <span className="section-kicker">03 · ข่าวและตลาด</span>
+          <h2 id="digest-title">สรุปข่าวประจำวัน</h2>
         </div>
         <span className="updated-label">
-          {new Date(updated_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+          อัปเดต {new Date(updated_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
 
       {gold && (
         <div className="gold-strip">
           <div className="gold-heading">
-            <span><Coins /> Gold</span>
-            <small>${gold.world_spot} / oz</small>
+            <span><Coins /> ราคาทองคำ</span>
+            <small>Spot ${gold.world_spot} / oz</small>
           </div>
           <div className="gold-values">
-            <div><small>BUY</small><strong>฿{formatCurrency(gold.bar_buy)}</strong></div>
-            <div><small>SELL</small><strong>฿{formatCurrency(gold.bar_sell)}</strong></div>
+            <div><small>รับซื้อ</small><strong>฿{formatCurrency(gold.bar_buy)}</strong></div>
+            <div><small>ขายออก</small><strong>฿{formatCurrency(gold.bar_sell)}</strong></div>
           </div>
         </div>
       )}
 
-      {summary_md && (
+      {availableSections.length > 0 ? (
         <div className="brief-reader">
-          <div className="brief-tabs" role="tablist" aria-label="Digest sections">
+          <div className="brief-tabs" role="tablist" aria-label="หมวดสรุปข่าว">
             {availableSections.map((section) => {
               const Icon = sectionMeta[section].icon;
               return (
@@ -117,10 +124,10 @@ export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
 
               if (overviewMatch) {
                 const rawLabel = overviewMatch[1];
-                const label = rawLabel.includes('หุ้น') ? 'Stocks'
-                  : rawLabel.includes('AI') ? 'AI'
-                  : rawLabel.includes('การเมือง') ? 'Politics'
-                  : rawLabel.includes('สาระ') ? 'Trivia'
+                const label = rawLabel.includes('หุ้น') ? 'หุ้นไทย/โลก'
+                  : rawLabel.includes('AI') ? 'AI & Tech'
+                  : rawLabel.includes('การเมือง') ? 'การเมือง'
+                  : rawLabel.includes('สาระ') ? 'สาระน่ารู้'
                   : rawLabel.replace(/^[^ก-ฮA-Za-z]+\s*/, '');
 
                 return (
@@ -143,12 +150,10 @@ export const DigestCard: React.FC<DigestCardProps> = ({ digest }) => {
             })}
           </div>
         </div>
-      )}
-
-      {!summary_md && (
+      ) : (
         <div className="brief-empty">
           <Sparkles />
-          <span>Daily brief is unavailable</span>
+          <span>ยังไม่มีสรุปข่าวประจำวัน</span>
         </div>
       )}
     </section>
