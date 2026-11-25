@@ -2,7 +2,9 @@
 // Pocket Sentinel — Minimalist Notes & Checklists (Keep-style)
 // =============================================================================
 
-document.addEventListener('alpine:init', () => {
+function registerNotesComponent() {
+  if (typeof Alpine === 'undefined' || !Alpine.data) return;
+
   Alpine.data('notesComponent', () => ({
     notes: [],
     loading: true,
@@ -79,6 +81,10 @@ document.addEventListener('alpine:init', () => {
         pinned: false,
       };
       this.composerOpen = true;
+      this.$nextTick(() => {
+        const el = document.querySelector('.composer-card.expanded input, .composer-card.expanded textarea');
+        if (el) el.focus();
+      });
     },
 
     closeComposer() {
@@ -104,6 +110,10 @@ document.addEventListener('alpine:init', () => {
 
     addDraftItem() {
       this.draft.items.push({ text: '', done: false });
+      this.$nextTick(() => {
+        const inputs = document.querySelectorAll('.checklist-edit-row input[type="text"]');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+      });
     },
 
     removeDraftItem(idx) {
@@ -304,4 +314,10 @@ document.addEventListener('alpine:init', () => {
       }, 2500);
     },
   }));
-});
+}
+
+if (window.Alpine) {
+  registerNotesComponent();
+} else {
+  document.addEventListener('alpine:init', registerNotesComponent);
+}

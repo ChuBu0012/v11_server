@@ -1,7 +1,14 @@
-.notes-shell {
+/* Pocket Sentinel — Minimalist Notes styling */
+
+.notes-page {
   display: grid;
   gap: 16px;
-  padding-bottom: 92px;
+  padding-bottom: 96px;
+}
+
+.topbar-create-btn {
+  gap: 4px;
+  padding: 0 12px;
 }
 
 .notes-toolbar {
@@ -20,8 +27,14 @@
   padding: 0 12px;
   height: 40px;
   border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+
+.search-box:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 
 .search-box svg {
@@ -34,9 +47,13 @@
   flex: 1;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--ink);
   font-size: 14px;
   outline: none;
+}
+
+.search-box input::placeholder {
+  color: var(--muted);
 }
 
 .filter-pills {
@@ -48,54 +65,80 @@
   height: 36px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--hairline);
+  background: var(--card);
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all .15s var(--ease);
+}
+
+.pill-tab:hover {
+  background: var(--pearl);
+  color: var(--ink);
 }
 
 .pill-tab.active {
   background: var(--blue);
   border-color: var(--blue);
-  color: #fff;
+  color: var(--on-accent);
 }
 
-/* Quick Capture Composer */
+/* Quick Capture Composer Card */
 .composer-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
   border-radius: 16px;
-  padding: 10px 14px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+
+.composer-card:focus-within,
+.composer-card.expanded {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft), 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .composer-collapsed {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.composer-trigger {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font-size: 15px;
-  padding: 6px 2px;
-  outline: none;
-  cursor: text;
-}
-
-.composer-mode-btn {
-  padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
+  user-select: none;
+}
+
+.composer-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  color: var(--muted);
+}
+
+.composer-prompt-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.composer-trigger-text {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.composer-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .composer-form {
@@ -113,11 +156,15 @@
   flex: 1;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--ink);
   font-size: 16px;
   font-weight: 700;
   padding: 4px 0;
   outline: none;
+}
+
+.composer-title::placeholder {
+  color: var(--muted);
 }
 
 .composer-type-switch {
@@ -125,8 +172,8 @@
   gap: 4px;
   padding: 3px;
   border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--pearl);
+  border: 1px solid var(--hairline);
 }
 
 .composer-type-switch button {
@@ -138,24 +185,30 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: all .12s var(--ease);
 }
 
 .composer-type-switch button.active {
-  background: var(--surface);
+  background: var(--card);
   color: var(--blue);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .composer-textarea {
   width: 100%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--pearl);
+  color: var(--ink);
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.55;
   resize: vertical;
   outline: none;
+}
+
+.composer-textarea:focus {
+  border-color: var(--blue);
 }
 
 .checklist-editor {
@@ -172,12 +225,16 @@
 .checklist-edit-row input[type="text"] {
   flex: 1;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--hairline);
   background: transparent;
-  color: var(--text);
+  color: var(--ink);
   padding: 6px 4px;
   font-size: 14px;
   outline: none;
+}
+
+.checklist-edit-row input[type="text"]:focus {
+  border-bottom-color: var(--blue);
 }
 
 .mini-remove {
@@ -186,6 +243,11 @@
   color: var(--muted);
   cursor: pointer;
   padding: 4px 6px;
+  font-size: 14px;
+}
+
+.mini-remove:hover {
+  color: var(--red);
 }
 
 .add-item-btn {
@@ -208,8 +270,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
 }
 
 .composer-tags {
@@ -227,30 +289,38 @@
   gap: 6px;
 }
 
-.btn-ghost {
-  padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.btn-ghost.active {
-  border-color: var(--blue);
-  color: var(--blue);
-}
-
-.btn-primary {
-  padding: 7px 16px;
-  border-radius: 10px;
-  border: 0;
+/* Floating Action Button (Mobile) */
+.notes-fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   background: var(--blue);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--on-accent);
+  border: 0;
+  box-shadow: 0 4px 16px rgba(0, 102, 204, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  z-index: 25;
+  transition: transform .12s var(--ease), filter .12s var(--ease);
+}
+
+.notes-fab:hover {
+  filter: brightness(1.1);
+}
+
+.notes-fab:active {
+  transform: scale(0.92);
+}
+
+@media (min-width: 768px) {
+  .notes-fab {
+    display: none;
+  }
 }
 
 /* Notes Grid */
@@ -275,12 +345,19 @@
   gap: 10px;
   padding: 14px;
   border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: transform .12s var(--ease), border-color .15s var(--ease);
+}
+
+.note-card:hover {
+  border-color: var(--hairline-dark);
 }
 
 .note-card.pinned {
   border-color: var(--blue);
+  background: linear-gradient(180deg, var(--blue-soft) 0%, var(--card) 40px);
 }
 
 .note-card-head {
@@ -294,6 +371,7 @@
 .note-card-head strong {
   font-size: 15px;
   line-height: 1.35;
+  color: var(--ink);
 }
 
 .note-time {
@@ -311,6 +389,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.55;
+  color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -327,6 +406,7 @@
   font-size: 14px;
   line-height: 1.4;
   cursor: pointer;
+  color: var(--ink);
 }
 
 .check-row input {
@@ -346,13 +426,20 @@
 }
 
 .tag-chip {
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--hairline);
+  background: var(--pearl);
   color: var(--muted);
   border-radius: 999px;
   padding: 2px 9px;
   font-size: 11.5px;
   cursor: pointer;
+  transition: all .12s var(--ease);
+}
+
+.tag-chip:hover {
+  background: var(--blue-soft);
+  color: var(--blue);
+  border-color: var(--blue);
 }
 
 .note-actions {
@@ -362,7 +449,7 @@
   gap: 4px;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--hairline);
 }
 
 .note-actions button {
@@ -372,34 +459,75 @@
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
+  color: var(--muted);
+  transition: background .12s var(--ease), color .12s var(--ease);
 }
 
 .note-actions button:hover {
-  background: var(--bg);
+  background: var(--pearl);
+  color: var(--ink);
+}
+
+.note-actions button.danger:hover {
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .notes-empty {
   text-align: center;
-  padding: 40px 16px;
+  padding: 48px 16px;
   color: var(--muted);
+}
+
+.empty-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--pearl);
+  color: var(--blue);
+  margin: 0 auto 14px;
+}
+
+.empty-icon-wrap svg {
+  width: 26px;
+  height: 26px;
 }
 
 .notes-empty p {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--ink);
+}
+
+.notes-empty small {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .note-dialog {
   width: min(520px, calc(100% - 24px));
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   border-radius: 16px;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--card);
+  color: var(--ink);
   padding: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .note-dialog::backdrop {
   background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
 }

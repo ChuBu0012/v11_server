@@ -13,9 +13,9 @@
   <script>try{document.documentElement.dataset.theme=localStorage.getItem('sentinel-theme')==='light'?'light':'dark'}catch(_){}</script>
   <link rel="stylesheet" href="/static/css/styles.css">
   <link rel="stylesheet" href="/static/css/notes.css">
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/components/notes.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-  <script src="/static/js/app.js" defer></script>
-  <script src="/static/js/components/notes.js" defer></script>
 </head>
 <body class="app-body">
   <svg xmlns="http://www.w3.org/2000/svg" hidden aria-hidden="true">
@@ -27,16 +27,22 @@
     <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
   </svg>
 
-  <header class="topbar" x-data>
+  <header class="topbar">
     <div class="brand"><span class="brand-dot" style="background:var(--blue)"></span><span>โน้ตส่วนตัว</span></div>
-    <div class="topbar-actions">
+    <div class="topbar-actions" x-data>
+      <button class="btn btn-primary btn-sm topbar-create-btn" type="button" @click="$dispatch('open-notes-composer', { kind: 'note' })" aria-label="เขียนโน้ตใหม่">
+        <svg class="icon-sm"><use href="#i-plus"/></svg>
+        <span>เขียนโน้ต</span>
+      </button>
       <button class="icon-btn" type="button" @click="$store.sentinel.toggleTheme()" aria-label="สลับธีม"><svg class="icon"><use href="#i-theme"/></svg></button>
     </div>
   </header>
 
-  <main class="shell notes-shell" x-data="notesComponent()">
+  <main class="page notes-page" x-data="notesComponent()" @open-notes-composer.window="openComposer($event.detail?.kind || 'note')">
     <!-- Search & Filter Bar -->
     <section class="notes-toolbar">
       <div class="search-box">
@@ -50,16 +56,28 @@
       </div>
     </section>
 
-    <!-- Quick Capture Composer -->
+    <!-- Quick Capture Composer Card -->
     <section class="composer-card" :class="{ expanded: composerOpen }">
-      <div class="composer-collapsed" x-show="!composerOpen">
-        <input type="text" class="composer-trigger" readonly placeholder="จดด่วน... (พิมพ์โน้ต หรือสร้างเช็กลิสต์)" @click="openComposer('note')">
-        <button type="button" class="composer-mode-btn" title="สร้างเช็กลิสต์" @click="openComposer('checklist')">☑️ ลิสต์</button>
+      <!-- Collapsed Trigger (Visible by default) -->
+      <div class="composer-collapsed" x-show="!composerOpen" @click="openComposer('note')">
+        <div class="composer-prompt">
+          <span class="composer-prompt-icon"><svg class="icon-sm"><use href="#i-plus"/></svg></span>
+          <span class="composer-trigger-text">แตะที่นี่เพื่อเขียนโน้ตใหม่...</span>
+        </div>
+        <div class="composer-quick-actions" @click.stop>
+          <button type="button" class="btn btn-sm" @click="openComposer('checklist')" title="สร้างเช็กลิสต์">
+            <span>☑️ ลิสต์</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" @click="openComposer('note')" title="เขียนโน้ต">
+            <span>📝 โน้ต</span>
+          </button>
+        </div>
       </div>
 
+      <!-- Expanded Form -->
       <form class="composer-form" x-show="composerOpen" x-cloak @submit.prevent="createNote()">
         <div class="composer-top">
-          <input type="text" class="composer-title" x-model="draft.title" placeholder="หัวข้อ (ไม่บังคับ)">
+          <input type="text" class="composer-title" x-model="draft.title" placeholder="หัวข้อโน้ต (ไม่บังคับ)">
           <div class="composer-type-switch">
             <button type="button" :class="{ active: draft.kind === 'note' }" @click="switchDraftKind('note')">📝 โน้ต</button>
             <button type="button" :class="{ active: draft.kind === 'checklist' }" @click="switchDraftKind('checklist')">☑️ ลิสต์</button>
@@ -67,7 +85,7 @@
         </div>
 
         <template x-if="draft.kind === 'note'">
-          <textarea class="composer-textarea" rows="3" x-model="draft.content" placeholder="เขียนรายละเอียด... (กด Ctrl+Enter เพื่อบันทึก)" @keydown.ctrl.enter.prevent="createNote()" @keydown.meta.enter.prevent="createNote()"></textarea>
+          <textarea class="composer-textarea" rows="3" x-model="draft.content" placeholder="เขียนรายละเอียดโน้ตที่นี่... (กด Ctrl+Enter เพื่อบันทึก)" @keydown.ctrl.enter.prevent="createNote()" @keydown.meta.enter.prevent="createNote()"></textarea>
         </template>
 
         <template x-if="draft.kind === 'checklist'">
@@ -79,16 +97,16 @@
                 <button type="button" class="mini-remove" @click="removeDraftItem(idx)" aria-label="ลบรายการ">✕</button>
               </div>
             </template>
-            <button type="button" class="add-item-btn" @click="addDraftItem()"><svg class="icon"><use href="#i-plus"/></svg> เพิ่มรายการ</button>
+            <button type="button" class="add-item-btn" @click="addDraftItem()"><svg class="icon-sm"><use href="#i-plus"/></svg> เพิ่มรายการ</button>
           </div>
         </template>
 
         <div class="composer-footer">
           <input type="text" class="composer-tags" x-model="draft.tags" placeholder="แท็ก เช่น งาน, ซื้อของ">
           <div class="composer-actions">
-            <button type="button" class="btn-ghost" :class="{ active: draft.pinned }" @click="draft.pinned = !draft.pinned" title="ปักหมุด">📌</button>
-            <button type="button" class="btn-ghost" @click="closeComposer()">ยกเลิก</button>
-            <button type="submit" class="btn-primary" :disabled="saving">บันทึก</button>
+            <button type="button" class="btn btn-ghost btn-sm" :class="{ active: draft.pinned }" @click="draft.pinned = !draft.pinned" title="ปักหมุด">📌 ปักหมุด</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="closeComposer()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="saving">บันทึกโน้ต</button>
           </div>
         </div>
       </form>
@@ -97,8 +115,20 @@
     <!-- Loading / Empty -->
     <div class="notes-empty" x-show="loading">กำลังโหลดโน้ต...</div>
     <div class="notes-empty" x-show="!loading && visibleNotes.length === 0" x-cloak>
+      <div class="empty-icon-wrap">
+        <svg class="icon empty-icon"><use href="#i-note"/></svg>
+      </div>
       <p>ยังไม่มีโน้ตในหมวดนี้</p>
-      <small>แตะ "จดด่วน..." ด้านบน หรือพิมพ์ <code>/note ข้อความ</code> ใน Telegram ได้เลย</small>
+      <small>แตะปุ่มด้านล่างเพื่อเริ่มเขียนโน้ต หรือพิมพ์ <code>/note ข้อความ</code> ใน Telegram</small>
+      <div class="empty-actions">
+        <button type="button" class="btn btn-primary btn-sm" @click="openComposer('note')">
+          <svg class="icon-sm"><use href="#i-plus"/></svg>
+          <span>เขียนโน้ตใหม่</span>
+        </button>
+        <button type="button" class="btn btn-sm" @click="openComposer('checklist')">
+          <span>☑️ สร้างเช็กลิสต์</span>
+        </button>
+      </div>
     </div>
 
     <!-- Pinned Section -->
@@ -183,6 +213,11 @@
       </section>
     </template>
 
+    <!-- Floating Action Button for Mobile -->
+    <button type="button" class="notes-fab" @click="openComposer('note')" aria-label="เขียนโน้ตใหม่" title="เขียนโน้ตใหม่">
+      <svg class="icon"><use href="#i-plus"/></svg>
+    </button>
+
     <!-- Edit Modal -->
     <dialog class="note-dialog" id="note-edit-dialog" @click.self="closeEdit()">
       <form class="composer-form" @submit.prevent="saveEdit()" x-if="editing">
@@ -207,15 +242,15 @@
                 <button type="button" class="mini-remove" @click="removeEditItem(idx)">✕</button>
               </div>
             </template>
-            <button type="button" class="add-item-btn" @click="addEditItem()"><svg class="icon"><use href="#i-plus"/></svg> เพิ่มรายการ</button>
+            <button type="button" class="add-item-btn" @click="addEditItem()"><svg class="icon-sm"><use href="#i-plus"/></svg> เพิ่มรายการ</button>
           </div>
         </template>
 
         <div class="composer-footer">
           <input type="text" class="composer-tags" x-model="editing.tags" placeholder="แท็ก คั่นด้วย ,">
           <div class="composer-actions">
-            <button type="button" class="btn-ghost" @click="closeEdit()">ปิด</button>
-            <button type="submit" class="btn-primary" :disabled="saving">บันทึก</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="closeEdit()">ปิด</button>
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="saving">บันทึก</button>
           </div>
         </div>
       </form>
