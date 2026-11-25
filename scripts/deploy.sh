@@ -59,7 +59,11 @@ on_error() {
   fi
   notify_telegram "${err_msg}"
 }
+cleanup_deploy() {
+  rm -f server.new digest.new
+}
 trap 'on_error $LINENO' ERR
+trap 'cleanup_deploy' EXIT
 
 MODE="full"
 DEPLOY_MSG="${DEPLOY_MSG:-${DEPLOY_MESSAGE:-}}"
