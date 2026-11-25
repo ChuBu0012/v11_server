@@ -76,10 +76,11 @@ document.addEventListener('alpine:init', () => {
       if (!this.response) return '';
       if (window.marked && typeof window.marked.parse === 'function') {
         try {
-          return window.marked.parse(this.response, {
+          const raw = window.marked.parse(this.response, {
             gfm: true,
             breaks: true,
           });
+          return typeof sanitizeHtml === 'function' ? sanitizeHtml(raw) : escapeHtml(this.response).replace(/\n/g, '<br>');
         } catch (e) {
           console.warn('Marked parse error:', e);
         }

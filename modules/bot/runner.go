@@ -252,7 +252,10 @@ func SanitizeEnvironment(environ []string) []string {
 		}
 		upper := strings.ToUpper(key)
 		switch upper {
-		case "TELEGRAM_BOT_TOKEN", "GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "NGROK_AUTHTOKEN", "DISCORD_WEBHOOK_URL":
+		case "TELEGRAM_BOT_TOKEN", "GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY",
+			"NGROK_AUTHTOKEN", "DISCORD_WEBHOOK_URL",
+			"LOCATION_SECRET_TOKEN", "LOCATION_VIEWER_TOKEN", "FIRESTORE_CREDENTIALS",
+			"RELAY_PIN", "REMINDER_PIN", "WATCHTOWER_PIN":
 			continue
 		default:
 			stripped = append(stripped, env)

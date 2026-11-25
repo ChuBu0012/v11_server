@@ -102,21 +102,70 @@ func SanitizeDigest(run *digest.RunRecord) PublicDigestPayload {
 	}
 
 	if run.GoldJSON != "" {
-		var g struct {
-			WorldSpot   float64 `json:"world_spot"`
-			ThaiBarBuy  float64 `json:"thai_bar_buy"`
-			ThaiBarSell float64 `json:"thai_bar_sell"`
-			UpdatedAt   string  `json:"updated_at"`
-		}
-		if err := json.Unmarshal([]byte(run.GoldJSON), &g); err == nil && (g.WorldSpot > 0 || g.ThaiBarBuy > 0) {
+		var g digest.GoldQuote
+		if err := json.Unmarshal([]byte(run.GoldJSON), &g); err == nil && (g.SpotUSD > 0 || g.BarBuy > 0 || g.BarSell > 0) {
+			updated := g.AnnouncedAt
+			if updated == "" && !g.FetchedAt.IsZero() {
+				updated = g.FetchedAt.UTC().Format(time.RFC3339)
+			}
 			payload.Gold = &GoldPayload{
-				WorldSpot: g.WorldSpot,
-				BarBuy:    g.ThaiBarBuy,
-				BarSell:   g.ThaiBarSell,
-				UpdatedAt: g.UpdatedAt,
+				WorldSpot: g.SpotUSD,
+				BarBuy:    g.BarBuy,
+				BarSell:   g.BarSell,
+				UpdatedAt: updated,
+			}
+		}
+	}
+
+	if run.SummaryMD != "" {
+		sections := parseSummarySections(run.SummaryMD)
+		for _, cat := range []string{"OVERVIEW", "AI", "POLITICS", "TRIVIA"} {
+			if body, ok := sections[cat]; ok && strings.TrimSpace(body) != "" {
+				payload.News = append(payload.News, NewsItem{
+					Category: cat,
+					Summary:  strings.TrimSpace(body),
+				})
+			}
+		}
+		if stocksBody, ok := sections["STOCKS"]; ok {
+			for _, line := range strings.Split(stocksBody, "\n") {
+				trimmed := strings.TrimSpace(line)
+				trimmed = strings.TrimPrefix(trimmed, "- ")
+				trimmed = strings.TrimPrefix(trimmed, "* ")
+				trimmed = strings.TrimSpace(trimmed)
+				if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+					continue
+				}
+				payload.Stocks = append(payload.Stocks, StockItem{
+					Title: trimmed,
+				})
 			}
 		}
 	}
 
 	return payload
+}
+
+func parseSummarySections(md string) map[string]string {
+	res := make(map[string]string)
+	var currentKey string
+	var buf []string
+	for _, line := range strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "===SECTION:") && strings.HasSuffix(trimmed, "===") {
+			if currentKey != "" {
+				res[currentKey] = strings.Join(buf, "\n")
+			}
+			currentKey = strings.TrimSuffix(strings.TrimPrefix(trimmed, "===SECTION:"), "===")
+			buf = nil
+			continue
+		}
+		if currentKey != "" {
+			buf = append(buf, line)
+		}
+	}
+	if currentKey != "" {
+		res[currentKey] = strings.Join(buf, "\n")
+	}
+	return res
 }

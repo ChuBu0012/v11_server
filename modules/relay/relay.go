@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"v11-server/modules/bot"
+	"v11-server/shared/ai"
 )
 
 // TelegramSender defines the interface required by the relay module to forward messages and files.
@@ -28,6 +29,12 @@ type Module struct {
 	sender         TelegramSender
 	chatID         int64
 	maxUploadBytes int64
+	aiEngine       *ai.Engine
+}
+
+// SetAIEngine injects the AI engine used by /api/relay/proofread.
+func (m *Module) SetAIEngine(engine *ai.Engine) {
+	m.aiEngine = engine
 }
 
 // New creates a new Relay module instance.
@@ -58,7 +65,28 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 		api.POST("/message", m.handleTextMessage)
 		api.POST("/upload", m.handleFileUpload)
 		api.POST("/agent", m.handleAgentNotify)
+		api.POST("/proofread", m.handleProofread)
 	}
+}
+
+func (m *Module) handleProofread(c *gin.Context) {
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
+		return
+	}
+	if strings.TrimSpace(req.Text) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "text cannot be empty"})
+		return
+	}
+	result, err := ai.ProofreadText(c.Request.Context(), m.aiEngine, req.Text)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (m *Module) handleStatus(c *gin.Context) {
@@ -109,10 +137,15 @@ func (m *Module) handleTextMessage(c *gin.Context) {
 		return
 	}
 
+	msgID := int64(0)
+	if sentMsg != nil {
+		msgID = sentMsg.MessageID
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"type":       "text",
-		"message_id": sentMsg.MessageID,
+		"message_id": msgID,
 		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	})
 }

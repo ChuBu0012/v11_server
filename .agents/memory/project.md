@@ -95,13 +95,12 @@ A modular lightweight Go Gin HTTP service running on vivo 1804 (V11) Android 10 
   - Deployed and live verified on vivo v11 (PM2 `go-server` PID 31648, RAM ~25MB). Confirmed live telemetry (`sentinel_public/status`) and real-time safe action execution (`sentinel_actions`). Pushed to `origin/main`.
 - [2026-11-24] Rolled back experimental Sheets feature back to main. Disabled Live Map per user instruction while keeping the complete service and database schema intact for future re-enablement:
   - Added `EnableLiveMap` flag in `shared/config/config.go` (`ENABLE_LIVE_MAP` in `.env`, default `false`).
-  - When disabled (`ENABLE_LIVE_MAP=false`):
-    - Background retention worker `locationRetention` is not started (saves CPU/RAM).
-    - Web viewer routes (`/live`, `/live/:token`, `/map`) and `/api/location/*` serve a clean disabled notice explaining how to re-enable.
-    - Telegram `/live` and `/map` inform the user that Live Map is currently disabled.
-  - How to re-enable in the future:
-    1. Set `ENABLE_LIVE_MAP=true` in `.env`
-    2. Restart service: `pm2 restart go-server`
+  - How to re-enable in the future: set `ENABLE_LIVE_MAP=true` in `.env` and `pm2 restart go-server`.
+- [2026-11-25] Completed comprehensive `/code-review` remediation pass:
+  - Reliability & Termux RAM: added `sync.RWMutex` to `telemetry.Collector`, streamed Telegram multipart uploads via `io.Pipe` in `bot.Client.sendMultipart`, guarded nil `cmd.ProcessState` in `ailimit/service.go`, guarded nil `digest.Module.service`, capped `io.ReadAll` in `agent_notify.go` & `cloudsync/client.go`, closed non-200 HTTP bodies & moved HTTP I/O outside `endpoints.Module.mu`.
+  - Security & XSS: added `PromptGuard` on CloudSync `"ask"` action, added `sanitizeHtml` across `AskCard.tsx`, `ask.js`, `digest.js`, escaped `zone.name` in `live-map.js`, stripped additional secret keys in `bot/runner.go`, avoided CLI token exposure in `scripts/deploy.sh`.
+  - CloudSync Spec & Live Map UX: fixed `GoldQuote` JSON tag mismatch (`spot_usd_oz`, `bar_buy`, `bar_sell`) in `cloudsync/sanitizer.go`, synced `Stocks`/`News`, added `updateMask` to `UpdateAction`, wired `WithServicesProvider(probeCloudSyncServices)`, hid `/live` UI & `/panel` location tab when `ENABLE_LIVE_MAP=false`.
+  - Cleanup: removed retired `watchtower.html`, `watchtower.js`, `monitor.js`, `shared/ai/monitor_insight.go`, ngrok polling in `bot/status.go`, `WATCHTOWER_PIN`, moved inline handlers (`/api/schedule/parse`, `/api/relay/proofread`, `/api/ask`) into modules, bumped `sw.js` to `sentinel-shell-v50`, added `events.js` `/api/logs` fallback, updated `AGENTS.md` §10. (Note: `refactor/minimalize` also removed `modules/insight` earlier).
 
 
 

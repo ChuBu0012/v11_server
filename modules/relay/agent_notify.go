@@ -262,19 +262,32 @@ func (m *Module) handleAgentNotify(c *gin.Context) {
 			return
 		}
 
+		msgID := int64(0)
+		if sentMsg != nil {
+			msgID = sentMsg.MessageID
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"success":    true,
 			"type":       "text",
-			"message_id": sentMsg.MessageID,
+			"message_id": msgID,
 			"timestamp":  time.Now().UTC().Format(time.RFC3339),
 		})
 		return
 	}
 
 	// Default: JSON or standard URL-encoded form
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	if err := c.ShouldBind(&req); err != nil {
-		// If binding fails, try raw body fallback
-		bodyBytes, _ := io.ReadAll(c.Request.Body)
+		// If binding fails, try capped raw body fallback
+		bodyBytes, readErr := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
+		if readErr != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(readErr, &maxBytesErr) {
+				c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body exceeds 1 MB limit", "success": false})
+				return
+			}
+		}
 		req.Summary = string(bodyBytes)
 	}
 
@@ -288,10 +301,15 @@ func (m *Module) handleAgentNotify(c *gin.Context) {
 		return
 	}
 
+	msgID := int64(0)
+	if sentMsg != nil {
+		msgID = sentMsg.MessageID
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"type":       "text",
-		"message_id": sentMsg.MessageID,
+		"message_id": msgID,
 		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	})
 }

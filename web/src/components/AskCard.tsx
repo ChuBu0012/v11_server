@@ -4,6 +4,26 @@ import { marked } from 'marked';
 import { sendAction, subscribeAction } from '../lib/firebase';
 import { ActionRequest } from '../lib/types';
 
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,iframe,object,embed,style,link,meta,base,form').forEach((el) => el.remove());
+  doc.body.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const val = attr.value.trim();
+      if (name.startsWith('on') || name === 'srcdoc') {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if ((name === 'href' || name === 'src' || name === 'xlink:href') && !/^(https?:\/\/|\/|#)/i.test(val)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+  return doc.body.innerHTML;
+}
+
 export const AskCard: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState<'auto' | 'groq' | 'gemini'>('auto');
@@ -226,7 +246,7 @@ export const AskCard: React.FC = () => {
           <div
             className="markdown-body"
             dangerouslySetInnerHTML={{
-              __html: marked.parse(trackedAction.result, { gfm: true, breaks: true }) as string
+              __html: sanitizeHtml(marked.parse(trackedAction.result, { gfm: true, breaks: true }) as string)
             }}
             style={{
               fontSize: '14px',

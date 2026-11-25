@@ -68,16 +68,22 @@ func TestSanitizeDigest(t *testing.T) {
 	run := &digest.RunRecord{
 		StartedAt:  time.Now().Add(-5 * time.Minute),
 		FinishedAt: time.Now(),
-		SummaryMD:  "### สรุปข่าว AI\nทดสอบ",
-		GoldJSON:   `{"world_spot": 2685.5, "thai_bar_buy": 43800, "thai_bar_sell": 43900, "updated_at": "14:00"}`,
+		SummaryMD:  "===SECTION:OVERVIEW===\nภาพรวมวันนี้\n===SECTION:STOCKS===\n- SET Index ปิดบวก\n===SECTION:AI===\n### สรุปข่าว AI\nทดสอบ",
+		GoldJSON:   `{"spot_usd_oz": 2685.5, "bar_buy": 43800, "bar_sell": 43900, "announced_at": "14:00"}`,
 	}
 
 	res := SanitizeDigest(run)
 	if !strings.Contains(res.SummaryMD, "สรุปข่าว AI") {
 		t.Errorf("expected summary, got %s", res.SummaryMD)
 	}
-	if res.Gold == nil || res.Gold.WorldSpot != 2685.5 {
-		t.Errorf("expected gold spot 2685.5, got %+v", res.Gold)
+	if res.Gold == nil || res.Gold.WorldSpot != 2685.5 || res.Gold.BarBuy != 43800 || res.Gold.BarSell != 43900 {
+		t.Errorf("expected gold spot 2685.5 / 43800 / 43900, got %+v", res.Gold)
+	}
+	if len(res.Stocks) != 1 || res.Stocks[0].Title != "SET Index ปิดบวก" {
+		t.Errorf("expected 1 stock item, got %+v", res.Stocks)
+	}
+	if len(res.News) != 2 {
+		t.Errorf("expected 2 news items (OVERVIEW, AI), got %+v", res.News)
 	}
 }
 

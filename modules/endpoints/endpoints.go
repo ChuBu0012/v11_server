@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -87,14 +88,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 // HandleGetEndpoints returns the configured endpoints combined with live Gatus statuses.
 func (m *Module) HandleGetEndpoints(c *gin.Context) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	items, err := m.readEndpointsFromConfig()
+	m.mu.Unlock()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Printf("[endpoints] Error reading config: %v", err)
 	}
 
-	// Try fetching live statuses from local Gatus
+	// Fetch live statuses from local Gatus outside m.mu to avoid blocking writes on HTTP I/O
 	statuses := m.fetchGatusStatuses()
 	for i := range items {
 		if stat, ok := statuses[items[i].Name]; ok {
@@ -343,10 +343,13 @@ func (m *Module) fetchGatusStatuses() map[string]liveStatus {
 	result := make(map[string]liveStatus)
 	// Local Gatus runs on localhost:8081
 	resp, err := m.httpClient.Get("http://127.0.0.1:8081/api/v1/endpoints/statuses")
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return result
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return result
+	}
 
 	var rawList []struct {
 		Name    string `json:"name"`
@@ -376,12 +379,15 @@ func (m *Module) fetchGatusStatuses() map[string]liveStatus {
 }
 
 func (m *Module) restartGatus() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	var cmd *exec.Cmd
 	termuxPM2 := "/data/data/com.termux/files/usr/bin/pm2"
 	if _, err := os.Stat(termuxPM2); err == nil {
-		cmd = exec.Command("node", termuxPM2, "restart", "gatus")
+		cmd = exec.CommandContext(ctx, "node", termuxPM2, "restart", "gatus")
 	} else if pm2Bin, err := exec.LookPath("pm2"); err == nil {
-		cmd = exec.Command(pm2Bin, "restart", "gatus")
+		cmd = exec.CommandContext(ctx, pm2Bin, "restart", "gatus")
 	} else {
 		log.Printf("[endpoints] pm2 binary not found, skipping restart")
 		return

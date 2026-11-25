@@ -44,7 +44,6 @@ func setupTestApp(t *testing.T) (*App, *gin.Engine, func()) {
 		BatteryThreshold: 20,
 		DiskThresholdGB:  5.0,
 		TelegramTimeout:  2 * time.Second,
-		WatchtowerPIN:    "1804",
 		EnableLiveMap:    true,
 	}
 
@@ -136,7 +135,6 @@ func TestLiveMapDisabled(t *testing.T) {
 		BatteryThreshold: 20,
 		DiskThresholdGB:  5.0,
 		TelegramTimeout:  2 * time.Second,
-		WatchtowerPIN:    "1804",
 		EnableLiveMap:    false,
 	}
 

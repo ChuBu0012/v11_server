@@ -12,6 +12,19 @@ document.addEventListener('alpine:init', () => {
         this.logs = (Array.isArray(e.detail) ? e.detail : []).slice(0, 5);
         this.loading = false;
       });
+      this.loadFallback();
+    },
+
+    async loadFallback() {
+      try {
+        const res = await getJSON('/api/logs');
+        if (this.loading) {
+          this.logs = (Array.isArray(res) ? res : []).slice(0, 5);
+          this.loading = false;
+        }
+      } catch (_) {
+        this.loading = false;
+      }
     },
 
     formatRowTime(created) {

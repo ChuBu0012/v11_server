@@ -34,7 +34,7 @@ func clearConfigEnv(t *testing.T) {
 		"SAMPLE_INTERVAL", "RETENTION_MAX_AGE", "RETENTION_MAX_ROWS",
 		"BATTERY_THRESHOLD", "DISK_THRESHOLD_GB",
 		"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_TIMEOUT",
-		"GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "REMINDER_PIN", "WATCHTOWER_PIN", "OPENROUTER_API_KEY",
+		"GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "REMINDER_PIN", "OPENROUTER_API_KEY",
 		"ENABLE_LIVE_MAP", "LOCATION_SECRET_TOKEN", "LOCATION_VIEWER_TOKEN",
 	}
 	saved := make(map[string]string)
@@ -110,7 +110,6 @@ func TestLoadOverrides(t *testing.T) {
 		"GROQ_MODEL":            "llama-3.1-8b-instant",
 		"GEMINI_API_KEY":        "AIza-test-gemini-key",
 		"GEMINI_MODEL":          "gemini-3.5-flash-lite",
-		"WATCHTOWER_PIN":        "wt-pin-1234",
 		"OPENROUTER_API_KEY":    "sk-or-v1-secret-key",
 		"LOCATION_SECRET_TOKEN": "owner-device-token-32-characters",
 		"LOCATION_VIEWER_TOKEN": "private-viewer-token-32-characters",
@@ -140,9 +139,6 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.TelegramTimeout != 5*time.Second {
 		t.Errorf("TelegramTimeout = %v, want 5s", cfg.TelegramTimeout)
-	}
-	if cfg.WatchtowerPIN != "wt-pin-1234" {
-		t.Errorf("WatchtowerPIN = %v, want wt-pin-1234", cfg.WatchtowerPIN)
 	}
 	if cfg.GroqAPIKey != "gsk-test-groq-key" {
 		t.Errorf("GroqAPIKey = %v, want gsk-test-groq-key", cfg.GroqAPIKey)
@@ -251,7 +247,6 @@ func TestStringRedaction(t *testing.T) {
 		TelegramBotToken:    "123456789:ABCDEF-long-token",
 		TelegramChatID:      "-100999888",
 		TelegramTimeout:     10 * time.Second,
-		WatchtowerPIN:       "secret-watchtower-pin",
 		OpenRouterAPIKey:    "sk-or-v1-secret-openrouter-key",
 		LocationSecretToken: "location-secret-token",
 		LocationViewerToken: "location-viewer-token",
@@ -260,9 +255,6 @@ func TestStringRedaction(t *testing.T) {
 	s := cfg.String()
 
 	// Secrets should not be present in cleartext
-	if strings.Contains(s, "secret-watchtower-pin") {
-		t.Error("String() should not contain WatchtowerPIN")
-	}
 	if strings.Contains(s, "sk-or-v1-secret-openrouter-key") {
 		t.Error("String() should not contain OpenRouterAPIKey")
 	}

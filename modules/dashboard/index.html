@@ -225,6 +225,7 @@
       </div>
     </section>
 
+    <!-- LIVE_MAP_START -->
     <!-- 4. Location shortcut -->
     <section class="section" aria-labelledby="location-summary-title">
       <a class="list-item location-link" href="/live">
@@ -236,6 +237,7 @@
         <svg class="icon" style="color:var(--muted)"><use href="#i-right"/></svg>
       </a>
     </section>
+    <!-- LIVE_MAP_END -->
 
     <!-- 5. AI digest -->
     <div x-data="digestComponent()">
@@ -436,7 +438,7 @@
   <nav class="task-nav" aria-label="หน้าหลัก">
     <a class="task-link" :class="{ active: $store.sentinel.activeTab === 'overview' }" href="/?tab=overview" @click.prevent="$store.sentinel.setTab('overview')" :aria-current="$store.sentinel.activeTab === 'overview' ? 'page' : null"><svg class="icon"><use href="#i-overview"/></svg><span>ภาพรวม</span></a>
     <a class="task-link" href="/schedule"><svg class="icon"><use href="#i-calendar"/></svg><span>ตาราง</span></a>
-    <a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a>
+    <!-- LIVE_MAP_START --><a class="task-link" href="/live"><svg class="icon"><use href="#i-pin"/></svg><span>แผนที่</span></a><!-- LIVE_MAP_END -->
     <a class="task-link" href="/relay"><svg class="icon"><use href="#i-send"/></svg><span>Telegram</span></a>
   </nav>
 </body>

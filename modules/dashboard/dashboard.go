@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,11 +43,42 @@ var iconSVG []byte
 var staticFS embed.FS
 
 // Module handles serving the Pocket Sentinel status dashboard and PWA assets.
-type Module struct{}
+type Module struct {
+	liveMapEnabled bool
+}
 
 // New creates a new dashboard Module.
 func New() *Module {
 	return &Module{}
+}
+
+// SetLiveMapEnabled controls whether Live Map links/cards are rendered in dashboard HTML.
+func (m *Module) SetLiveMapEnabled(enabled bool) {
+	m.liveMapEnabled = enabled
+}
+
+func (m *Module) renderPage(c *gin.Context, raw []byte) {
+	out := raw
+	if !m.liveMapEnabled {
+		out = stripMarkedBlocks(raw, "<!-- LIVE_MAP_START -->", "<!-- LIVE_MAP_END -->")
+	}
+	c.Data(http.StatusOK, "text/html; charset=utf-8", out)
+}
+
+func stripMarkedBlocks(src []byte, startMarker, endMarker string) []byte {
+	s := string(src)
+	for {
+		start := strings.Index(s, startMarker)
+		if start == -1 {
+			break
+		}
+		end := strings.Index(s[start:], endMarker)
+		if end == -1 {
+			break
+		}
+		s = s[:start] + s[start+end+len(endMarker):]
+	}
+	return []byte(s)
 }
 
 // RegisterRoutes mounts the dashboard and PWA endpoints on the root engine.
@@ -81,17 +113,17 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 
 // HandleDashboard serves the single-page responsive dashboard.
 func (m *Module) HandleDashboard(c *gin.Context) {
-	c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+	m.renderPage(c, indexHTML)
 }
 
 // HandleTeleBridge serves the dedicated standalone Telegram Bridge interface.
 func (m *Module) HandleTeleBridge(c *gin.Context) {
-	c.Data(http.StatusOK, "text/html; charset=utf-8", teleBridgeHTML)
+	m.renderPage(c, teleBridgeHTML)
 }
 
 // HandleSchedule serves the focused personal reminder calendar.
 func (m *Module) HandleSchedule(c *gin.Context) {
-	c.Data(http.StatusOK, "text/html; charset=utf-8", scheduleHTML)
+	m.renderPage(c, scheduleHTML)
 }
 
 // HandleLiveMap serves the responsive tracker viewer after token authorization.

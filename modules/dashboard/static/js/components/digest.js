@@ -181,7 +181,9 @@ document.addEventListener('alpine:init', () => {
         this.renderedContent = '<div class="loading">ไม่มีเนื้อหาสำหรับหมวดนี้</div>';
         return;
       }
-      this.renderedContent = this.renderMarkdown(content);
+      this.renderedContent = typeof sanitizeHtml === 'function'
+        ? sanitizeHtml(this.renderMarkdown(content))
+        : escapeHtml(content).replace(/\n/g, '<br>');
     },
 
     renderMarkdown(md) {

@@ -226,10 +226,14 @@ function updateLeafletLayers(data, showTrail) {
       liveMapState.colocatedMarker.setIcon(icon);
     }
 
+    const safeTitle = typeof escapeHtml === 'function'
+      ? escapeHtml(title)
+      : String(title).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
     // Attach popup with details
     const popupHTML = `
       <div style="font-family: inherit; font-size: 11px; line-height: 1.5; color: #1e293b;">
-        <strong style="display:block; font-size: 13px; margin-bottom: 4px; color: #0f172a;">📍 ${title}</strong>
+        <strong style="display:block; font-size: 13px; margin-bottom: 4px; color: #0f172a;">📍 ${safeTitle}</strong>
         <div>ระยะห่าง: <b>${Math.round(data.distance_meters || 0)} เมตร</b></div>
         <div style="margin-top: 4px; border-top: 1px solid #e2e8f0; padding-top: 4px;">
           <div><b>Chubu:</b> แบต ${me.battery_level}% · ${me.speed < 1 ? 'หยุดนิ่ง' : me.speed + ' km/h'}</div>

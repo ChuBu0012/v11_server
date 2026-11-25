@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
@@ -44,6 +45,7 @@ type Collector struct {
 	alertProc       AlertProcessor
 	retentionAge    time.Duration
 	retentionRows   int
+	mu              sync.RWMutex
 	lastCollected   time.Time
 	lastError       string
 }
@@ -96,7 +98,9 @@ func (c *Collector) CollectOnce(ctx context.Context) (*HealthSample, error) {
 
 	uptime, allocMB, sysMB, diskTotal, diskFree, err := c.sysProvider.GetMetrics()
 	if err != nil {
+		c.mu.Lock()
 		c.lastError = fmt.Sprintf("system metrics failed: %v", err)
+		c.mu.Unlock()
 		return nil, err
 	}
 
@@ -133,12 +137,16 @@ func (c *Collector) CollectOnce(ctx context.Context) (*HealthSample, error) {
 
 	id, err := c.repo.InsertSample(ctx, sample)
 	if err != nil {
+		c.mu.Lock()
 		c.lastError = fmt.Sprintf("insert sample failed: %v", err)
+		c.mu.Unlock()
 		return nil, err
 	}
 	sample.ID = id
+	c.mu.Lock()
 	c.lastCollected = now
 	c.lastError = ""
+	c.mu.Unlock()
 
 	// Prune old samples
 	if c.retentionAge > 0 || c.retentionRows > 0 {
@@ -170,6 +178,8 @@ func (c *Collector) CollectOnce(ctx context.Context) (*HealthSample, error) {
 
 // LastCollectionInfo returns telemetry metadata for status queries.
 func (c *Collector) LastCollectionInfo() (time.Time, string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.lastCollected, c.lastError
 }
 

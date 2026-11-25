@@ -70,7 +70,11 @@ func DefaultAgyRunner(ctx context.Context) (string, error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("agy execution error (code %v): %w (output: %s)", cmd.ProcessState.ExitCode(), err, string(out))
+		exitCode := -1
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		}
+		return string(out), fmt.Errorf("agy execution error (code %d): %w (output: %s)", exitCode, err, string(out))
 	}
 
 	return string(out), nil

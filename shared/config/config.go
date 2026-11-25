@@ -36,9 +36,6 @@ type Config struct {
 	GeminiAPIKey string // ENV: GEMINI_API_KEY
 	GeminiModel  string // ENV: GEMINI_MODEL (default: gemini-2.0-flash)
 
-	// Personal Watchtower
-	WatchtowerPIN string // ENV: WATCHTOWER_PIN
-
 	// OpenRouter AI
 	OpenRouterAPIKey string // ENV: OPENROUTER_API_KEY
 
@@ -148,7 +145,6 @@ func Load() (*Config, error) {
 	if cfg.GeminiModel == "" {
 		cfg.GeminiModel = "gemini-3.5-flash-lite"
 	}
-	cfg.WatchtowerPIN = os.Getenv("WATCHTOWER_PIN")
 	cfg.OpenRouterAPIKey = strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
 
 	cfg.FirestoreCredentials = strings.TrimSpace(os.Getenv("FIRESTORE_CREDENTIALS"))
@@ -231,10 +227,10 @@ func (c *Config) String() string {
 	return fmt.Sprintf(
 		"Config{SampleInterval:%v, RetentionMaxAge:%v, RetentionMaxRows:%d, "+
 			"BatteryThreshold:%d%%, DiskThresholdGB:%.1f, "+
-			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GroqAPIKey:%s, GeminiAPIKey:%s, WatchtowerPIN:%s, OpenRouterAPIKey:%s, EnableLiveMap:%v, LocationSecretToken:%s, LocationViewerToken:%s}",
+			"TelegramBotToken:%s, TelegramChatID:%s, TelegramTimeout:%v, GroqAPIKey:%s, GeminiAPIKey:%s, OpenRouterAPIKey:%s, EnableLiveMap:%v, LocationSecretToken:%s, LocationViewerToken:%s}",
 		c.SampleInterval, c.RetentionMaxAge, c.RetentionMaxRows,
 		c.BatteryThreshold, c.DiskThresholdGB,
-		token, chatID, c.TelegramTimeout, secretState(c.GroqAPIKey), geminiKey, secretState(c.WatchtowerPIN), secretState(c.OpenRouterAPIKey),
+		token, chatID, c.TelegramTimeout, secretState(c.GroqAPIKey), geminiKey, secretState(c.OpenRouterAPIKey),
 		c.EnableLiveMap, secretState(c.LocationSecretToken), secretState(c.LocationViewerToken),
 	)
 }

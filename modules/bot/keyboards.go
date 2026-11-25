@@ -21,26 +21,33 @@ type PanelCardProvider interface {
 
 // KeyboardsModule manages inline keyboards and callback query routing.
 type KeyboardsModule struct {
-	client     *Client
-	sender     TelegramSender
-	statusProv StatusCardProvider
-	panelProv  PanelCardProvider
-	torch      *TorchController
-	ring       *RingController
-	rebootFunc func()
+	client         *Client
+	sender         TelegramSender
+	statusProv     StatusCardProvider
+	panelProv      PanelCardProvider
+	torch          *TorchController
+	ring           *RingController
+	rebootFunc     func()
+	liveMapEnabled bool
 }
 
 // NewKeyboardsModule creates an inline keyboard manager.
 func NewKeyboardsModule(client *Client, statusProv StatusCardProvider, torch *TorchController) *KeyboardsModule {
 	km := &KeyboardsModule{
-		client:     client,
-		statusProv: statusProv,
-		torch:      torch,
+		client:         client,
+		statusProv:     statusProv,
+		torch:          torch,
+		liveMapEnabled: true,
 	}
 	if pp, ok := statusProv.(PanelCardProvider); ok {
 		km.panelProv = pp
 	}
 	return km
+}
+
+// SetLiveMapEnabled controls whether Live Map tabs/buttons are shown in inline keyboards.
+func (k *KeyboardsModule) SetLiveMapEnabled(enabled bool) {
+	k.liveMapEnabled = enabled
 }
 
 // SetSender sets the TelegramSender instance.
@@ -82,18 +89,27 @@ func (k *KeyboardsModule) SetRebootFunc(f func()) {
 	k.rebootFunc = f
 }
 
-// MakeDefaultReplyKeyboard creates a persistent, compact 2x2 reply keyboard for chat shortcuts.
+// MakeDefaultReplyKeyboard creates a persistent, compact reply keyboard for chat shortcuts.
 func MakeDefaultReplyKeyboard() *ReplyKeyboardMarkup {
+	return MakeDefaultReplyKeyboardWithOptions(true)
+}
+
+// MakeDefaultReplyKeyboardWithOptions creates a persistent reply keyboard, optionally omitting Live Map.
+func MakeDefaultReplyKeyboardWithOptions(liveMapEnabled bool) *ReplyKeyboardMarkup {
+	row2 := []KeyboardButton{{Text: "🎛️ แผงควบคุม"}}
+	if liveMapEnabled {
+		row2 = []KeyboardButton{
+			{Text: "🗺️ พิกัดสด"},
+			{Text: "🎛️ แผงควบคุม"},
+		}
+	}
 	return &ReplyKeyboardMarkup{
 		Keyboard: [][]KeyboardButton{
 			{
 				{Text: "📊 สถานะระบบ"},
 				{Text: "📰 สรุปประจำวัน"},
 			},
-			{
-				{Text: "🗺️ พิกัดสด"},
-				{Text: "🎛️ แผงควบคุม"},
-			},
+			row2,
 		},
 		ResizeKeyboard: true,
 		IsPersistent:   true,
@@ -109,6 +125,11 @@ func MakeRemoveReplyKeyboard() *ReplyKeyboardRemove {
 
 // MakePanelKeyboard returns the tabbed inline keyboard for /panel.
 func MakePanelKeyboard(activeTab string) *InlineKeyboardMarkup {
+	return MakePanelKeyboardWithOptions(activeTab, true)
+}
+
+// MakePanelKeyboardWithOptions returns the tabbed inline keyboard for /panel, optionally omitting Location.
+func MakePanelKeyboardWithOptions(activeTab string, liveMapEnabled bool) *InlineKeyboardMarkup {
 	if activeTab == "" {
 		activeTab = "system"
 	}
@@ -124,7 +145,9 @@ func MakePanelKeyboard(activeTab string) *InlineKeyboardMarkup {
 		tabBtn("system", "📊 ระบบ"),
 		tabBtn("services", "🌐 บริการ"),
 		tabBtn("digest", "📰 ข่าว/ทอง"),
-		tabBtn("location", "🗺️ พิกัด"),
+	}
+	if liveMapEnabled {
+		tabsRow = append(tabsRow, tabBtn("location", "🗺️ พิกัด"))
 	}
 
 	var actionRows [][]InlineKeyboardButton
@@ -194,13 +217,22 @@ func MakeStatusKeyboard() *InlineKeyboardMarkup {
 
 // MakeHelpKeyboard combines direct safe actions with editable command drafts.
 func MakeHelpKeyboard() *InlineKeyboardMarkup {
+	return MakeHelpKeyboardWithOptions(true)
+}
+
+// MakeHelpKeyboardWithOptions combines direct safe actions with optional Live Map shortcut.
+func MakeHelpKeyboardWithOptions(liveMapEnabled bool) *InlineKeyboardMarkup {
 	copyCommand := func(label, text string) InlineKeyboardButton {
 		return InlineKeyboardButton{Text: label, CopyText: &CopyTextButton{Text: text}}
+	}
+	torchRow := []InlineKeyboardButton{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}}
+	if liveMapEnabled {
+		torchRow = append(torchRow, copyCommand("🗺️ ดูพิกัด /live", "/live"))
 	}
 	return &InlineKeyboardMarkup{
 		InlineKeyboard: [][]InlineKeyboardButton{
 			{copyCommand("🎛️ แผงควบคุม", "/panel"), {Text: "🔄 สถานะ", CallbackData: "status_refresh"}},
-			{{Text: "🔦 ไฟฉาย", CallbackData: "torch_toggle"}, copyCommand("🗺️ ดูพิกัด /live", "/live")},
+			torchRow,
 			{
 				copyCommand("💬 ถาม AI", "/ask ทำไมท้องฟ้าเป็นสีฟ้า"),
 				copyCommand("🔔 เรียกเครื่อง", "/ring"),
@@ -257,7 +289,7 @@ func (k *KeyboardsModule) HandleCallbackQuery(ctx context.Context, q *CallbackQu
 			if err != nil {
 				card = fmt.Sprintf("⚠️ ไม่สามารถโหลดแท็บได้: %v", err)
 			}
-			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard(tab))
+			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboardWithOptions(tab, k.liveMapEnabled))
 		}
 
 	case strings.HasPrefix(q.Data, "panel:refresh:"):
@@ -268,7 +300,7 @@ func (k *KeyboardsModule) HandleCallbackQuery(ctx context.Context, q *CallbackQu
 			if err != nil {
 				card = fmt.Sprintf("⚠️ ไม่สามารถรีเฟรชได้: %v", err)
 			}
-			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboard(tab))
+			return k.editMessage(ctx, chatID, messageID, card, MakePanelKeyboardWithOptions(tab, k.liveMapEnabled))
 		}
 
 	case q.Data == "panel:torch_toggle":

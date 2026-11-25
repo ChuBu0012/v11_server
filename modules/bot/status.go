@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"runtime"
@@ -185,51 +184,12 @@ func (p *DefaultStatusProvider) getBatteryString(ctx context.Context) string {
 	return fmt.Sprintf("%.0f%% (%s)", data.Percentage, data.Status)
 }
 
-func (p *DefaultStatusProvider) getEndpointURL(ctx context.Context) string {
-	ngrokURL := p.getNgrokURL(ctx)
-	if ngrokURL != "" && !strings.HasPrefix(ngrokURL, "inactive") {
-		return ngrokURL
-	}
+func (p *DefaultStatusProvider) getEndpointURL(_ context.Context) string {
 	baseURL := strings.TrimRight(os.Getenv("APP_BASE_URL"), "/")
 	if baseURL != "" {
 		return fmt.Sprintf("%s (Tailscale)", baseURL)
 	}
 	return "http://100.92.194.87:8080 (Tailscale)"
-}
-
-func (p *DefaultStatusProvider) getNgrokURL(ctx context.Context) string {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:4040/api/tunnels", nil)
-	if err != nil {
-		return "inactive"
-	}
-
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return "inactive (tunnel not running)"
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 16*1024))
-	if err != nil {
-		return "inactive"
-	}
-
-	var res struct {
-		Tunnels []struct {
-			PublicURL string `json:"public_url"`
-			Proto     string `json:"proto"`
-		} `json:"tunnels"`
-	}
-	if err := json.Unmarshal(body, &res); err != nil || len(res.Tunnels) == 0 {
-		return "inactive"
-	}
-
-	for _, t := range res.Tunnels {
-		if strings.HasPrefix(t.PublicURL, "https://") {
-			return t.PublicURL
-		}
-	}
-	return res.Tunnels[0].PublicURL
 }
 
 // GetPanelCard returns formatted HTML for a specific tab of the interactive /panel.

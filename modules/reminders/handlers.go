@@ -3,9 +3,12 @@ package reminders
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"v11-server/shared/ai"
 )
 
 // Module serves the schedule API. Writes are intentionally public (no PIN);
@@ -13,11 +16,18 @@ import (
 type Module struct {
 	store         *Store
 	telegramReady bool
+	aiEngine      *ai.Engine
 }
 
 func NewModule(store *Store, telegramReady bool) *Module {
 	return &Module{store: store, telegramReady: telegramReady}
 }
+
+// SetAIEngine injects the AI engine used by /api/schedule/parse.
+func (m *Module) SetAIEngine(engine *ai.Engine) {
+	m.aiEngine = engine
+}
+
 func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.GET("/api/schedule/status", m.status)
 	r.GET("/api/schedule/reminders", m.list)
@@ -29,6 +39,27 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	r.POST("/api/schedule/reminders/:id/resume", m.resume)
 	r.DELETE("/api/schedule/reminders/:id", m.delete)
 	r.POST("/api/schedule/complete", m.complete)
+	r.POST("/api/schedule/parse", m.parse)
+}
+
+func (m *Module) parse(c *gin.Context) {
+	var req struct {
+		Prompt string `json:"prompt"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
+		return
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
+		return
+	}
+	result, err := ai.ParseSchedulePrompt(c.Request.Context(), m.aiEngine, req.Prompt, timezone)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (m *Module) status(c *gin.Context) {

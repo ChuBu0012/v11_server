@@ -14,6 +14,7 @@ func TestDashboardEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -42,7 +43,18 @@ func TestDashboardEndpoint(t *testing.T) {
 		t.Errorf("Expected retired Monitor and Watchtower interfaces to be absent from the dashboard")
 	}
 	if !strings.Contains(body, "href=\"/live\"") {
-		t.Errorf("Expected dashboard body to contain nav link to '/live'")
+		t.Errorf("Expected dashboard body to contain nav link to '/live' when Live Map enabled")
+	}
+
+	// Verify disabled Live Map strips /live nav and card cleanly
+	modDisabled := New()
+	modDisabled.SetLiveMapEnabled(false)
+	rDisabled := gin.New()
+	modDisabled.RegisterRoutes(rDisabled)
+	rrDisabled := httptest.NewRecorder()
+	rDisabled.ServeHTTP(rrDisabled, httptest.NewRequest(http.MethodGet, "/", nil))
+	if strings.Contains(rrDisabled.Body.String(), "href=\"/live\"") {
+		t.Errorf("Expected dashboard body to hide '/live' links when Live Map disabled")
 	}
 	if strings.Contains(body, "insightCard") || strings.Contains(body, `id="insight-card"`) || strings.Contains(body, "insight.js") {
 		t.Errorf("insight is Telegram-only (/insight); the overview card must be gone")
@@ -94,6 +106,7 @@ func TestPWARoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -150,6 +163,7 @@ func TestStaticRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -162,7 +176,6 @@ func TestStaticRoutes(t *testing.T) {
 		"/static/js/components/ask.js",
 		"/static/js/components/digest.js",
 		"/static/js/components/events.js",
-		"/static/js/components/watchtower.js",
 	}
 
 	for _, path := range staticFiles {
@@ -182,6 +195,7 @@ func TestTeleBridgeEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -215,6 +229,7 @@ func TestWatchtowerEndpointRedirectsToDashboard(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -239,6 +254,7 @@ func TestScheduleNLEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 
@@ -275,6 +291,7 @@ func fetchPage(t *testing.T, path string) string {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	mod := New()
+	mod.SetLiveMapEnabled(true)
 	r := gin.New()
 	mod.RegisterRoutes(r)
 	r.GET("/live-page", mod.HandleLiveMap)

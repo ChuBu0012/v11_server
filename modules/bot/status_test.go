@@ -57,8 +57,8 @@ func TestDefaultStatusProvider(t *testing.T) {
 	if !strings.Contains(card, "82% (DISCHARGING, 32.5°C)") {
 		t.Errorf("Expected battery stats in status card, got: %s", card)
 	}
-	if !strings.Contains(card, "https://test-subdomain.ngrok-free.dev") {
-		t.Errorf("Expected ngrok tunnel url in status card, got: %s", card)
+	if !strings.Contains(card, "100.92.194.87:8080 (Tailscale)") {
+		t.Errorf("Expected Tailscale endpoint url in status card, got: %s", card)
 	}
 	if !strings.Contains(card, "Memory:") || !strings.Contains(card, "Disk") {
 		t.Errorf("Expected memory and disk in status card, got: %s", card)

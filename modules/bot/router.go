@@ -43,6 +43,17 @@ type Router struct {
 	quotaPostTaskFunc func(ctx context.Context) (string, error)
 	ringCtrl          *RingController
 	askRouter         *AskTriageRouter
+	liveMapEnabled    bool
+}
+
+// WithLiveMapEnabled controls whether Live Map entries are shown in /help, /panel, and reply keyboard.
+func WithLiveMapEnabled(enabled bool) RouterOption {
+	return func(r *Router) {
+		r.liveMapEnabled = enabled
+		if r.keyboards != nil {
+			r.keyboards.SetLiveMapEnabled(enabled)
+		}
+	}
 }
 
 // WithRingController configures the device ring/alarm controller.
@@ -192,6 +203,7 @@ func NewRouter(
 		executor:       executor,
 		keyboards:      keyboards,
 		statusProv:     statusProv,
+		liveMapEnabled: true,
 		callbackRoutes: make(map[string]func(ctx context.Context, callback *CallbackQuery) error),
 		rebootFunc: func() {
 			log.Printf("[bot] /reboot triggered: sending SIGTERM for graceful PM2 resurrection...")
@@ -404,34 +416,40 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 
 	chatID := msg.Chat.ID
 	keyboard := MakeStatusKeyboard()
-	helpKeyboard := MakeHelpKeyboard()
+	helpKeyboard := MakeHelpKeyboardWithOptions(r.liveMapEnabled)
 
 	switch cmd {
 	case "/start", "/help":
+		locationHelp := ""
+		panelTabs := "ระบบ / บริการ / ข่าวทอง"
+		if r.liveMapEnabled {
+			panelTabs = "ระบบ / บริการ / ข่าวทอง / พิกัด"
+			locationHelp = "\n<b>📍 แผนที่และพิกัดสด</b>\n" +
+				"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n"
+		}
 		helpHTML := "🛡️ <b>Pocket Sentinel</b>\n" +
 			"<i>เลือกปุ่มเพื่อดูสถานะ ควบคุมไฟฉาย หรือคัดลอกคำสั่งตัวอย่าง</i>\n\n" +
 			"<b>🎛️ แผงควบคุมระบบ</b>\n" +
-			"<code>/panel</code> เปิดแผงควบคุมระบบแบบโต้ตอบ (ระบบ / บริการ / ข่าวทอง / พิกัด)\n" +
-			"<code>/keyboard</code> เปิดแป้นพิมพ์ลัด | <code>/keyboard_hide</code> ซ่อนแป้นพิมพ์\n\n" +
-			"<b>📍 แผนที่และพิกัดสด</b>\n" +
-			"<code>/live</code> หรือ <code>/map</code> ดูตำแหน่ง Chubu & Furturia พร้อมลิงก์แผนที่สด\n\n" +
-			"<b>📊 ดูสถานะ</b>\n" +
-			"<code>/status</code> สุขภาพเครื่องและ Tunnel\n" +
+			"<code>/panel</code> เปิดแผงควบคุมระบบแบบโต้ตอบ (" + panelTabs + ")\n" +
+			"<code>/keyboard</code> เปิดแป้นพิมพ์ลัด | <code>/keyboard_hide</code> ซ่อนแป้นพิมพ์\n" +
+			locationHelp +
+			"\n<b>📊 ดูสถานะ</b>\n" +
+			"<code>/status</code> สุขภาพเครื่องและบริการ\n" +
 			"<code>/ping</code> ตรวจการตอบสนอง\n" +
-			"<code>/torch status</code> ตรวจไฟฉาย\n\n" +
+			"<code>/torch [on|off|status]</code> ควบคุม/ตรวจไฟฉาย\n\n" +
 			"<b>🤖 ถาม-ตอบ และงาน Agent</b>\n" +
 			"<code>/ask [model] [effort] &lt;คำถาม&gt;</code> ถาม AI ตอบเร็วทันใจ (รองรับ auto, groq, gemini, agy)\n" +
 			"<code>/task [low|medium|high] &lt;คำสั่ง&gt;</code> สั่ง Agent ทำงาน\n" +
 			"<code>/task_status</code> ดูงาน Agent\n" +
 			"<code>/ring [on|off]</code> ส่งเสียงเรียกหาโทรศัพท์ (ดังสุด + สั่น + แจ้งเตือนปิดเสียงบนจอ)\n" +
 			"<code>/digest</code> สรุปข่าว AI\n" +
-			"<code>/quota</code> เช็คโควตา AI (Gemini, Claude &amp; GPT) พร้อมเวลารีเซ็ต\n" +
+			"<code>/quota</code> หรือ <code>/limits</code> เช็คโควตา AI (Gemini) พร้อมเวลารีเซ็ต\n" +
 			"<code>/exec ps|df|free|uptime|pm2</code> ตรวจระบบ\n" +
 			"<code>/reboot</code> รีสตาร์ต Go server\n" +
 			"<code>/deploy [ข้อความ]</code> ดึงโค้ดล่าสุดจาก GitHub แล้ว build + restart\n\n" +
 			"📋 ปุ่มคำสั่งจะคัดลอกข้อความให้ตรวจและแก้ก่อนส่ง ไม่ได้เริ่มงานทันที"
 		if cmd == "/start" {
-			_, _ = r.sendReplyMarkup(ctx, chatID, "👋 <b>ยินดีต้อนรับสู่ Pocket Sentinel</b>\nเปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว", MakeDefaultReplyKeyboard())
+			_, _ = r.sendReplyMarkup(ctx, chatID, "👋 <b>ยินดีต้อนรับสู่ Pocket Sentinel</b>\nเปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว", MakeDefaultReplyKeyboardWithOptions(r.liveMapEnabled))
 		}
 		_, err := r.sendMessage(ctx, chatID, helpHTML, helpKeyboard)
 		return err
@@ -441,12 +459,12 @@ func (r *Router) handleMessage(ctx context.Context, msg *Message) error {
 		if err != nil {
 			panelHTML = "⚠️ ไม่สามารถโหลดแผงควบคุมได้: " + html.EscapeString(err.Error())
 		}
-		_, err = r.sendMessage(ctx, chatID, panelHTML, MakePanelKeyboard("system"))
+		_, err = r.sendMessage(ctx, chatID, panelHTML, MakePanelKeyboardWithOptions("system", r.liveMapEnabled))
 		return err
 
 	case "/keyboard", "/show_keyboard":
 		msg := "⌨️ เปิดใช้งานแป้นพิมพ์ลัดด้านล่างจอแล้ว"
-		_, err := r.sendReplyMarkup(ctx, chatID, msg, MakeDefaultReplyKeyboard())
+		_, err := r.sendReplyMarkup(ctx, chatID, msg, MakeDefaultReplyKeyboardWithOptions(r.liveMapEnabled))
 		return err
 
 	case "/keyboard_hide", "/hide_keyboard":

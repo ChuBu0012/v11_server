@@ -33,6 +33,27 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function sanitizeHtml(html) {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(String(html), 'text/html');
+  doc.querySelectorAll('script,iframe,object,embed,style,link,meta,base,form').forEach((el) => el.remove());
+  doc.body.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const val = attr.value.trim();
+      if (name.startsWith('on') || name === 'srcdoc') {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if ((name === 'href' || name === 'src' || name === 'xlink:href') &&
+          !/^(https?:\/\/|\/|#)/i.test(val)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+  return doc.body.innerHTML;
+}
+
 async function getJSON(path) {
   const response = await fetch(path, { cache: 'no-store', headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
@@ -61,6 +82,8 @@ if ('serviceWorker' in navigator) {
 const initialParams = new URLSearchParams(window.location.search);
 if (initialParams.get('tab') === 'telegram' || initialParams.get('app') === 'relay') {
   window.location.replace('/relay');
+} else if (initialParams.get('tab') === 'location' || initialParams.get('app') === 'map') {
+  window.location.replace('/live');
 }
 
 document.addEventListener('alpine:init', () => {

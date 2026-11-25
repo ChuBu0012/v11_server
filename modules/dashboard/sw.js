@@ -1,5 +1,5 @@
 // Pocket Sentinel PWA Service Worker
-const CACHE_NAME = 'sentinel-shell-v49';
+const CACHE_NAME = 'sentinel-shell-v50';
 const SHELL_ASSETS = [
   '/',
   '/tele-bridge',
@@ -14,6 +14,7 @@ const SHELL_ASSETS = [
   '/static/css/dashboard.css',
   '/static/css/schedule.css',
   '/static/css/relay.css',
+  '/static/css/live-map.css',
   '/static/js/app.js',
   '/static/js/marked.min.js',
   '/static/js/components/telemetry.js',
@@ -25,6 +26,7 @@ const SHELL_ASSETS = [
   '/static/js/components/relay.js',
   '/static/js/components/schedule-summary.js',
   '/static/js/components/schedule.js',
+  '/static/js/components/live-map.js',
   '/static/img/avatar-chubu.png',
   '/static/img/avatar-furturia.png'
 ];
@@ -50,11 +52,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Pass API, health, live map, and external requests directly through network
+  // Pass API, health, live map, and status redirects directly through network
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/health') ||
-    url.pathname.startsWith('/live/')
+    url.pathname.startsWith('/live/') ||
+    url.pathname.startsWith('/status')
   ) {
     event.respondWith(fetch(event.request));
     return;

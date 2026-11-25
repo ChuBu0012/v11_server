@@ -204,7 +204,7 @@ func (c *RESTClient) getAccessToken(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return "", err
 	}
@@ -282,7 +282,7 @@ func (c *RESTClient) SyncStatus(ctx context.Context, payload PublicStatusPayload
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		return fmt.Errorf("sync status failed (HTTP %d): %s", resp.StatusCode, string(b))
 	}
 
@@ -316,6 +316,44 @@ func (c *RESTClient) SyncDigest(ctx context.Context, payload PublicDigestPayload
 		}
 	}
 
+	if len(payload.Stocks) > 0 {
+		stockVals := make([]interface{}, 0, len(payload.Stocks))
+		for _, s := range payload.Stocks {
+			itemFields := map[string]interface{}{
+				"title": map[string]interface{}{"stringValue": s.Title},
+			}
+			if s.Source != "" {
+				itemFields["source"] = map[string]interface{}{"stringValue": s.Source}
+			}
+			if s.URL != "" {
+				itemFields["url"] = map[string]interface{}{"stringValue": s.URL}
+			}
+			stockVals = append(stockVals, map[string]interface{}{
+				"mapValue": map[string]interface{}{"fields": itemFields},
+			})
+		}
+		fields["stocks"] = map[string]interface{}{
+			"arrayValue": map[string]interface{}{"values": stockVals},
+		}
+	}
+
+	if len(payload.News) > 0 {
+		newsVals := make([]interface{}, 0, len(payload.News))
+		for _, n := range payload.News {
+			newsVals = append(newsVals, map[string]interface{}{
+				"mapValue": map[string]interface{}{
+					"fields": map[string]interface{}{
+						"category": map[string]interface{}{"stringValue": n.Category},
+						"summary":  map[string]interface{}{"stringValue": n.Summary},
+					},
+				},
+			})
+		}
+		fields["news"] = map[string]interface{}{
+			"arrayValue": map[string]interface{}{"values": newsVals},
+		}
+	}
+
 	docPayload := map[string]interface{}{"fields": fields}
 	docBytes, err := json.Marshal(docPayload)
 	if err != nil {
@@ -337,7 +375,7 @@ func (c *RESTClient) SyncDigest(ctx context.Context, payload PublicDigestPayload
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		return fmt.Errorf("sync digest failed (HTTP %d): %s", resp.StatusCode, string(b))
 	}
 
@@ -368,7 +406,7 @@ func (c *RESTClient) GetPendingActions(ctx context.Context) ([]ActionRequest, er
 		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		return nil, fmt.Errorf("get actions failed (HTTP %d): %s", resp.StatusCode, string(b))
 	}
 
@@ -427,9 +465,7 @@ func (c *RESTClient) UpdateAction(ctx context.Context, action ActionRequest) err
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	fields := map[string]interface{}{
-		"action":       map[string]interface{}{"stringValue": action.Action},
 		"status":       map[string]interface{}{"stringValue": action.Status},
-		"requested_at": map[string]interface{}{"stringValue": action.RequestedAt.UTC().Format(time.RFC3339)},
 		"completed_at": map[string]interface{}{"stringValue": now},
 		"result":       map[string]interface{}{"stringValue": action.Result},
 	}
@@ -440,7 +476,7 @@ func (c *RESTClient) UpdateAction(ctx context.Context, action ActionRequest) err
 		return err
 	}
 
-	docURL := fmt.Sprintf("%s/sentinel_actions/%s", c.baseURL, action.ID)
+	docURL := fmt.Sprintf("%s/sentinel_actions/%s?updateMask.fieldPaths=status&updateMask.fieldPaths=completed_at&updateMask.fieldPaths=result", c.baseURL, action.ID)
 	req, err := http.NewRequestWithContext(ctx, "PATCH", docURL, bytes.NewReader(docBytes))
 	if err != nil {
 		return err
@@ -455,7 +491,7 @@ func (c *RESTClient) UpdateAction(ctx context.Context, action ActionRequest) err
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		return fmt.Errorf("update action failed (HTTP %d): %s", resp.StatusCode, string(b))
 	}
 

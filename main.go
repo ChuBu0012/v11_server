@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -129,6 +128,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	sysMod := system.New(startTime)
 	logsMod := logs.New(dbConn)
 	dashMod := dashboard.New()
+	dashMod.SetLiveMapEnabled(cfg.EnableLiveMap)
 	endpointsMod := endpoints.New("")
 	reminderStore, reminderErr := reminders.NewStore(dbConn)
 	if reminderErr != nil {
@@ -318,6 +318,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 
 		routerOpts = append(routerOpts, bot.WithAskRouter(askRouter))
 		routerOpts = append(routerOpts, bot.WithRingController(ringCtrl))
+		routerOpts = append(routerOpts, bot.WithLiveMapEnabled(cfg.EnableLiveMap))
 
 		botRouter = bot.NewRouter(botClient, botAuth, torchCtrl, execRunner, statusProv, routerOpts...)
 		botPoller = bot.NewPoller(botClient, botRouter)
@@ -333,6 +334,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 	var reminderMod *reminders.Module
 	if reminderStore != nil {
 		reminderMod = reminders.NewModule(reminderStore, reminderTelegramReady)
+		reminderMod.SetAIEngine(aiEngine)
 	}
 
 	locationCredentials := location.Credentials{
@@ -419,6 +421,10 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			if askRouter == nil {
 				return "", fmt.Errorf("AI ask service not configured")
 			}
+			guard := bot.NewPromptGuard()
+			if _, err := guard.ValidateAndFrameQuestion(prompt); err != nil {
+				return "", fmt.Errorf("prompt rejected by security guard: %w", err)
+			}
 			opts := bot.ParseAskInput(prompt)
 			if model != "" && model != "auto" {
 				opts.Model = model
@@ -445,8 +451,12 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 			digestStore,
 			cfg.CloudSyncInterval,
 			cloudsync.WithActionDispatcher(dispatcher),
+			cloudsync.WithServicesProvider(probeCloudSyncServices),
 		)
 	}
+
+	relayMod := relay.New(botClient, cfg.TelegramChatID)
+	relayMod.SetAIEngine(aiEngine)
 
 	return &App{
 		cfg:               cfg,
@@ -461,7 +471,7 @@ func setupApp(dbConn *sql.DB, port string, cfg *config.Config) *App {
 		botPoller:         botPoller,
 		botClient:         botClient,
 		digest:            digestMod,
-		relay:             relay.New(botClient, cfg.TelegramChatID),
+		relay:             relayMod,
 		endpoints:         endpointsMod,
 		reminders:         reminderMod,
 		reminderService:   reminderService,
@@ -577,97 +587,7 @@ func setupRouter(app *App) *gin.Engine {
 			})
 		}
 	}
-	// Mount Schedule NL parse endpoint: POST /api/schedule/parse (PIN protected)
-	r.POST("/api/schedule/parse", func(c *gin.Context) {
-		var req struct {
-			Prompt string `json:"prompt"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
-			return
-		}
-		if strings.TrimSpace(req.Prompt) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
-			return
-		}
-		result, err := ai.ParseSchedulePrompt(c.Request.Context(), app.aiEngine, req.Prompt, "Asia/Bangkok")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, result)
-	})
-
-	// Mount Telegram Bridge proofread endpoint: POST /api/relay/proofread (PIN protected)
-	r.POST("/api/relay/proofread", func(c *gin.Context) {
-		var req struct {
-			Text string `json:"text"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
-			return
-		}
-		if strings.TrimSpace(req.Text) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "text cannot be empty"})
-			return
-		}
-		result, err := ai.ProofreadText(c.Request.Context(), app.aiEngine, req.Text)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, result)
-	})
-
-	// Mount Ask AI endpoint: POST /api/ask
-	r.POST("/api/ask", func(c *gin.Context) {
-		var req struct {
-			Prompt string `json:"prompt"`
-			Model  string `json:"model"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload: " + err.Error()})
-			return
-		}
-		prompt := strings.TrimSpace(req.Prompt)
-		if prompt == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt cannot be empty"})
-			return
-		}
-
-		if app.askRouter == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service not configured"})
-			return
-		}
-
-		guard := bot.NewPromptGuard()
-		if _, err := guard.ValidateAndFrameQuestion(prompt); err != nil {
-			if errors.Is(err, bot.ErrPromptTooLong) {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "prompt is too long (max 2000 characters)"})
-				return
-			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": "prompt failed security check"})
-			return
-		}
-
-		opts := bot.ParseAskInput(prompt)
-		if req.Model != "" && req.Model != "auto" {
-			opts.Model = req.Model
-		}
-
-		res, err := app.askRouter.ExecuteFast(c.Request.Context(), opts)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"response":    res.ResponseText,
-			"provider":    res.Provider,
-			"cached":      res.IsCached,
-			"duration_ms": res.Duration.Milliseconds(),
-		})
-	})
+	bot.RegisterAskRoutes(r, app.askRouter)
 
 	// Redirect legacy /status requests directly to Gatus health dashboard (port 8081)
 	r.Any("/status", func(c *gin.Context) {
@@ -691,6 +611,39 @@ func redactedRequestPath(path string) string {
 		return "/api/location/live?[redacted]"
 	}
 	return path
+}
+
+func probeCloudSyncServices() cloudsync.ServicesStatus {
+	status := cloudsync.ServicesStatus{
+		Server:    "healthy",
+		Gatus:     "down",
+		Tailscale: "offline",
+	}
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	if resp, err := client.Get("http://127.0.0.1:8081/"); err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+			status.Gatus = "healthy"
+		}
+	}
+
+	if ifaces, err := net.Interfaces(); err == nil {
+		for _, iface := range ifaces {
+			if iface.Flags&net.FlagUp == 0 {
+				continue
+			}
+			name := strings.ToLower(iface.Name)
+			if strings.Contains(name, "tailscale") || strings.Contains(name, "utun") || strings.Contains(name, "tun") {
+				if addrs, err := iface.Addrs(); err == nil && len(addrs) > 0 {
+					status.Tailscale = "connected"
+					break
+				}
+			}
+		}
+	}
+
+	return status
 }
 
 func main() {

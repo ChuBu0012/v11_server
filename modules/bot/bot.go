@@ -393,43 +393,61 @@ func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackQueryID string
 	return nil
 }
 
-// sendMultipart builds and executes multipart/form-data requests for Telegram Bot API uploads.
+// sendMultipart streams multipart/form-data requests via io.Pipe to keep Termux RAM usage minimal.
 func (c *Client) sendMultipart(ctx context.Context, chatID int64, endpoint string, fieldName string, filename string, fileReader io.Reader, caption string) (*Message, error) {
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	contentType := writer.FormDataContentType()
 
-	if err := writer.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
-		return nil, fmt.Errorf("write chat_id field failed: %w", err)
-	}
-	if caption != "" {
-		if err := writer.WriteField("caption", caption); err != nil {
-			return nil, fmt.Errorf("write caption field failed: %w", err)
+	go func() {
+		var writeErr error
+		defer func() {
+			if closeErr := writer.Close(); closeErr != nil && writeErr == nil {
+				writeErr = closeErr
+			}
+			if writeErr != nil {
+				_ = pw.CloseWithError(writeErr)
+			} else {
+				_ = pw.Close()
+			}
+		}()
+
+		if err := writer.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
+			writeErr = fmt.Errorf("write chat_id field failed: %w", err)
+			return
 		}
-		if err := writer.WriteField("parse_mode", "HTML"); err != nil {
-			return nil, fmt.Errorf("write parse_mode field failed: %w", err)
+		if caption != "" {
+			if err := writer.WriteField("caption", caption); err != nil {
+				writeErr = fmt.Errorf("write caption field failed: %w", err)
+				return
+			}
+			if err := writer.WriteField("parse_mode", "HTML"); err != nil {
+				writeErr = fmt.Errorf("write parse_mode field failed: %w", err)
+				return
+			}
 		}
-	}
 
-	part, err := writer.CreateFormFile(fieldName, filename)
+		part, err := writer.CreateFormFile(fieldName, filename)
+		if err != nil {
+			writeErr = fmt.Errorf("create form file failed: %w", err)
+			return
+		}
+		if _, err := io.Copy(part, fileReader); err != nil {
+			writeErr = fmt.Errorf("copy %s content failed: %w", fieldName, err)
+			return
+		}
+	}()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, pr)
 	if err != nil {
-		return nil, fmt.Errorf("create form file failed: %w", err)
-	}
-	if _, err := io.Copy(part, fileReader); err != nil {
-		return nil, fmt.Errorf("copy %s content failed: %w", fieldName, err)
-	}
-
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("close multipart writer failed: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
-	if err != nil {
+		_ = pr.Close()
 		return nil, c.redactToken(fmt.Errorf("create request failed: %w", err))
 	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		_ = pr.Close()
 		return nil, c.redactToken(fmt.Errorf("request to %s failed: %w", endpoint, err))
 	}
 	defer resp.Body.Close()

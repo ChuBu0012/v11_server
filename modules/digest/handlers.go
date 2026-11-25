@@ -24,7 +24,18 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/history", m.handleHistory)
 }
 
+func (m *Module) ensureService(c *gin.Context) bool {
+	if m == nil || m.service == nil || m.service.store == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "digest service is not configured"})
+		return false
+	}
+	return true
+}
+
 func (m *Module) handleStatus(c *gin.Context) {
+	if !m.ensureService(c) {
+		return
+	}
 	settings, err := m.service.store.GetSettings(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load settings"})
@@ -44,6 +55,9 @@ func (m *Module) handleStatus(c *gin.Context) {
 }
 
 func (m *Module) handleToggle(c *gin.Context) {
+	if !m.ensureService(c) {
+		return
+	}
 	var body struct {
 		Enabled *bool `json:"enabled"`
 	}
@@ -71,6 +85,9 @@ func (m *Module) handleToggle(c *gin.Context) {
 }
 
 func (m *Module) handleRun(c *gin.Context) {
+	if !m.ensureService(c) {
+		return
+	}
 	// Force run regardless of enabled setting
 	record, err := m.service.GenerateDigest(c.Request.Context(), true)
 	if err != nil {
@@ -88,6 +105,9 @@ func (m *Module) handleRun(c *gin.Context) {
 }
 
 func (m *Module) handleHistory(c *gin.Context) {
+	if !m.ensureService(c) {
+		return
+	}
 	history, err := m.service.store.GetHistory(c.Request.Context(), 10)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load history"})
